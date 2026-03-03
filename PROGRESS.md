@@ -95,12 +95,12 @@
 
 ## Remaining Work
 
-### Phase 5: ATS System (In Progress 🟡)
+### Phase 5: ATS System (Done ✅)
 - [x] Employer view candidates (`/employer/jobs/[id]/applicants`)
-- [ ] Drag-drop Kanban status (or status update mechanism)
-- [ ] Candidate detail modal
-- [ ] Landing Pages (`/employer/landing-pages` for private form collection)
-- [ ] Public apply form (`/apply/[token]`)
+- [x] Status update mechanism (Interactive Dropdowns)
+- [x] Candidate detail modal (AI Insights + Resume View)
+- [x] Landing Pages (`/employer/landing-pages` for private form collection)
+- [x] Public apply form (`/apply/[token]`)
 
 ### Phase 6: Admin & Payments
 - [ ] Admin config (`/admin/config`)

@@ -117,6 +117,20 @@ export default function NewJobPage() {
             .replace(/\s+/g, '-')
             .replace(/[^a-z0-9-]/g, '') + '-' + Date.now()
 
+        // Parse salary range
+        let salary_min = null;
+        let salary_max = null;
+        if (formData.salary_range) {
+            const cleanStr = formData.salary_range.replace(/,/g, '');
+            const nums = cleanStr.match(/\d+/g);
+            if (nums && nums.length > 0) {
+                salary_min = parseInt(nums[0], 10);
+                if (nums.length > 1) {
+                    salary_max = parseInt(nums[1], 10);
+                }
+            }
+        }
+
         const { data: job, error } = await supabase
             .from('jobs')
             .insert({
@@ -126,7 +140,8 @@ export default function NewJobPage() {
                 description: formData.description + '\n\nRequirements:\n' + formData.requirements,
                 location_city: formData.location,
                 job_type: formData.job_type,
-                salary_min: formData.salary_range ? parseInt(formData.salary_range.replace(/\D/g, '')) || null : null,
+                salary_min: salary_min,
+                salary_max: salary_max,
                 is_confidential: formData.is_confidential,
                 is_featured: formData.is_featured,
                 status: publish ? 'active' : 'draft',
