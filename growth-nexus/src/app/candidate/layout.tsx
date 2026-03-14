@@ -8,7 +8,10 @@ import {
     Settings,
     LogOut,
     ChevronRight,
-    Upload
+    Upload,
+    UserCircle,
+    Heart,
+    MessageSquare
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -17,8 +20,11 @@ import { Badge } from '@/components/ui/badge'
 
 const sidebarLinks = [
     { href: '/candidate/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/candidate/profile', label: 'My Profile', icon: UserCircle },
     { href: '/candidate/cv', label: 'My CV', icon: FileText },
     { href: '/candidate/applications', label: 'Applications', icon: Briefcase },
+    { href: '/candidate/saved-jobs', label: 'Saved Jobs', icon: Heart },
+    { href: '/candidate/messages', label: 'Messages', icon: MessageSquare },
     { href: '/candidate/settings', label: 'Settings', icon: Settings },
 ]
 

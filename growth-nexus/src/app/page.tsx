@@ -52,37 +52,6 @@ const features = [
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-slate-950">
-      {/* Header */}
-      <header className="border-b border-slate-800/50 bg-slate-950/50 backdrop-blur-xl sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center">
-              <span className="text-xl font-bold text-white">G</span>
-            </div>
-            <span className="text-xl font-bold text-white">GrowthNexus</span>
-          </Link>
-          <nav className="hidden md:flex items-center gap-6">
-            <Link href="/jobs" className="text-slate-400 hover:text-white transition-colors">
-              Find Jobs
-            </Link>
-            <Link href="/register" className="text-slate-400 hover:text-white transition-colors">
-              For Employers
-            </Link>
-          </nav>
-          <div className="flex items-center gap-3">
-            <Link href="/login">
-              <Button variant="ghost" className="text-slate-300 hover:text-white">
-                Sign In
-              </Button>
-            </Link>
-            <Link href="/register">
-              <Button className="bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white">
-                Get Started
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </header>
 
       {/* Hero Section */}
       <section className="relative overflow-hidden">

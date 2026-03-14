@@ -13,8 +13,6 @@ create type job_status as enum ('draft', 'active', 'expired', 'closed', 'archive
 
 create type app_status as enum ('applied', 'reviewing', 'interview', 'shortlisted', 'rejected', 'hired');
 
-create type candidate_type_enum as enum ('emirati', 'resident');
-
 -- 3. PROFILES (Identity Layer)
 create table public.profiles (
     id uuid references auth.users on delete cascade primary key,
@@ -56,14 +54,7 @@ create table public.candidates (
     skills text [], -- Array for fast matching e.g. ['React', 'Node']
     years_experience int default 0,
     city text,
-    country text default 'United Arab Emirates',
-    
-    -- UAE Specific Fields
-    candidate_type candidate_type_enum default 'resident',
-    residence_emirate text,
-    family_book_emirate text,
-    visa_status text,
-    nationality text,
+    country text default 'Saudi Arabia',
     linkedin_url text,
     portfolio_url text,
     is_public boolean default true, -- Allow recruiters to find them
@@ -390,3 +381,118 @@ ALTER TABLE public.system_config ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Public can read non-secret config" ON public.system_config FOR
 SELECT USING (is_secret = false);
+
+-- 1. Add Source Tracking to Applications
+alter table public.applications
+add column if not exists source text default 'platform';
+
+-- 2. Upsert Candidate from Private Form
+create or replace function upsert_private_candidate(
+  p_email text,
+  p_full_name text,
+  p_cv_url text
+) returns uuid as $$
+declare
+  v_candidate_id uuid;
+begin
+  select id into v_candidate_id from public.profiles where email = p_email;
+  
+  if v_candidate_id is null then
+    v_candidate_id := gen_random_uuid();
+    insert into public.profiles (id, email, full_name, role)
+    values (v_candidate_id, p_email, p_full_name, 'candidate');
+    
+    insert into public.candidates (id, cv_url, is_public)
+    values (v_candidate_id, p_cv_url, false);
+  else
+    update public.candidates set cv_url = p_cv_url where id = v_candidate_id;
+  end if;
+
+  return v_candidate_id;
+end;
+$$ language plpgsql security definer;
+
+-- 3. Get or Create Private Tracking Job
+create or replace function get_or_create_private_job(
+  p_company_id uuid,
+  p_landing_page_id uuid
+) returns uuid as $$
+declare
+  v_job_id uuid;
+  v_slug text;
+begin
+  v_slug := 'private-campaign-' || p_landing_page_id;
+
+  select id into v_job_id from public.jobs where slug = v_slug;
+
+  if v_job_id is null then
+    insert into public.jobs (
+      company_id, title, slug, description, location_city, status, job_type
+    ) values (
+      p_company_id, 
+      'Private Campaign Applicants', 
+      v_slug, 
+      'Hidden job used to collect applicants from custom landing page links.', 
+      'Remote', 
+      'archived', 
+      'full_time'
+    ) returning id into v_job_id;
+  end if;
+
+  return v_job_id;
+end;
+$$ language plpgsql security definer;
+
+-- 4. Increment Views Logic
+create or replace function increment_landing_page_views(page_id uuid)
+returns void as $$
+begin
+  update public.landing_pages
+  set views_count = views_count + 1
+  where id = page_id;
+end;
+$$ language plpgsql security definer;
+
+-- 1. Create the new enum
+create type candidate_type_enum as enum ('emirati', 'resident');
+
+-- 2. Add the new columns to the candidates table
+alter table public.candidates
+add column candidate_type candidate_type_enum default 'resident';
+
+alter table public.candidates
+add column residence_emirate text,
+add column family_book_emirate text,
+add column visa_status text,
+add column nationality text;
+
+-- 3. Update the default country
+alter table public.candidates
+alter column country
+set default 'United Arab Emirates';
+
+-- Allow authenticated users to upload to their own folder
+CREATE POLICY "Users can upload own resumes" ON storage.objects FOR INSERT TO authenticated
+WITH
+    CHECK (
+        bucket_id = 'resumes'
+        AND (storage.foldername (name)) [1] = auth.uid ()::text
+    );
+
+-- Allow authenticated users to update/replace their own resumes
+CREATE POLICY "Users can update own resumes" ON storage.objects
+FOR UPDATE
+    TO authenticated USING (
+        bucket_id = 'resumes'
+        AND (storage.foldername (name)) [1] = auth.uid ()::text
+    );
+
+-- Allow authenticated users to delete their own resumes
+CREATE POLICY "Users can delete own resumes" ON storage.objects FOR DELETE TO authenticated USING (
+    bucket_id = 'resumes'
+    AND (storage.foldername (name)) [1] = auth.uid ()::text
+);
+
+-- Allow public read access (for download links)
+CREATE POLICY "Public can read resumes" ON storage.objects FOR
+SELECT TO public USING (bucket_id = 'resumes');

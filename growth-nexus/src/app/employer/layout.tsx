@@ -9,7 +9,11 @@ import {
     LogOut,
     LayoutDashboard,
     FileText,
-    ChevronRight
+    ChevronRight,
+    PlusCircle,
+    Search,
+    Heart,
+    UserCheck
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -17,7 +21,11 @@ import { Separator } from '@/components/ui/separator'
 
 const sidebarLinks = [
     { href: '/employer/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/employer/jobs/new', label: 'Post a Job', icon: PlusCircle, highlight: true },
     { href: '/employer/jobs', label: 'My Jobs', icon: Briefcase },
+    { href: '/employer/applicants', label: 'Applicants', icon: UserCheck },
+    { href: '/employer/candidates', label: 'Candidate Search', icon: Search },
+    { href: '/employer/saved-candidates', label: 'Saved Candidates', icon: Heart },
     { href: '/employer/landing-pages', label: 'Landing Pages', icon: FileText },
     { href: '/employer/settings', label: 'Company Settings', icon: Settings },
 ]
@@ -94,9 +102,13 @@ export default async function EmployerLayout({
                         <Link
                             key={link.href}
                             href={link.href}
-                            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors group"
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group ${
+                                (link as any).highlight 
+                                ? 'text-white bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20' 
+                                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                            }`}
                         >
-                            <link.icon className="h-5 w-5" />
+                            <link.icon className={`h-5 w-5 ${(link as any).highlight ? 'text-emerald-400' : ''}`} />
                             <span className="flex-1">{link.label}</span>
                             <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </Link>

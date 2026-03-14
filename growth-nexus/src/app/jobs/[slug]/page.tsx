@@ -17,7 +17,8 @@ import {
     ArrowLeft,
     Share2,
     Heart,
-    CheckCircle
+    CheckCircle,
+    Zap
 } from 'lucide-react'
 import type { Metadata } from 'next'
 
@@ -95,29 +96,6 @@ export default async function JobDetailPage({ params }: Props) {
 
     return (
         <div className="min-h-screen bg-slate-950">
-            {/* Header */}
-            <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-50">
-                <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-                    <Link href="/" className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center">
-                            <span className="text-xl font-bold text-white">G</span>
-                        </div>
-                        <span className="text-xl font-bold text-white">GrowthNexus</span>
-                    </Link>
-                    <div className="flex items-center gap-4">
-                        <Link href="/login">
-                            <Button variant="ghost" className="text-slate-300 hover:text-white">
-                                Sign In
-                            </Button>
-                        </Link>
-                        <Link href="/register">
-                            <Button className="bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white">
-                                Post a Job
-                            </Button>
-                        </Link>
-                    </div>
-                </div>
-            </header>
 
             <div className="container mx-auto px-4 py-8">
                 {/* Back Link */}
@@ -242,21 +220,69 @@ export default async function JobDetailPage({ params }: Props) {
                     {/* Sidebar */}
                     <div className="space-y-6">
                         {/* Apply Card */}
-                        <Card className="bg-gradient-to-br from-emerald-500/10 to-cyan-500/10 border-emerald-500/30">
-                            <CardContent className="p-6 text-center">
-                                <CheckCircle className="h-12 w-12 text-emerald-400 mx-auto mb-4" />
-                                <h3 className="text-lg font-semibold text-white mb-2">Ready to Apply?</h3>
-                                <p className="text-slate-400 text-sm mb-4">
-                                    Submit your application and get noticed
-                                </p>
+                        <Card className="bg-slate-900 border-slate-800 shadow-xl shadow-emerald-500/5 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl shadow-md z-10 flex items-center gap-1">
+                                Match Score: 86%
+                            </div>
+                            <CardContent className="p-6 pt-8 text-center flex flex-col items-center">
+                                <h3 className="text-xl font-bold text-white mb-2">Ready to Apply?</h3>
+                                <div className="text-sm text-slate-400 mb-6 flex items-center gap-2 justify-center w-full">
+                                    <Users className="h-4 w-4" />
+                                    <span>Applicants: 86 candidates</span>
+                                </div>
+                                
                                 <ApplyButton
                                     jobId={job.id}
                                     jobTitle={job.title}
                                     companyName={job.is_confidential ? 'Confidential Company' : company?.name || 'Company'}
-                                    className="w-full bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white"
+                                    className="w-full h-12 text-base font-semibold bg-white text-slate-900 hover:bg-slate-200 mb-3"
                                 >
-                                    Apply for this Job
+                                    Apply Now
                                 </ApplyButton>
+                                
+                                <Button className="w-full grid h-12 text-sm font-semibold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg shadow-amber-500/20">
+                                    Apply with Priority — 5 AED
+                                </Button>
+                            </CardContent>
+                        </Card>
+
+                        {/* Auto Apply Upsell */}
+                        <Card className="bg-gradient-to-b from-slate-900 to-slate-900/50 border-emerald-500/20">
+                            <CardHeader className="pb-4">
+                                <CardTitle className="text-emerald-400 text-lg flex items-center gap-2">
+                                    <div className="p-1.5 rounded-md bg-emerald-500/20">
+                                        <Zap className="h-4 w-4" />
+                                    </div>
+                                    Auto Apply Service
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <p className="text-sm text-slate-300">
+                                    Send your CV automatically to similar matching jobs. Don't miss out on high-competition roles!
+                                </p>
+                                <div className="space-y-2">
+                                    <button className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-700 bg-slate-800/50 hover:border-emerald-500 hover:bg-slate-800 transition-colors text-left group">
+                                        <div className="flex flex-col">
+                                            <span className="text-white font-medium group-hover:text-emerald-400 transition-colors">Basic</span>
+                                            <span className="text-xs text-slate-400">Up to 30 jobs</span>
+                                        </div>
+                                        <span className="font-bold text-white">49 AED</span>
+                                    </button>
+                                    <button className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-700 bg-slate-800/50 hover:border-emerald-500 hover:bg-slate-800 transition-colors text-left group">
+                                        <div className="flex flex-col">
+                                            <span className="text-white font-medium group-hover:text-emerald-400 transition-colors">Advanced</span>
+                                            <span className="text-xs text-slate-400">Up to 100 jobs</span>
+                                        </div>
+                                        <span className="font-bold text-white">99 AED</span>
+                                    </button>
+                                    <button className="w-full flex items-center justify-between p-3 rounded-lg border border-emerald-500/50 bg-emerald-500/5 hover:border-emerald-500 hover:bg-emerald-500/10 transition-colors text-left group">
+                                        <div className="flex flex-col">
+                                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 font-bold">Pro</span>
+                                            <span className="text-xs text-emerald-400/80">Unlimited (30 days)</span>
+                                        </div>
+                                        <span className="font-bold text-emerald-400">149 AED</span>
+                                    </button>
+                                </div>
                             </CardContent>
                         </Card>
 
@@ -350,6 +376,41 @@ export default async function JobDetailPage({ params }: Props) {
                                         <span className="text-white">{job.currency || 'SAR'} {job.salary_min.toLocaleString()}</span>
                                     </div>
                                 )}
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
+                
+                {/* Similar Jobs Section */}
+                <div className="mt-16">
+                    <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-2xl font-bold text-white">Similar Jobs</h2>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <Card className="bg-slate-900 border-slate-800 hover:border-slate-700 transition-colors cursor-pointer group">
+                            <CardContent className="p-5 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">
+                                    78% Match
+                                </div>
+                                <h4 className="font-semibold text-white group-hover:text-emerald-400 transition-colors mt-2">Marketing Coordinator</h4>
+                                <p className="text-sm text-slate-400 mb-3">Tech Visionaries LLC • Dubai</p>
+                                <div className="flex gap-2">
+                                    <Badge variant="outline" className="border-slate-700 text-slate-300">Full Time</Badge>
+                                    <Badge variant="outline" className="border-slate-700 text-slate-300">Mid Level</Badge>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card className="bg-slate-900 border-slate-800 hover:border-slate-700 transition-colors cursor-pointer group">
+                            <CardContent className="p-5 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">
+                                    73% Match
+                                </div>
+                                <h4 className="font-semibold text-white group-hover:text-emerald-400 transition-colors mt-2">Sales Executive</h4>
+                                <p className="text-sm text-slate-400 mb-3">Global Trade Inc • Abu Dhabi</p>
+                                <div className="flex gap-2">
+                                    <Badge variant="outline" className="border-slate-700 text-slate-300">Full Time</Badge>
+                                    <Badge variant="outline" className="border-slate-700 text-slate-300">Entry Level</Badge>
+                                </div>
                             </CardContent>
                         </Card>
                     </div>

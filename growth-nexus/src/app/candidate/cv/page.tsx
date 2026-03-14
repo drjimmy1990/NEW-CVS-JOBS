@@ -34,6 +34,7 @@ export default function CVPage() {
     const [parsing, setParsing] = useState(false)
     const [cvUrl, setCvUrl] = useState<string | null>(null)
     const [parsedData, setParsedData] = useState<ParsedData | null>(null)
+    const [cvUpdatedAt, setCvUpdatedAt] = useState<string | null>(null)
     const [uploadProgress, setUploadProgress] = useState(0)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -49,13 +50,14 @@ export default function CVPage() {
         if (user) {
             const { data: candidate } = await supabase
                 .from('candidates')
-                .select('cv_url, resume_parsed_data, skills')
+                .select('cv_url, resume_parsed_data, skills, updated_at')
                 .eq('id', user.id)
                 .single()
 
             if (candidate) {
                 setCvUrl(candidate.cv_url)
                 setParsedData(candidate.resume_parsed_data as ParsedData)
+                setCvUpdatedAt(candidate.updated_at)
             }
         }
         setLoading(false)
@@ -135,6 +137,7 @@ export default function CVPage() {
 
         setUploadProgress(100)
         setCvUrl(publicUrl)
+        setCvUpdatedAt(new Date().toISOString())
         toast.success('CV uploaded successfully!')
         setUploading(false)
 
@@ -149,7 +152,7 @@ export default function CVPage() {
             // Get n8n webhook URL from env
             const webhookUrl = process.env.NEXT_PUBLIC_N8N_CV_PARSER_WEBHOOK
 
-            if (!webhookUrl) {
+            if (!webhookUrl || webhookUrl.includes('your-n8n-domain') || webhookUrl.includes('example.com')) {
                 // Simulate parsing if webhook not configured
                 toast.info('AI parsing will be available once n8n webhook is configured')
 
@@ -205,6 +208,7 @@ export default function CVPage() {
 
             setCvUrl(null)
             setParsedData(null)
+            setCvUpdatedAt(null)
             toast.success('CV deleted')
         }
     }
@@ -218,14 +222,18 @@ export default function CVPage() {
     }
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6">
+        <div className="max-w-6xl mx-auto">
             {/* Header */}
-            <div>
+            <div className="mb-8">
                 <h1 className="text-3xl font-bold text-white">My CV</h1>
                 <p className="text-slate-400 mt-1">
-                    Upload your resume for AI-powered skill extraction
+                    Upload your resume for AI-powered skill extraction and management
                 </p>
             </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                {/* Main Content */}
+                <div className="xl:col-span-2 space-y-6">
 
             {/* Upload Section */}
             <Card className="bg-slate-900 border-slate-800">
@@ -270,48 +278,65 @@ export default function CVPage() {
                             )}
                         </div>
                     ) : (
-                        <div className="flex items-center justify-between p-4 bg-slate-800 rounded-lg">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-green-500/20 rounded-lg">
-                                    <CheckCircle2 className="h-6 w-6 text-green-500" />
-                                </div>
-                                <div>
-                                    <p className="text-white font-medium">Resume uploaded</p>
-                                    <p className="text-sm text-slate-400">Click below to download or replace</p>
-                                </div>
+                        <div className="border border-emerald-500/30 bg-emerald-500/5 p-6 rounded-xl relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg z-10">
+                                Active Profile CV
                             </div>
-                            <div className="flex gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="border-slate-700"
-                                    onClick={() => window.open(cvUrl, '_blank')}
-                                >
-                                    <Download className="h-4 w-4 mr-1" />
-                                    View
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="border-slate-700 text-red-400 hover:bg-red-500/20"
-                                    onClick={deleteCV}
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    className="bg-cyan-500 hover:bg-cyan-600"
-                                    onClick={() => fileInputRef.current?.click()}
-                                >
-                                    Replace
-                                </Button>
-                                <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    accept=".pdf"
-                                    onChange={handleFileUpload}
-                                    className="hidden"
-                                />
+                            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-3 bg-emerald-500/20 rounded-xl relative">
+                                        <div className="absolute inset-0 bg-emerald-400/20 rounded-xl animate-ping opacity-75"></div>
+                                        <FileText className="h-8 w-8 text-emerald-400 relative z-10" />
+                                    </div>
+                                    <div>
+                                        <p className="text-white font-semibold text-lg">My_Professional_CV.pdf</p>
+                                        <div className="flex items-center gap-3 mt-1">
+                                            <span className="text-sm text-slate-400 flex items-center gap-1">
+                                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                                                Verified & Parsed
+                                            </span>
+                                            {cvUpdatedAt && (
+                                                <span className="text-sm text-slate-500 flex items-center gap-1 before:content-['•'] before:mr-2 before:text-slate-600">
+                                                    Updated {new Date(cvUpdatedAt).toLocaleDateString()}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex flex-wrap gap-2 w-full md:w-auto">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="border-slate-700 bg-slate-800 hover:bg-slate-700 text-white flex-1 md:flex-none"
+                                        onClick={() => window.open(cvUrl || '', '_blank')}
+                                    >
+                                        <Download className="h-4 w-4 mr-2" />
+                                        Download
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        className="bg-emerald-500 hover:bg-emerald-600 text-white flex-1 md:flex-none"
+                                        onClick={() => fileInputRef.current?.click()}
+                                    >
+                                        <Upload className="h-4 w-4 mr-2" />
+                                        Replace
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10 hover:border-rose-500 hover:text-rose-300 md:ml-2"
+                                        onClick={deleteCV}
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept=".pdf"
+                                        onChange={handleFileUpload}
+                                        className="hidden"
+                                    />
+                                </div>
                             </div>
                         </div>
                     )}
@@ -415,6 +440,77 @@ export default function CVPage() {
                     </ul>
                 </CardContent>
             </Card>
+            </div>
+
+            {/* Sidebar Upsells */}
+            <div className="space-y-6 mt-8 xl:mt-0">
+                {/* Profile Boost Upsell */}
+                <Card className="bg-gradient-to-b from-amber-500/10 to-orange-500/5 border-amber-500/30 overflow-hidden relative">
+                    <div className="absolute top-0 right-0 bg-amber-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg z-10">
+                        Popular
+                    </div>
+                    <CardHeader className="pb-4">
+                        <CardTitle className="text-amber-400 text-lg flex items-center gap-2">
+                            <Sparkles className="h-5 w-5" />
+                            Profile Boost
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <p className="text-sm text-slate-300">
+                            Get your profile highlighted and ranked at the top of recruiter search results.
+                        </p>
+                        <div className="space-y-3">
+                            <button className="w-full flex items-center justify-between p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 hover:border-amber-500 hover:bg-amber-500/20 transition-colors text-left group">
+                                <div className="flex flex-col">
+                                    <span className="text-white font-medium group-hover:text-amber-400 transition-colors">7 Days Boost</span>
+                                    <span className="text-xs text-amber-500/80">3x more profile views</span>
+                                </div>
+                                <span className="font-bold text-amber-400">29 AED</span>
+                            </button>
+                            <button className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-700 bg-slate-800/50 hover:border-amber-500/50 hover:bg-slate-800 transition-colors text-left group">
+                                <div className="flex flex-col">
+                                    <span className="text-white font-medium group-hover:text-amber-400 transition-colors">30 Days Boost</span>
+                                    <span className="text-xs text-slate-400">Best value for massive reach</span>
+                                </div>
+                                <span className="font-bold text-white">79 AED</span>
+                            </button>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Professional CV Review */}
+                <Card className="bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border-cyan-500/30">
+                    <CardHeader className="pb-4">
+                        <CardTitle className="text-cyan-400 text-lg flex items-center gap-2">
+                            <FileText className="h-5 w-5" />
+                            Pro CV Review
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <p className="text-sm text-slate-300">
+                            Have our industry experts review your CV and rewrite it to pass ATS systems.
+                        </p>
+                        <ul className="text-sm text-slate-400 space-y-2 mb-6">
+                            <li className="flex items-center gap-2">
+                                <CheckCircle2 className="h-4 w-4 text-cyan-500" />
+                                ATS Optimization
+                            </li>
+                            <li className="flex items-center gap-2">
+                                <CheckCircle2 className="h-4 w-4 text-cyan-500" />
+                                Custom Cover Letter
+                            </li>
+                            <li className="flex items-center gap-2">
+                                <CheckCircle2 className="h-4 w-4 text-cyan-500" />
+                                24h Turnaround
+                            </li>
+                        </ul>
+                        <Button className="w-full bg-cyan-500 hover:bg-cyan-600 text-white shadow-lg shadow-cyan-500/20">
+                            Get Expert Review — 199 AED
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+            </div>
         </div>
     )
 }
