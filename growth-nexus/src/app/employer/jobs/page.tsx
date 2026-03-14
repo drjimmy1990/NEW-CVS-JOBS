@@ -11,10 +11,9 @@ export default async function MyJobsPage() {
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
-        return <div className="text-white">Please login</div>
+        return <div className="text-cream">يرجى تسجيل الدخول</div>
     }
 
-    // Fetch jobs directly by joining to companies where owner_id matches the user
     const { data: jobs } = await supabase
         .from('jobs')
         .select(`
@@ -28,7 +27,6 @@ export default async function MyJobsPage() {
         .eq('companies.owner_id', user.id)
         .order('created_at', { ascending: false })
 
-    // Get application counts for each job
     const jobsWithCounts = await Promise.all(
         (jobs || []).map(async (job) => {
             const { count } = await supabase
@@ -44,15 +42,15 @@ export default async function MyJobsPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-white">My Jobs</h1>
-                    <p className="text-slate-400 mt-1">
-                        Manage your job postings
+                    <h1 className="text-3xl font-bold text-cream">وظائفي</h1>
+                    <p className="text-cream-dark/50 mt-1">
+                        إدارة إعلانات الوظائف الخاصة بك
                     </p>
                 </div>
                 <Link href="/employer/jobs/new">
-                    <Button className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Post New Job
+                    <Button className="bg-gradient-to-r from-gold to-gold-light hover:from-gold-dark hover:to-gold text-navy font-bold">
+                        <Plus className="me-2 h-4 w-4" />
+                        أنشر وظيفة جديدة
                     </Button>
                 </Link>
             </div>
@@ -61,17 +59,17 @@ export default async function MyJobsPage() {
             {jobsWithCounts && jobsWithCounts.length > 0 ? (
                 <JobsList jobs={jobsWithCounts} />
             ) : (
-                <Card className="bg-slate-900 border-slate-800">
+                <Card className="bg-navy-light border-gold/10">
                     <CardContent className="py-16 text-center">
-                        <Briefcase className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-                        <h3 className="text-xl font-semibold text-white mb-2">No jobs posted yet</h3>
-                        <p className="text-slate-400 mb-6">
-                            Start attracting top talent by posting your first job
+                        <Briefcase className="h-16 w-16 text-cream-dark/20 mx-auto mb-4" />
+                        <h3 className="text-xl font-semibold text-cream mb-2">لم تُنشر وظائف بعد</h3>
+                        <p className="text-cream-dark/50 mb-6">
+                            ابدأ بجذب أفضل المواهب من خلال نشر أول وظيفة
                         </p>
                         <Link href="/employer/jobs/new">
-                            <Button className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white">
-                                <Plus className="mr-2 h-4 w-4" />
-                                Post Your First Job
+                            <Button className="bg-gradient-to-r from-gold to-gold-light hover:from-gold-dark hover:to-gold text-navy font-bold">
+                                <Plus className="me-2 h-4 w-4" />
+                                أنشر أول وظيفة
                             </Button>
                         </Link>
                     </CardContent>

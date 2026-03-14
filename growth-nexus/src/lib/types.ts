@@ -1,9 +1,13 @@
 // Database Types - Generated from schema.sql
+// Last updated: Migration 001 (UAE Schema Fixes)
 
 export type UserRole = 'candidate' | 'employer' | 'admin'
 export type JobType = 'full_time' | 'part_time' | 'contract' | 'remote' | 'internship'
 export type JobStatus = 'draft' | 'active' | 'expired' | 'closed' | 'archived'
 export type AppStatus = 'applied' | 'reviewing' | 'interview' | 'shortlisted' | 'rejected' | 'hired'
+export type CandidateType = 'emirati' | 'resident'
+export type NoticePeriod = '1_week' | '1_month' | '2_months' | '3_months' | 'immediate'
+export type MilitaryServiceStatus = 'completed' | 'exempt' | 'in_progress'
 
 export interface Profile {
     id: string
@@ -48,6 +52,22 @@ export interface Candidate {
     portfolio_url: string | null
     is_public: boolean
     updated_at: string
+    // UAE-specific fields
+    candidate_type: CandidateType
+    residence_emirate: string | null
+    family_book_emirate: string | null
+    visa_status: string | null
+    nationality: string | null
+    // Emirati-specific
+    emirates_id: string | null
+    nafis_registered: boolean
+    military_service_status: MilitaryServiceStatus | null
+    // Resident-specific
+    visa_expiry: string | null
+    notice_period: NoticePeriod | null
+    need_sponsorship: boolean
+    // Tracking
+    profile_views_count: number
 }
 
 export interface Job {
@@ -99,6 +119,7 @@ export interface Application {
     status: AppStatus
     resume_snapshot_url: string | null
     source: string
+    is_priority: boolean
     created_at: string
     updated_at: string
 }
@@ -133,4 +154,20 @@ export interface SystemConfig {
     description: string | null
     group_name: string | null
     is_secret: boolean
+}
+
+// New tables from Migration 001
+
+export interface SavedJob {
+    id: string
+    candidate_id: string
+    job_id: string
+    created_at: string
+}
+
+export interface SavedCandidate {
+    id: string
+    employer_id: string
+    candidate_id: string
+    created_at: string
 }

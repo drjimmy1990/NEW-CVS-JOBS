@@ -1,22 +1,18 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Cairo } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { Navbar } from "@/components/layout/navbar";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const cairo = Cairo({
+  variable: "--font-sans",
+  subsets: ["arabic", "latin"],
+  weight: ["300", "400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
-  title: "GrowthNexus - AI-Powered Recruitment Platform",
-  description: "Connecting top talent with leading employers. Post jobs, parse CVs with AI, and hire smarter.",
+  title: "GrowthNexus - منصة التوظيف الذكية",
+  description: "منصة توظيف ذكية مدعومة بالذكاء الاصطناعي في الإمارات. أنشر وظائف، حلل السير الذاتية بالذكاء الاصطناعي، ووظّف بذكاء.",
 };
 
 export default function RootLayout({
@@ -25,15 +21,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="ar" dir="rtl">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${cairo.variable} font-sans antialiased`}
       >
         <Navbar />
         {children}
-        <Toaster richColors position="bottom-right" />
+        <Toaster richColors position="bottom-left" />
       </body>
     </html>
   );
 }
+
 

@@ -14,24 +14,24 @@ import { toast } from 'sonner'
 import type { Company } from '@/lib/types'
 
 const industries = [
-    'Technology',
-    'Healthcare',
-    'Finance',
-    'Education',
-    'Retail',
-    'Manufacturing',
-    'Consulting',
-    'Real Estate',
-    'Hospitality',
-    'Other'
+    { value: 'Technology', label: 'التكنولوجيا' },
+    { value: 'Healthcare', label: 'الرعاية الصحية' },
+    { value: 'Finance', label: 'المالية والبنوك' },
+    { value: 'Education', label: 'التعليم' },
+    { value: 'Retail', label: 'التجزئة' },
+    { value: 'Manufacturing', label: 'التصنيع' },
+    { value: 'Consulting', label: 'الاستشارات' },
+    { value: 'Real Estate', label: 'العقارات' },
+    { value: 'Hospitality', label: 'الضيافة' },
+    { value: 'Other', label: 'أخرى' },
 ]
 
 const companySizes = [
-    '1-10 employees',
-    '11-50 employees',
-    '51-200 employees',
-    '201-500 employees',
-    '500+ employees'
+    { value: '1-10 employees', label: '1-10 موظفين' },
+    { value: '11-50 employees', label: '11-50 موظف' },
+    { value: '51-200 employees', label: '51-200 موظف' },
+    { value: '201-500 employees', label: '201-500 موظف' },
+    { value: '500+ employees', label: '+500 موظف' },
 ]
 
 export default function CompanySettingsPage() {
@@ -70,12 +70,11 @@ export default function CompanySettingsPage() {
         const { data: { user } } = await supabase.auth.getUser()
 
         if (!user) {
-            toast.error('Please login to continue')
+            toast.error('يرجى تسجيل الدخول')
             setSaving(false)
             return
         }
 
-        // Generate slug from company name
         const slug = company.name?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || ''
 
         const { error } = await supabase
@@ -91,9 +90,9 @@ export default function CompanySettingsPage() {
             .eq('owner_id', user.id)
 
         if (error) {
-            toast.error('Failed to save: ' + error.message)
+            toast.error('فشل الحفظ: ' + error.message)
         } else {
-            toast.success('Company profile updated successfully!')
+            toast.success('تم تحديث ملف الشركة بنجاح!')
             router.refresh()
         }
 
@@ -103,7 +102,7 @@ export default function CompanySettingsPage() {
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
-                <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
+                <Loader2 className="h-8 w-8 animate-spin text-gold" />
             </div>
         )
     }
@@ -111,55 +110,55 @@ export default function CompanySettingsPage() {
     return (
         <div className="space-y-6 max-w-2xl">
             <div>
-                <h1 className="text-3xl font-bold text-white">Company Settings</h1>
-                <p className="text-slate-400 mt-1">
-                    Update your company profile information
+                <h1 className="text-3xl font-bold text-cream">إعدادات الشركة</h1>
+                <p className="text-cream-dark/50 mt-1">
+                    حدّث معلومات ملف شركتك
                 </p>
             </div>
 
             <form onSubmit={handleSave}>
-                <Card className="bg-slate-900 border-slate-800">
+                <Card className="bg-navy-light border-gold/10">
                     <CardHeader>
-                        <CardTitle className="text-white flex items-center gap-2">
-                            <Building2 className="h-5 w-5 text-cyan-500" />
-                            Company Profile
+                        <CardTitle className="text-cream flex items-center gap-2">
+                            <Building2 className="h-5 w-5 text-gold" />
+                            ملف الشركة
                         </CardTitle>
-                        <CardDescription>
-                            This information will be displayed on your job postings
+                        <CardDescription className="text-cream-dark/40">
+                            هذه المعلومات ستظهر في إعلانات وظائفك
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
                         {/* Company Name */}
                         <div className="space-y-2">
-                            <Label htmlFor="name" className="text-slate-300">Company Name *</Label>
+                            <Label htmlFor="name" className="text-cream-dark/70">اسم الشركة *</Label>
                             <Input
                                 id="name"
                                 value={company.name || ''}
                                 onChange={(e) => setCompany({ ...company, name: e.target.value })}
-                                placeholder="Acme Corporation"
+                                placeholder="شركة النمو"
                                 required
-                                className="bg-slate-800 border-slate-700 text-white"
+                                className="bg-navy border-gold/15 text-cream"
                             />
                         </div>
 
                         {/* Description */}
                         <div className="space-y-2">
-                            <Label htmlFor="description" className="text-slate-300">About</Label>
+                            <Label htmlFor="description" className="text-cream-dark/70">عن الشركة</Label>
                             <Textarea
                                 id="description"
                                 value={company.description || ''}
                                 onChange={(e) => setCompany({ ...company, description: e.target.value })}
-                                placeholder="Tell candidates about your company, culture, and what makes you unique..."
+                                placeholder="أخبر المرشحين عن شركتك وثقافتها وما يميزها..."
                                 rows={4}
-                                className="bg-slate-800 border-slate-700 text-white resize-none"
+                                className="bg-navy border-gold/15 text-cream resize-none"
                             />
                         </div>
 
                         {/* Website */}
                         <div className="space-y-2">
-                            <Label htmlFor="website" className="text-slate-300 flex items-center gap-2">
+                            <Label htmlFor="website" className="text-cream-dark/70 flex items-center gap-2">
                                 <Globe className="h-4 w-4" />
-                                Website
+                                الموقع الإلكتروني
                             </Label>
                             <Input
                                 id="website"
@@ -167,25 +166,25 @@ export default function CompanySettingsPage() {
                                 value={company.website || ''}
                                 onChange={(e) => setCompany({ ...company, website: e.target.value })}
                                 placeholder="https://www.yourcompany.com"
-                                className="bg-slate-800 border-slate-700 text-white"
+                                className="bg-navy border-gold/15 text-cream"
                             />
                         </div>
 
                         {/* Industry & Size */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-slate-300">Industry</Label>
+                                <Label className="text-cream-dark/70">القطاع</Label>
                                 <Select
                                     value={company.industry || ''}
                                     onValueChange={(value) => setCompany({ ...company, industry: value })}
                                 >
-                                    <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
-                                        <SelectValue placeholder="Select industry" />
+                                    <SelectTrigger className="bg-navy border-gold/15 text-cream">
+                                        <SelectValue placeholder="اختر القطاع" />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-slate-800 border-slate-700">
+                                    <SelectContent className="bg-navy-light border-gold/15">
                                         {industries.map((ind) => (
-                                            <SelectItem key={ind} value={ind} className="text-white hover:bg-slate-700">
-                                                {ind}
+                                            <SelectItem key={ind.value} value={ind.value} className="text-cream hover:bg-navy-lighter">
+                                                {ind.label}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -193,21 +192,21 @@ export default function CompanySettingsPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label className="text-slate-300 flex items-center gap-2">
+                                <Label className="text-cream-dark/70 flex items-center gap-2">
                                     <Users className="h-4 w-4" />
-                                    Company Size
+                                    حجم الشركة
                                 </Label>
                                 <Select
                                     value={company.size_range || ''}
                                     onValueChange={(value) => setCompany({ ...company, size_range: value })}
                                 >
-                                    <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
-                                        <SelectValue placeholder="Select size" />
+                                    <SelectTrigger className="bg-navy border-gold/15 text-cream">
+                                        <SelectValue placeholder="اختر الحجم" />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-slate-800 border-slate-700">
+                                    <SelectContent className="bg-navy-light border-gold/15">
                                         {companySizes.map((size) => (
-                                            <SelectItem key={size} value={size} className="text-white hover:bg-slate-700">
-                                                {size}
+                                            <SelectItem key={size.value} value={size.value} className="text-cream hover:bg-navy-lighter">
+                                                {size.label}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -215,36 +214,36 @@ export default function CompanySettingsPage() {
                             </div>
                         </div>
 
-                        {/* Logo Upload Placeholder */}
+                        {/* Logo Upload */}
                         <div className="space-y-2">
-                            <Label className="text-slate-300">Company Logo</Label>
-                            <div className="border-2 border-dashed border-slate-700 rounded-lg p-8 text-center hover:border-cyan-500/50 transition-colors cursor-pointer">
-                                <Upload className="h-8 w-8 text-slate-500 mx-auto mb-2" />
-                                <p className="text-sm text-slate-400">
-                                    Click to upload logo (PNG, JPG up to 2MB)
+                            <Label className="text-cream-dark/70">شعار الشركة</Label>
+                            <div className="border-2 border-dashed border-gold/15 rounded-lg p-8 text-center hover:border-gold/30 transition-colors cursor-pointer">
+                                <Upload className="h-8 w-8 text-cream-dark/20 mx-auto mb-2" />
+                                <p className="text-sm text-cream-dark/40">
+                                    انقر لرفع الشعار (PNG, JPG حتى 2 ميجابايت)
                                 </p>
-                                <p className="text-xs text-slate-500 mt-1">
-                                    Recommended: 200x200 pixels
+                                <p className="text-xs text-cream-dark/30 mt-1">
+                                    مقاس موصى به: 200×200 بكسل
                                 </p>
                             </div>
                         </div>
 
                         {/* Submit */}
-                        <div className="flex justify-end pt-4">
+                        <div className="flex justify-start pt-4">
                             <Button
                                 type="submit"
                                 disabled={saving}
-                                className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white"
+                                className="bg-gold hover:bg-gold-dark text-navy font-bold"
                             >
                                 {saving ? (
                                     <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Saving...
+                                        <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                                        جارِ الحفظ...
                                     </>
                                 ) : (
                                     <>
-                                        <Save className="mr-2 h-4 w-4" />
-                                        Save Changes
+                                        <Save className="me-2 h-4 w-4" />
+                                        حفظ التغييرات
                                     </>
                                 )}
                             </Button>

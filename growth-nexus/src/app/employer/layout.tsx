@@ -9,25 +9,28 @@ import {
     LogOut,
     LayoutDashboard,
     FileText,
-    ChevronRight,
+    ChevronLeft,
     PlusCircle,
     Search,
     Heart,
-    UserCheck
+    UserCheck,
+    MessageSquare
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
+import { Badge } from '@/components/ui/badge'
 
 const sidebarLinks = [
-    { href: '/employer/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/employer/jobs/new', label: 'Post a Job', icon: PlusCircle, highlight: true },
-    { href: '/employer/jobs', label: 'My Jobs', icon: Briefcase },
-    { href: '/employer/applicants', label: 'Applicants', icon: UserCheck },
-    { href: '/employer/candidates', label: 'Candidate Search', icon: Search },
-    { href: '/employer/saved-candidates', label: 'Saved Candidates', icon: Heart },
-    { href: '/employer/landing-pages', label: 'Landing Pages', icon: FileText },
-    { href: '/employer/settings', label: 'Company Settings', icon: Settings },
+    { href: '/employer/dashboard', label: 'لوحة التحكم', icon: LayoutDashboard },
+    { href: '/employer/jobs/new', label: 'نشر وظيفة', icon: PlusCircle, highlight: true },
+    { href: '/employer/jobs', label: 'وظائفي', icon: Briefcase },
+    { href: '/employer/applicants', label: 'المتقدمين', icon: UserCheck },
+    { href: '/employer/candidates', label: 'البحث عن مرشحين', icon: Search },
+    { href: '/employer/saved-candidates', label: 'المرشحون المحفوظون', icon: Heart },
+    { href: '/employer/messages', label: 'الرسائل', icon: MessageSquare },
+    { href: '/employer/landing-pages', label: 'صفحات التوظيف', icon: FileText },
+    { href: '/employer/settings', label: 'إعدادات الشركة', icon: Settings },
 ]
 
 export default async function EmployerLayout({
@@ -55,6 +58,23 @@ export default async function EmployerLayout({
         .eq('owner_id', user.id)
         .single()
 
+    // Calculate total unread messages
+    const { data: conversations } = await supabase
+        .from('conversations')
+        .select('participant_1, participant_2, unread_count_1, unread_count_2')
+        .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
+
+    let totalUnread = 0
+    if (conversations) {
+        conversations.forEach(c => {
+            if (c.participant_1 === user.id) {
+                totalUnread += c.unread_count_1 || 0
+            } else {
+                totalUnread += c.unread_count_2 || 0
+            }
+        })
+    }
+
     const handleSignOut = async () => {
         'use server'
         const supabase = await createClient()
@@ -63,34 +83,34 @@ export default async function EmployerLayout({
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 flex">
+        <div className="min-h-screen bg-navy flex">
             {/* Sidebar */}
-            <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col">
+            <aside className="w-64 bg-navy-light border-s border-gold/10 flex flex-col">
                 {/* Logo */}
-                <div className="p-6 border-b border-slate-800">
+                <div className="p-6 border-b border-gold/10">
                     <Link href="/" className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center">
-                            <span className="text-xl font-bold text-white">G</span>
+                        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-gold to-gold-light flex items-center justify-center">
+                            <span className="text-xl font-bold text-navy">G</span>
                         </div>
-                        <span className="text-xl font-bold text-white">GrowthNexus</span>
+                        <span className="text-xl font-bold text-cream">GrowthNexus</span>
                     </Link>
                 </div>
 
                 {/* Company Info */}
-                <div className="p-4 border-b border-slate-800">
+                <div className="p-4 border-b border-gold/10">
                     <div className="flex items-center gap-3">
                         <Avatar className="h-10 w-10">
                             <AvatarImage src={company?.logo_url || ''} />
-                            <AvatarFallback className="bg-cyan-600 text-white">
+                            <AvatarFallback className="bg-gold text-navy font-bold">
                                 {company?.name?.charAt(0) || 'C'}
                             </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-white truncate">
-                                {company?.name || 'Your Company'}
+                            <p className="text-sm font-medium text-cream truncate">
+                                {company?.name || 'شركتك'}
                             </p>
-                            <p className="text-xs text-slate-400">
-                                {company?.job_credits || 0} Job Credits
+                            <p className="text-xs text-cream-dark/50">
+                                {company?.job_credits || 0} رصيد وظائف
                             </p>
                         </div>
                     </div>
@@ -104,41 +124,46 @@ export default async function EmployerLayout({
                             href={link.href}
                             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group ${
                                 (link as any).highlight 
-                                ? 'text-white bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20' 
-                                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                                ? 'text-navy bg-gold/15 border border-gold/30 hover:bg-gold/25 font-medium' 
+                                : 'text-cream-dark/60 hover:text-cream hover:bg-navy-lighter'
                             }`}
                         >
-                            <link.icon className={`h-5 w-5 ${(link as any).highlight ? 'text-emerald-400' : ''}`} />
+                            <link.icon className={`h-5 w-5 ${(link as any).highlight ? 'text-gold' : ''}`} />
                             <span className="flex-1">{link.label}</span>
-                            <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            {link.label === 'الرسائل' && totalUnread > 0 && (
+                                <Badge variant="secondary" className="bg-gold text-navy text-xs h-5 min-w-5 flex items-center justify-center">
+                                    {totalUnread}
+                                </Badge>
+                            )}
+                            <ChevronLeft className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </Link>
                     ))}
 
-                    <Separator className="my-4 bg-slate-800" />
+                    <Separator className="my-4 bg-gold/10" />
 
                     <Link
                         href="/pricing"
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500/10 to-blue-500/10 text-cyan-400 hover:from-cyan-500/20 hover:to-blue-500/20 transition-colors"
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-gradient-to-r from-gold/10 to-gold/5 text-gold hover:from-gold/20 hover:to-gold/10 transition-colors"
                     >
                         <CreditCard className="h-5 w-5" />
-                        <span className="flex-1">Buy Credits</span>
+                        <span className="flex-1">شراء رصيد</span>
                     </Link>
                 </nav>
 
                 {/* User Section */}
-                <div className="p-4 border-t border-slate-800">
+                <div className="p-4 border-t border-gold/10">
                     <div className="flex items-center gap-3 mb-3">
                         <Avatar className="h-9 w-9">
                             <AvatarImage src={profile?.avatar_url || ''} />
-                            <AvatarFallback className="bg-slate-700 text-white text-sm">
+                            <AvatarFallback className="bg-navy-lighter text-cream text-sm">
                                 {profile?.full_name?.charAt(0) || 'U'}
                             </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-white truncate">
-                                {profile?.full_name || 'User'}
+                            <p className="text-sm font-medium text-cream truncate">
+                                {profile?.full_name || 'مستخدم'}
                             </p>
-                            <p className="text-xs text-slate-400 truncate">
+                            <p className="text-xs text-cream-dark/40 truncate">
                                 {profile?.email}
                             </p>
                         </div>
@@ -147,10 +172,10 @@ export default async function EmployerLayout({
                         <Button
                             type="submit"
                             variant="ghost"
-                            className="w-full justify-start text-slate-400 hover:text-white hover:bg-slate-800"
+                            className="w-full justify-start text-cream-dark/50 hover:text-cream hover:bg-navy-lighter"
                         >
-                            <LogOut className="h-4 w-4 mr-2" />
-                            Sign Out
+                            <LogOut className="h-4 w-4 me-2" />
+                            تسجيل الخروج
                         </Button>
                     </form>
                 </div>

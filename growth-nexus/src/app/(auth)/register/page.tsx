@@ -7,7 +7,7 @@ import { createClient } from '@/utils/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, Mail, Lock, User, ArrowRight, Building2, UserCircle } from 'lucide-react'
+import { Loader2, Mail, Lock, User, ArrowLeft, Building2, UserCircle } from 'lucide-react'
 import type { UserRole } from '@/lib/types'
 
 export default function RegisterPage() {
@@ -27,7 +27,6 @@ export default function RegisterPage() {
 
         const supabase = createClient()
 
-        // 1. Create auth user (profile is created automatically by database trigger)
         const { data: authData, error: authError } = await supabase.auth.signUp({
             email,
             password,
@@ -46,10 +45,8 @@ export default function RegisterPage() {
         }
 
         if (authData.user) {
-            // Small delay to let the trigger create the profile
             await new Promise(resolve => setTimeout(resolve, 500))
 
-            // 2. If employer, create company record
             if (role === 'employer') {
                 const companySlug = fullName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now()
                 const { error: companyError } = await supabase
@@ -62,11 +59,9 @@ export default function RegisterPage() {
 
                 if (companyError) {
                     console.log('Company creation error:', companyError.message)
-                    // Continue anyway - user can set up company later
                 }
             }
 
-            // 3. If candidate, create candidate record
             if (role === 'candidate') {
                 const { error: candidateError } = await supabase
                     .from('candidates')
@@ -76,11 +71,9 @@ export default function RegisterPage() {
 
                 if (candidateError) {
                     console.log('Candidate creation error:', candidateError.message)
-                    // Continue anyway - can be created later
                 }
             }
 
-            // Redirect based on role
             if (role === 'employer') {
                 router.push('/employer/dashboard')
             } else {
@@ -94,53 +87,53 @@ export default function RegisterPage() {
         <form onSubmit={handleRegister} className="space-y-4">
             {/* Role Selection */}
             <div className="space-y-2">
-                <Label className="text-slate-300">I am a...</Label>
+                <Label className="text-cream-dark/70">أنا...</Label>
                 <div className="grid grid-cols-2 gap-3">
                     <button
                         type="button"
                         onClick={() => setRole('candidate')}
                         className={`p-4 rounded-lg border-2 transition-all flex flex-col items-center gap-2 ${role === 'candidate'
-                            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400'
-                            : 'border-slate-700 bg-slate-800 text-slate-400 hover:border-slate-600'
+                            ? 'border-gold bg-gold/10 text-gold'
+                            : 'border-gold/15 bg-navy text-cream-dark/50 hover:border-gold/30'
                             }`}
                     >
                         <UserCircle className="h-6 w-6" />
-                        <span className="text-sm font-medium">Job Seeker</span>
+                        <span className="text-sm font-medium">باحث عن عمل</span>
                     </button>
                     <button
                         type="button"
                         onClick={() => setRole('employer')}
                         className={`p-4 rounded-lg border-2 transition-all flex flex-col items-center gap-2 ${role === 'employer'
-                            ? 'border-cyan-500 bg-cyan-500/10 text-cyan-400'
-                            : 'border-slate-700 bg-slate-800 text-slate-400 hover:border-slate-600'
+                            ? 'border-success bg-success/10 text-success'
+                            : 'border-gold/15 bg-navy text-cream-dark/50 hover:border-gold/30'
                             }`}
                     >
                         <Building2 className="h-6 w-6" />
-                        <span className="text-sm font-medium">Employer</span>
+                        <span className="text-sm font-medium">صاحب عمل</span>
                     </button>
                 </div>
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="fullName" className="text-slate-300">Full Name</Label>
+                <Label htmlFor="fullName" className="text-cream-dark/70">الاسم الكامل</Label>
                 <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                    <User className="absolute end-3 top-3 h-4 w-4 text-cream-dark/40" />
                     <Input
                         id="fullName"
                         type="text"
-                        placeholder="John Doe"
+                        placeholder="محمد أحمد"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
                         required
-                        className="pl-10 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus:border-emerald-500 focus:ring-emerald-500"
+                        className="pe-10 bg-navy border-gold/15 text-cream placeholder:text-cream-dark/30 focus:border-gold focus:ring-gold"
                     />
                 </div>
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="email" className="text-slate-300">Email</Label>
+                <Label htmlFor="email" className="text-cream-dark/70">البريد الإلكتروني</Label>
                 <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                    <Mail className="absolute end-3 top-3 h-4 w-4 text-cream-dark/40" />
                     <Input
                         id="email"
                         type="email"
@@ -148,15 +141,15 @@ export default function RegisterPage() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
-                        className="pl-10 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus:border-emerald-500 focus:ring-emerald-500"
+                        className="pe-10 bg-navy border-gold/15 text-cream placeholder:text-cream-dark/30 focus:border-gold focus:ring-gold"
                     />
                 </div>
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="password" className="text-slate-300">Password</Label>
+                <Label htmlFor="password" className="text-cream-dark/70">كلمة المرور</Label>
                 <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                    <Lock className="absolute end-3 top-3 h-4 w-4 text-cream-dark/40" />
                     <Input
                         id="password"
                         type="password"
@@ -165,10 +158,10 @@ export default function RegisterPage() {
                         onChange={(e) => setPassword(e.target.value)}
                         required
                         minLength={6}
-                        className="pl-10 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus:border-emerald-500 focus:ring-emerald-500"
+                        className="pe-10 bg-navy border-gold/15 text-cream placeholder:text-cream-dark/30 focus:border-gold focus:ring-gold"
                     />
                 </div>
-                <p className="text-xs text-slate-500">Minimum 6 characters</p>
+                <p className="text-xs text-cream-dark/30">6 أحرف على الأقل</p>
             </div>
 
             {error && (
@@ -180,28 +173,25 @@ export default function RegisterPage() {
             <Button
                 type="submit"
                 disabled={loading}
-                className={`w-full font-medium text-white ${role === 'employer'
-                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600'
-                    : 'bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600'
-                    }`}
+                className="w-full bg-gradient-to-r from-gold to-gold-light hover:from-gold-dark hover:to-gold text-navy font-bold"
             >
                 {loading ? (
                     <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creating account...
+                        <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                        جارِ إنشاء الحساب...
                     </>
                 ) : (
                     <>
-                        Create {role === 'employer' ? 'Employer' : 'Candidate'} Account
-                        <ArrowRight className="ml-2 h-4 w-4" />
+                        إنشاء حساب {role === 'employer' ? 'صاحب عمل' : 'باحث عن عمل'}
+                        <ArrowLeft className="ms-2 h-4 w-4" />
                     </>
                 )}
             </Button>
 
-            <div className="text-center text-sm text-slate-400">
-                Already have an account?{' '}
-                <Link href="/login" className="text-emerald-400 hover:text-emerald-300 font-medium">
-                    Sign in
+            <div className="text-center text-sm text-cream-dark/50">
+                لديك حساب بالفعل؟{' '}
+                <Link href="/login" className="text-gold hover:text-gold-light font-medium">
+                    تسجيل الدخول
                 </Link>
             </div>
         </form>

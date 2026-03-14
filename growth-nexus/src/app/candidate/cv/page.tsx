@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -67,14 +66,13 @@ export default function CVPage() {
         const file = e.target.files?.[0]
         if (!file) return
 
-        // Validate file
         if (file.type !== 'application/pdf') {
-            toast.error('Please upload a PDF file')
+            toast.error('يرجى رفع ملف PDF')
             return
         }
 
-        if (file.size > 10 * 1024 * 1024) { // 10MB limit
-            toast.error('File size must be less than 10MB')
+        if (file.size > 10 * 1024 * 1024) {
+            toast.error('حجم الملف يجب أن يكون أقل من 10 ميجابايت')
             return
         }
 
@@ -85,17 +83,15 @@ export default function CVPage() {
         const { data: { user } } = await supabase.auth.getUser()
 
         if (!user) {
-            toast.error('Please login to continue')
+            toast.error('يرجى تسجيل الدخول')
             setUploading(false)
             return
         }
 
-        // Simulate progress
         const progressInterval = setInterval(() => {
             setUploadProgress(prev => Math.min(prev + 10, 90))
         }, 200)
 
-        // Upload to Supabase Storage
         const fileName = `${user.id}/${Date.now()}-${file.name}`
         const { data: uploadData, error: uploadError } = await supabase
             .storage
@@ -105,12 +101,11 @@ export default function CVPage() {
         clearInterval(progressInterval)
 
         if (uploadError) {
-            toast.error('Upload failed: ' + uploadError.message)
+            toast.error('فشل الرفع: ' + uploadError.message)
             setUploading(false)
             return
         }
 
-        // Get public URL
         const { data: urlData } = supabase
             .storage
             .from('resumes')
@@ -118,7 +113,6 @@ export default function CVPage() {
 
         const publicUrl = urlData.publicUrl
 
-        // Update candidate record
         const { error: updateError } = await supabase
             .from('candidates')
             .upsert({
@@ -128,7 +122,6 @@ export default function CVPage() {
             })
 
         if (updateError) {
-            // Try insert if upsert failed (new candidate)
             await supabase.from('candidates').insert({
                 id: user.id,
                 cv_url: publicUrl
@@ -138,10 +131,9 @@ export default function CVPage() {
         setUploadProgress(100)
         setCvUrl(publicUrl)
         setCvUpdatedAt(new Date().toISOString())
-        toast.success('CV uploaded successfully!')
+        toast.success('تم رفع السيرة الذاتية بنجاح!')
         setUploading(false)
 
-        // Trigger AI parsing
         triggerAIParsing(publicUrl, user.id)
     }
 
@@ -149,29 +141,25 @@ export default function CVPage() {
         setParsing(true)
 
         try {
-            // Get n8n webhook URL from env
             const webhookUrl = process.env.NEXT_PUBLIC_N8N_CV_PARSER_WEBHOOK
 
             if (!webhookUrl || webhookUrl.includes('your-n8n-domain') || webhookUrl.includes('example.com')) {
-                // Simulate parsing if webhook not configured
-                toast.info('AI parsing will be available once n8n webhook is configured')
+                toast.info('تحليل الذكاء الاصطناعي سيكون متاحاً عند تكوين webhook')
 
-                // Simulate parsed data for demo
                 setTimeout(() => {
                     const mockParsed: ParsedData = {
                         skills: ['JavaScript', 'React', 'Node.js', 'TypeScript', 'SQL'],
                         experience_years: 3,
-                        education: ['Bachelor in Computer Science'],
-                        summary: 'Experienced software developer with focus on web technologies.'
+                        education: ['بكالوريوس في علوم الحاسوب'],
+                        summary: 'مطور برمجيات ذو خبرة مع تركيز على تقنيات الويب.'
                     }
                     setParsedData(mockParsed)
                     setParsing(false)
-                    toast.success('CV analyzed! (Demo mode)')
+                    toast.success('تم تحليل السيرة الذاتية! (وضع تجريبي)')
                 }, 2000)
                 return
             }
 
-            // Call n8n webhook
             const response = await fetch(webhookUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -182,15 +170,14 @@ export default function CVPage() {
             })
 
             if (response.ok) {
-                toast.success('CV sent for AI analysis!')
-                // Reload data after a delay to get parsed results
+                toast.success('تم إرسال السيرة للتحليل بالذكاء الاصطناعي!')
                 setTimeout(loadCandidateData, 5000)
             } else {
-                toast.error('Failed to trigger AI parsing')
+                toast.error('فشل تحليل الذكاء الاصطناعي')
             }
         } catch (error) {
             console.error('AI parsing error:', error)
-            toast.error('AI parsing temporarily unavailable')
+            toast.error('تحليل الذكاء الاصطناعي غير متاح مؤقتاً')
         }
 
         setParsing(false)
@@ -209,14 +196,14 @@ export default function CVPage() {
             setCvUrl(null)
             setParsedData(null)
             setCvUpdatedAt(null)
-            toast.success('CV deleted')
+            toast.success('تم حذف السيرة الذاتية')
         }
     }
 
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
+                <Loader2 className="h-8 w-8 animate-spin text-gold" />
             </div>
         )
     }
@@ -225,9 +212,9 @@ export default function CVPage() {
         <div className="max-w-6xl mx-auto">
             {/* Header */}
             <div className="mb-8">
-                <h1 className="text-3xl font-bold text-white">My CV</h1>
-                <p className="text-slate-400 mt-1">
-                    Upload your resume for AI-powered skill extraction and management
+                <h1 className="text-3xl font-bold text-cream">سيرتي الذاتية</h1>
+                <p className="text-cream-dark/50 mt-1">
+                    ارفع سيرتك الذاتية للاستخراج الذكي للمهارات وإدارة ملفك
                 </p>
             </div>
 
@@ -236,20 +223,20 @@ export default function CVPage() {
                 <div className="xl:col-span-2 space-y-6">
 
             {/* Upload Section */}
-            <Card className="bg-slate-900 border-slate-800">
+            <Card className="bg-navy-light border-gold/10">
                 <CardHeader>
-                    <CardTitle className="text-white flex items-center gap-2">
-                        <FileText className="h-5 w-5 text-cyan-500" />
-                        Resume Upload
+                    <CardTitle className="text-cream flex items-center gap-2">
+                        <FileText className="h-5 w-5 text-gold" />
+                        رفع السيرة الذاتية
                     </CardTitle>
-                    <CardDescription>
-                        Upload a PDF file (max 10MB). Our AI will automatically extract your skills.
+                    <CardDescription className="text-cream-dark/40">
+                        ارفع ملف PDF (حد أقصى 10 ميجابايت). سيقوم الذكاء الاصطناعي باستخراج مهاراتك تلقائياً.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     {!cvUrl ? (
                         <div
-                            className="border-2 border-dashed border-slate-700 rounded-lg p-12 text-center hover:border-cyan-500/50 transition-colors cursor-pointer"
+                            className="border-2 border-dashed border-gold/15 rounded-lg p-12 text-center hover:border-gold/30 transition-colors cursor-pointer"
                             onClick={() => fileInputRef.current?.click()}
                         >
                             <input
@@ -261,43 +248,43 @@ export default function CVPage() {
                             />
                             {uploading ? (
                                 <div className="space-y-4">
-                                    <Loader2 className="h-12 w-12 mx-auto text-cyan-500 animate-spin" />
-                                    <p className="text-slate-300">Uploading...</p>
+                                    <Loader2 className="h-12 w-12 mx-auto text-gold animate-spin" />
+                                    <p className="text-cream-dark/60">جارِ الرفع...</p>
                                     <Progress value={uploadProgress} className="max-w-xs mx-auto" />
                                 </div>
                             ) : (
                                 <>
-                                    <Upload className="h-12 w-12 mx-auto text-slate-500 mb-4" />
-                                    <p className="text-slate-300 mb-2">
-                                        Drop your CV here or click to browse
+                                    <Upload className="h-12 w-12 mx-auto text-cream-dark/20 mb-4" />
+                                    <p className="text-cream-dark/60 mb-2">
+                                        اسحب سيرتك الذاتية هنا أو انقر للتصفح
                                     </p>
-                                    <p className="text-sm text-slate-500">
-                                        PDF format, max 10MB
+                                    <p className="text-sm text-cream-dark/30">
+                                        صيغة PDF، حد أقصى 10 ميجابايت
                                     </p>
                                 </>
                             )}
                         </div>
                     ) : (
-                        <div className="border border-emerald-500/30 bg-emerald-500/5 p-6 rounded-xl relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg z-10">
-                                Active Profile CV
+                        <div className="border border-success/30 bg-success/5 p-6 rounded-xl relative overflow-hidden group">
+                            <div className="absolute top-0 start-0 bg-success text-white text-[10px] font-bold px-2 py-0.5 rounded-be-lg z-10">
+                                السيرة النشطة
                             </div>
                             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                                 <div className="flex items-center gap-4">
-                                    <div className="p-3 bg-emerald-500/20 rounded-xl relative">
-                                        <div className="absolute inset-0 bg-emerald-400/20 rounded-xl animate-ping opacity-75"></div>
-                                        <FileText className="h-8 w-8 text-emerald-400 relative z-10" />
+                                    <div className="p-3 bg-success/20 rounded-xl relative">
+                                        <div className="absolute inset-0 bg-success/20 rounded-xl animate-ping opacity-75"></div>
+                                        <FileText className="h-8 w-8 text-success relative z-10" />
                                     </div>
                                     <div>
-                                        <p className="text-white font-semibold text-lg">My_Professional_CV.pdf</p>
+                                        <p className="text-cream font-semibold text-lg">سيرتي_الذاتية.pdf</p>
                                         <div className="flex items-center gap-3 mt-1">
-                                            <span className="text-sm text-slate-400 flex items-center gap-1">
-                                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                                                Verified & Parsed
+                                            <span className="text-sm text-cream-dark/50 flex items-center gap-1">
+                                                <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+                                                تم التحقق والتحليل
                                             </span>
                                             {cvUpdatedAt && (
-                                                <span className="text-sm text-slate-500 flex items-center gap-1 before:content-['•'] before:mr-2 before:text-slate-600">
-                                                    Updated {new Date(cvUpdatedAt).toLocaleDateString()}
+                                                <span className="text-sm text-cream-dark/30">
+                                                    تحديث {new Date(cvUpdatedAt).toLocaleDateString('ar-AE')}
                                                 </span>
                                             )}
                                         </div>
@@ -307,24 +294,24 @@ export default function CVPage() {
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        className="border-slate-700 bg-slate-800 hover:bg-slate-700 text-white flex-1 md:flex-none"
+                                        className="border-gold/15 bg-navy-lighter hover:bg-navy text-cream flex-1 md:flex-none"
                                         onClick={() => window.open(cvUrl || '', '_blank')}
                                     >
-                                        <Download className="h-4 w-4 mr-2" />
-                                        Download
+                                        <Download className="h-4 w-4 me-2" />
+                                        تحميل
                                     </Button>
                                     <Button
                                         size="sm"
-                                        className="bg-emerald-500 hover:bg-emerald-600 text-white flex-1 md:flex-none"
+                                        className="bg-gold hover:bg-gold-dark text-navy font-bold flex-1 md:flex-none"
                                         onClick={() => fileInputRef.current?.click()}
                                     >
-                                        <Upload className="h-4 w-4 mr-2" />
-                                        Replace
+                                        <Upload className="h-4 w-4 me-2" />
+                                        استبدال
                                     </Button>
                                     <Button
                                         variant="outline"
                                         size="icon"
-                                        className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10 hover:border-rose-500 hover:text-rose-300 md:ml-2"
+                                        className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10 hover:border-rose-500 hover:text-rose-300"
                                         onClick={deleteCV}
                                     >
                                         <Trash2 className="h-4 w-4" />
@@ -345,16 +332,16 @@ export default function CVPage() {
 
             {/* AI Parsing Status */}
             {parsing && (
-                <Card className="bg-gradient-to-r from-purple-500/20 to-cyan-500/20 border-purple-500/50">
+                <Card className="bg-gradient-to-r from-purple-500/20 to-gold/20 border-purple-500/50">
                     <CardContent className="p-6">
                         <div className="flex items-center gap-4">
                             <div className="p-3 bg-purple-500/30 rounded-full animate-pulse">
                                 <Brain className="h-6 w-6 text-purple-400" />
                             </div>
                             <div>
-                                <p className="text-white font-medium">AI is analyzing your CV...</p>
-                                <p className="text-sm text-slate-300">
-                                    Extracting skills, experience, and education
+                                <p className="text-cream font-medium">الذكاء الاصطناعي يحلل سيرتك...</p>
+                                <p className="text-sm text-cream-dark/50">
+                                    استخراج المهارات والخبرة والتعليم
                                 </p>
                             </div>
                         </div>
@@ -364,26 +351,25 @@ export default function CVPage() {
 
             {/* Parsed Skills */}
             {parsedData && (
-                <Card className="bg-slate-900 border-slate-800">
+                <Card className="bg-navy-light border-gold/10">
                     <CardHeader>
-                        <CardTitle className="text-white flex items-center gap-2">
-                            <Sparkles className="h-5 w-5 text-yellow-500" />
-                            AI-Extracted Profile
+                        <CardTitle className="text-cream flex items-center gap-2">
+                            <Sparkles className="h-5 w-5 text-gold" />
+                            الملف المستخرج بالذكاء الاصطناعي
                         </CardTitle>
-                        <CardDescription>
-                            These details were automatically extracted from your CV
+                        <CardDescription className="text-cream-dark/40">
+                            هذه التفاصيل تم استخراجها تلقائياً من سيرتك الذاتية
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                        {/* Skills */}
                         {parsedData.skills && parsedData.skills.length > 0 && (
                             <div>
-                                <Label className="text-slate-300">Skills</Label>
+                                <Label className="text-cream-dark/70">المهارات</Label>
                                 <div className="flex flex-wrap gap-2 mt-2">
                                     {parsedData.skills.map((skill, i) => (
                                         <Badge
                                             key={i}
-                                            className="bg-cyan-500/20 text-cyan-400 border-cyan-500/50"
+                                            className="bg-gold/10 text-gold border-gold/30"
                                         >
                                             {skill}
                                         </Badge>
@@ -392,33 +378,30 @@ export default function CVPage() {
                             </div>
                         )}
 
-                        {/* Experience */}
                         {parsedData.experience_years && (
                             <div>
-                                <Label className="text-slate-300">Experience</Label>
-                                <p className="text-white mt-1">
-                                    {parsedData.experience_years} years
+                                <Label className="text-cream-dark/70">الخبرة</Label>
+                                <p className="text-cream mt-1">
+                                    {parsedData.experience_years} سنوات
                                 </p>
                             </div>
                         )}
 
-                        {/* Education */}
                         {parsedData.education && parsedData.education.length > 0 && (
                             <div>
-                                <Label className="text-slate-300">Education</Label>
+                                <Label className="text-cream-dark/70">التعليم</Label>
                                 <ul className="mt-1 space-y-1">
                                     {parsedData.education.map((edu, i) => (
-                                        <li key={i} className="text-white">{edu}</li>
+                                        <li key={i} className="text-cream">{edu}</li>
                                     ))}
                                 </ul>
                             </div>
                         )}
 
-                        {/* Summary */}
                         {parsedData.summary && (
                             <div>
-                                <Label className="text-slate-300">Summary</Label>
-                                <p className="text-slate-300 mt-1">{parsedData.summary}</p>
+                                <Label className="text-cream-dark/70">الملخص</Label>
+                                <p className="text-cream-dark/60 mt-1">{parsedData.summary}</p>
                             </div>
                         )}
                     </CardContent>
@@ -426,17 +409,17 @@ export default function CVPage() {
             )}
 
             {/* Tips */}
-            <Card className="bg-slate-900/50 border-slate-800">
+            <Card className="bg-navy-light/50 border-gold/10">
                 <CardContent className="p-6">
-                    <h3 className="text-white font-medium mb-3 flex items-center gap-2">
-                        <AlertCircle className="h-4 w-4 text-amber-500" />
-                        Tips for a better CV
+                    <h3 className="text-cream font-medium mb-3 flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 text-gold" />
+                        نصائح لسيرة ذاتية أفضل
                     </h3>
-                    <ul className="text-sm text-slate-400 space-y-2">
-                        <li>• Use a clear, professional format</li>
-                        <li>• List your skills prominently for better AI extraction</li>
-                        <li>• Include specific achievements with numbers</li>
-                        <li>• Keep it concise (1-2 pages max)</li>
+                    <ul className="text-sm text-cream-dark/40 space-y-2">
+                        <li>• استخدم تنسيقاً واضحاً واحترافياً</li>
+                        <li>• ضع مهاراتك بشكل بارز لتحسين الاستخراج الذكي</li>
+                        <li>• أدرج إنجازات محددة بالأرقام</li>
+                        <li>• اجعلها مختصرة (صفحة إلى صفحتين كحد أقصى)</li>
                     </ul>
                 </CardContent>
             </Card>
@@ -445,67 +428,67 @@ export default function CVPage() {
             {/* Sidebar Upsells */}
             <div className="space-y-6 mt-8 xl:mt-0">
                 {/* Profile Boost Upsell */}
-                <Card className="bg-gradient-to-b from-amber-500/10 to-orange-500/5 border-amber-500/30 overflow-hidden relative">
-                    <div className="absolute top-0 right-0 bg-amber-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg z-10">
-                        Popular
+                <Card className="bg-gradient-to-b from-gold/10 to-gold/5 border-gold/30 overflow-hidden relative">
+                    <div className="absolute top-0 start-0 bg-gold text-navy text-xs font-bold px-3 py-1 rounded-be-lg z-10">
+                        الأكثر طلباً
                     </div>
                     <CardHeader className="pb-4">
-                        <CardTitle className="text-amber-400 text-lg flex items-center gap-2">
+                        <CardTitle className="text-gold text-lg flex items-center gap-2">
                             <Sparkles className="h-5 w-5" />
-                            Profile Boost
+                            تعزيز الملف الشخصي
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <p className="text-sm text-slate-300">
-                            Get your profile highlighted and ranked at the top of recruiter search results.
+                        <p className="text-sm text-cream-dark/60">
+                            اجعل ملفك يظهر في أعلى نتائج بحث مسؤولي التوظيف.
                         </p>
                         <div className="space-y-3">
-                            <button className="w-full flex items-center justify-between p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 hover:border-amber-500 hover:bg-amber-500/20 transition-colors text-left group">
+                            <button className="w-full flex items-center justify-between p-3 rounded-lg border border-gold/30 bg-gold/10 hover:border-gold hover:bg-gold/20 transition-colors text-right group">
                                 <div className="flex flex-col">
-                                    <span className="text-white font-medium group-hover:text-amber-400 transition-colors">7 Days Boost</span>
-                                    <span className="text-xs text-amber-500/80">3x more profile views</span>
+                                    <span className="text-cream font-medium group-hover:text-gold transition-colors">تعزيز 7 أيام</span>
+                                    <span className="text-xs text-gold/80">3 أضعاف مشاهدات الملف</span>
                                 </div>
-                                <span className="font-bold text-amber-400">29 AED</span>
+                                <span className="font-bold text-gold">29 د.إ</span>
                             </button>
-                            <button className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-700 bg-slate-800/50 hover:border-amber-500/50 hover:bg-slate-800 transition-colors text-left group">
+                            <button className="w-full flex items-center justify-between p-3 rounded-lg border border-gold/15 bg-navy-lighter/50 hover:border-gold/30 hover:bg-navy-lighter transition-colors text-right group">
                                 <div className="flex flex-col">
-                                    <span className="text-white font-medium group-hover:text-amber-400 transition-colors">30 Days Boost</span>
-                                    <span className="text-xs text-slate-400">Best value for massive reach</span>
+                                    <span className="text-cream font-medium group-hover:text-gold transition-colors">تعزيز 30 يوم</span>
+                                    <span className="text-xs text-cream-dark/40">أفضل قيمة للوصول الأوسع</span>
                                 </div>
-                                <span className="font-bold text-white">79 AED</span>
+                                <span className="font-bold text-cream">79 د.إ</span>
                             </button>
                         </div>
                     </CardContent>
                 </Card>
 
                 {/* Professional CV Review */}
-                <Card className="bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border-cyan-500/30">
+                <Card className="bg-gradient-to-br from-gold/10 to-navy-lighter border-gold/20">
                     <CardHeader className="pb-4">
-                        <CardTitle className="text-cyan-400 text-lg flex items-center gap-2">
+                        <CardTitle className="text-gold text-lg flex items-center gap-2">
                             <FileText className="h-5 w-5" />
-                            Pro CV Review
+                            مراجعة احترافية
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <p className="text-sm text-slate-300">
-                            Have our industry experts review your CV and rewrite it to pass ATS systems.
+                        <p className="text-sm text-cream-dark/60">
+                            دع خبراءنا يراجعون سيرتك الذاتية ويعيدون كتابتها لتجاوز أنظمة ATS.
                         </p>
-                        <ul className="text-sm text-slate-400 space-y-2 mb-6">
+                        <ul className="text-sm text-cream-dark/50 space-y-2 mb-6">
                             <li className="flex items-center gap-2">
-                                <CheckCircle2 className="h-4 w-4 text-cyan-500" />
-                                ATS Optimization
+                                <CheckCircle2 className="h-4 w-4 text-gold" />
+                                تحسين لأنظمة ATS
                             </li>
                             <li className="flex items-center gap-2">
-                                <CheckCircle2 className="h-4 w-4 text-cyan-500" />
-                                Custom Cover Letter
+                                <CheckCircle2 className="h-4 w-4 text-gold" />
+                                خطاب تقديم مخصص
                             </li>
                             <li className="flex items-center gap-2">
-                                <CheckCircle2 className="h-4 w-4 text-cyan-500" />
-                                24h Turnaround
+                                <CheckCircle2 className="h-4 w-4 text-gold" />
+                                تسليم خلال 24 ساعة
                             </li>
                         </ul>
-                        <Button className="w-full bg-cyan-500 hover:bg-cyan-600 text-white shadow-lg shadow-cyan-500/20">
-                            Get Expert Review — 199 AED
+                        <Button className="w-full bg-gold hover:bg-gold-dark text-navy font-bold shadow-lg shadow-gold/20">
+                            مراجعة احترافية — 199 د.إ
                         </Button>
                     </CardContent>
                 </Card>

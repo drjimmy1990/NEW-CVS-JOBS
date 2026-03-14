@@ -1,100 +1,156 @@
-'use client'
-
-import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { createClient } from '@/utils/supabase/server'
 import { Badge } from '@/components/ui/badge'
-import {
-    Users, ChevronDown, MoreHorizontal, Mail, 
-    Phone, Calendar, FileText, Star, 
-    ArrowRight, Filter, MessageSquare
-} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Filter } from 'lucide-react'
+import { ApplicantCard } from '@/components/employer/ApplicantCard'
 
-// Mock pipeline data
-const pipelineColumns = [
-    {
-        id: 'applied',
-        title: 'Applied',
-        color: 'bg-slate-500',
-        count: 12,
-        candidates: [
-            { id: '1', name: 'Ahmad Saleh', role: 'Senior Developer', date: '2 days ago', score: 85 },
-            { id: '2', name: 'Noor Al-Hadi', role: 'Product Designer', date: '3 days ago', score: 72 },
-            { id: '3', name: 'Layla Ibrahim', role: 'Marketing Lead', date: '5 days ago', score: 68 },
-        ]
-    },
-    {
-        id: 'reviewing',
-        title: 'Reviewing',
-        color: 'bg-blue-500',
-        count: 5,
-        candidates: [
-            { id: '4', name: 'Youssef Karim', role: 'Backend Engineer', date: '1 day ago', score: 91 },
-            { id: '5', name: 'Sara Mansour', role: 'HR Manager', date: '4 days ago', score: 88 },
-        ]
-    },
-    {
-        id: 'interview',
-        title: 'Interview',
-        color: 'bg-amber-500',
-        count: 3,
-        candidates: [
-            { id: '6', name: 'Khalid Al-Omari', role: 'DevOps Engineer', date: 'Tomorrow', score: 94 },
-        ]
-    },
-    {
-        id: 'shortlisted',
-        title: 'Shortlisted',
-        color: 'bg-emerald-500',
-        count: 2,
-        candidates: [
-            { id: '7', name: 'Rania Taha', role: 'React Developer', date: 'Pending offer', score: 96 },
-        ]
-    },
-]
+export default async function ApplicantsPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ job?: string }>
+}) {
+    const params = await searchParams
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
 
-export default function ApplicantsPage() {
-    const [selectedJob, setSelectedJob] = useState('all')
+    if (!user) {
+        return <div className="text-cream">يرجى تسجيل الدخول</div>
+    }
+
+    // Get employer's company
+    const { data: company } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('owner_id', user.id)
+        .single()
+
+    if (!company) {
+        return <div className="text-cream">لم يتم العثور على شركة</div>
+    }
+
+    // Get employer's jobs
+    const { data: jobs } = await supabase
+        .from('jobs')
+        .select('id, title')
+        .eq('company_id', company.id)
+        .order('created_at', { ascending: false })
+
+    const jobIds = (jobs || []).map(j => j.id)
+
+    if (jobIds.length === 0) {
+        return (
+            <div className="space-y-8">
+                <div>
+                    <h1 className="text-3xl font-bold text-cream">خط سير المتقدمين</h1>
+                    <p className="text-cream-dark/50 mt-1">لم يتم نشر أي وظائف بعد.</p>
+                </div>
+            </div>
+        )
+    }
+
+    // Build filter
+    const filterJobIds = (params.job && params.job !== 'all') ? [params.job] : jobIds
+
+    // Get applications
+    const { data: applications } = await supabase
+        .from('applications')
+        .select('id, job_id, candidate_id, status, resume_snapshot_url, created_at')
+        .in('job_id', filterJobIds)
+        .order('created_at', { ascending: false })
+
+    // Job title map
+    const jobTitles: Record<string, string> = {}
+    ;(jobs || []).forEach(j => { jobTitles[j.id] = j.title })
+
+    // Profile name + CV map
+    const candidateIds = [...new Set((applications || []).map(a => a.candidate_id).filter(Boolean))]
+    const candidateNames: Record<string, string> = {}
+    const candidateCVs: Record<string, string | null> = {}
+
+    if (candidateIds.length > 0) {
+        const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .in('id', candidateIds)
+        if (profiles) {
+            profiles.forEach(p => { candidateNames[p.id] = p.full_name || 'مرشح' })
+        }
+
+        const { data: candidates } = await supabase
+            .from('candidates')
+            .select('id, cv_url')
+            .in('id', candidateIds)
+        if (candidates) {
+            candidates.forEach(c => { candidateCVs[c.id] = c.cv_url })
+        }
+    }
+
+    // Group by status for kanban
+    const statuses = ['applied', 'reviewing', 'interview', 'shortlisted']
+    const statusConfig: Record<string, { title: string; color: string }> = {
+        applied: { title: 'تم التقديم', color: 'bg-cream-dark/40' },
+        reviewing: { title: 'قيد المراجعة', color: 'bg-blue-500' },
+        interview: { title: 'مقابلة', color: 'bg-gold' },
+        shortlisted: { title: 'القائمة المختصرة', color: 'bg-success' },
+    }
+
+    const groupedApplications = statuses.map(status => ({
+        id: status,
+        ...statusConfig[status],
+        candidates: (applications || [])
+            .filter((app: any) => app.status === status)
+            .map((app: any) => ({
+                id: app.id,
+                candidateId: app.candidate_id,
+                name: candidateNames[app.candidate_id] || 'مرشح',
+                role: jobTitles[app.job_id] || '',
+                date: new Date(app.created_at).toLocaleDateString('ar-AE'),
+                cvUrl: app.resume_snapshot_url || candidateCVs[app.candidate_id] || null,
+                status: app.status,
+            })),
+    }))
 
     return (
         <div className="space-y-8">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-white">Applicant Pipeline</h1>
-                    <p className="text-slate-400 mt-1">
-                        Manage your applicants across all stages of the hiring process.
+                    <h1 className="text-3xl font-bold text-cream">خط سير المتقدمين</h1>
+                    <p className="text-cream-dark/50 mt-1">
+                        أدر المتقدمين عبر جميع مراحل عملية التوظيف.
                     </p>
                 </div>
                 <div className="flex gap-3">
-                    <select 
-                        className="flex h-10 rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 min-w-[200px]"
-                        value={selectedJob}
-                        onChange={(e) => setSelectedJob(e.target.value)}
-                    >
-                        <option value="all">All Jobs</option>
-                        <option value="1">Senior React Developer</option>
-                        <option value="2">Marketing Executive</option>
-                        <option value="3">Data Analyst</option>
-                    </select>
-                    <Button variant="outline" className="border-slate-700 text-slate-300 hover:bg-slate-800">
-                        <Filter className="h-4 w-4 mr-2" />
-                        Filter
-                    </Button>
+                    <form className="flex gap-2">
+                        <select 
+                            name="job"
+                            defaultValue={params.job || 'all'}
+                            className="flex h-10 rounded-md border border-gold/15 bg-navy px-3 py-2 text-sm text-cream focus:outline-none focus:ring-2 focus:ring-gold min-w-[200px]"
+                        >
+                            <option value="all">جميع الوظائف</option>
+                            {(jobs || []).map((job) => (
+                                <option key={job.id} value={job.id}>{job.title}</option>
+                            ))}
+                        </select>
+                        <Button type="submit" size="sm" className="bg-gold hover:bg-gold-dark text-navy font-bold h-10 px-4">
+                            <Filter className="h-4 w-4 me-1" />
+                            فلتر
+                        </Button>
+                    </form>
                 </div>
             </div>
 
             {/* Kanban Board */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 min-h-[500px]">
-                {pipelineColumns.map((column) => (
+                {groupedApplications.map((column) => (
                     <div key={column.id} className="space-y-4">
                         {/* Column Header */}
                         <div className="flex items-center justify-between px-1">
                             <div className="flex items-center gap-2">
                                 <div className={`h-3 w-3 rounded-full ${column.color}`}></div>
-                                <h3 className="font-semibold text-white text-sm">{column.title}</h3>
-                                <Badge variant="outline" className="border-slate-700 text-slate-400 text-xs">
-                                    {column.count}
+                                <h3 className="font-semibold text-cream text-sm">{column.title}</h3>
+                                <Badge variant="outline" className="border-gold/15 text-cream-dark/40 text-xs">
+                                    {column.candidates.length}
                                 </Badge>
                             </div>
                         </div>
@@ -102,53 +158,21 @@ export default function ApplicantsPage() {
                         {/* Cards */}
                         <div className="space-y-3">
                             {column.candidates.map((candidate) => (
-                                <Card 
-                                    key={candidate.id} 
-                                    className="bg-slate-900 border-slate-800 hover:border-slate-700 transition-all hover:shadow-lg hover:shadow-slate-900/50 cursor-pointer group"
-                                >
-                                    <CardContent className="p-4">
-                                        <div className="flex items-start justify-between mb-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 border border-emerald-500/20 flex items-center justify-center text-white font-bold text-sm shrink-0">
-                                                    {candidate.name.charAt(0)}
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-medium text-white">{candidate.name}</p>
-                                                    <p className="text-xs text-slate-500">{candidate.role}</p>
-                                                </div>
-                                            </div>
-                                            <button className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-white transition-opacity">
-                                                <MoreHorizontal className="h-4 w-4" />
-                                            </button>
-                                        </div>
-
-                                        <div className="flex items-center justify-between mt-3">
-                                            <div className="flex items-center gap-1.5">
-                                                <Star className="h-3.5 w-3.5 text-amber-400" />
-                                                <span className="text-xs font-medium text-amber-400">{candidate.score}%</span>
-                                            </div>
-                                            <span className="text-xs text-slate-500">{candidate.date}</span>
-                                        </div>
-
-                                        {/* Quick Actions (visible on hover) */}
-                                        <div className="flex gap-1.5 mt-3 pt-3 border-t border-slate-800 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button className="flex-1 flex items-center justify-center gap-1 text-xs text-slate-400 hover:text-white py-1.5 rounded-md hover:bg-slate-800 transition-colors">
-                                                <FileText className="h-3 w-3" /> CV
-                                            </button>
-                                            <button className="flex-1 flex items-center justify-center gap-1 text-xs text-slate-400 hover:text-white py-1.5 rounded-md hover:bg-slate-800 transition-colors">
-                                                <Mail className="h-3 w-3" /> Email
-                                            </button>
-                                            <button className="flex-1 flex items-center justify-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 py-1.5 rounded-md hover:bg-emerald-500/10 transition-colors">
-                                                <ArrowRight className="h-3 w-3" /> Move
-                                            </button>
-                                        </div>
-                                    </CardContent>
-                                </Card>
+                                <ApplicantCard
+                                    key={candidate.id}
+                                    applicationId={candidate.id}
+                                    candidateId={candidate.candidateId}
+                                    candidateName={candidate.name}
+                                    jobTitle={candidate.role}
+                                    date={candidate.date}
+                                    currentStatus={candidate.status}
+                                    cvUrl={candidate.cvUrl}
+                                />
                             ))}
 
                             {column.candidates.length === 0 && (
-                                <div className="border-2 border-dashed border-slate-800 rounded-xl p-8 text-center">
-                                    <p className="text-slate-600 text-sm">No candidates</p>
+                                <div className="border-2 border-dashed border-gold/10 rounded-xl p-8 text-center">
+                                    <p className="text-cream-dark/30 text-sm">لا يوجد مرشحون</p>
                                 </div>
                             )}
                         </div>
