@@ -33,6 +33,19 @@ export default async function JobsPage({ searchParams }: Props) {
     
     const { data: { user } } = await supabase.auth.getUser()
 
+    let savedJobIds = new Set<string>()
+    if (user) {
+        // Fetch user's saved jobs
+        const { data: savedJobs } = await supabase
+            .from('saved_jobs')
+            .select('job_id')
+            .eq('candidate_id', user.id)
+            
+        if (savedJobs) {
+            savedJobIds = new Set(savedJobs.map(sj => sj.job_id))
+        }
+    }
+
     let query = supabase
         .from('jobs')
         .select(`
@@ -258,7 +271,7 @@ export default async function JobsPage({ searchParams }: Props) {
                 {jobs && jobs.length > 0 ? (
                     <div className="space-y-4">
                         {jobs.map((job: any) => (
-                            <JobCard key={job.id} job={job} isLoggedIn={!!user} />
+                            <JobCard key={job.id} job={job} isLoggedIn={!!user} isSaved={savedJobIds.has(job.id)} />
                         ))}
                     </div>
                 ) : (

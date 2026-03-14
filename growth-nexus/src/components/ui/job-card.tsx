@@ -1,6 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/utils/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -34,9 +37,15 @@ const typeColors: Record<string, string> = {
 interface JobCardProps {
     job: any;
     isLoggedIn?: boolean;
+    isSaved?: boolean;
 }
 
-export function JobCard({ job, isLoggedIn = false }: JobCardProps) {
+export function JobCard({ job, isLoggedIn = false, isSaved = false }: JobCardProps) {
+    const router = useRouter();
+    const supabase = createClient();
+    const [saved, setSaved] = useState(isSaved);
+    const [isLoading, setIsLoading] = useState(false);
+
     // Use real applicants_count from DB instead of Math.random()
     const applicantsCount = job.applicants_count || 0;
     
@@ -54,6 +63,34 @@ export function JobCard({ job, isLoggedIn = false }: JobCardProps) {
 
     // Use real match_score from DB if available, otherwise show nothing
     const matchScore = job.match_score || null;
+
+    const handleSaveToggle = async () => {
+        if (!isLoggedIn) {
+            router.push('/login?redirect=/jobs');
+            return;
+        }
+        
+        if (isLoading) return;
+        setIsLoading(true);
+        const newState = !saved;
+        setSaved(newState); // optimistic update
+
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('Not authenticated');
+
+            if (newState) {
+                await supabase.from('saved_jobs').insert({ candidate_id: user.id, job_id: job.id });
+            } else {
+                await supabase.from('saved_jobs').delete().match({ candidate_id: user.id, job_id: job.id });
+            }
+        } catch (error) {
+            console.error('Error toggling save status:', error);
+            setSaved(!newState); // revert on failure
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     return (
         <Card className="bg-navy-light border-gold/10 hover:border-gold/20 hover:shadow-xl hover:shadow-navy/50 transition-all group overflow-hidden relative">
@@ -124,8 +161,18 @@ export function JobCard({ job, isLoggedIn = false }: JobCardProps) {
                             {/* Actions & Competition */}
                             <div className="flex flex-col items-start sm:items-end gap-3 min-w-[200px]">
                                 <div className="flex items-center gap-2 w-full sm:w-auto">
-                                    <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 border-gold/15 text-cream-dark/40 hover:text-rose-500 hover:border-rose-500 hover:bg-rose-500/10 transition-colors">
-                                        <Heart className="h-5 w-5" />
+                                    <Button 
+                                        variant="outline" 
+                                        size="icon" 
+                                        onClick={handleSaveToggle}
+                                        disabled={isLoading}
+                                        className={`h-10 w-10 shrink-0 transition-colors border-gold/15 ${
+                                            saved 
+                                                ? 'text-rose-500 border-rose-500 bg-rose-500/10' 
+                                                : 'text-cream-dark/40 hover:text-rose-500 hover:border-rose-500 hover:bg-rose-500/10'
+                                        }`}
+                                    >
+                                        <Heart className={`h-5 w-5 ${saved ? 'fill-current' : ''}`} />
                                     </Button>
                                     <Link href={`/jobs/${job.slug}`} className="flex-1 sm:flex-initial">
                                         <Button className="w-full h-10 bg-gold text-navy hover:bg-gold-dark font-bold shadow-sm">
