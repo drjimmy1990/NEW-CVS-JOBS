@@ -49,6 +49,16 @@ export default async function CandidateSearchPage({
         query = query.eq('residence_emirate', params.location)
     }
 
+    if (params.experience) {
+        if (params.experience === '0-2') {
+            query = query.gte('years_experience', 0).lte('years_experience', 2)
+        } else if (params.experience === '3-5') {
+            query = query.gte('years_experience', 3).lte('years_experience', 5)
+        } else if (params.experience === '6+') {
+            query = query.gte('years_experience', 6)
+        }
+    }
+
     const { data: candidates } = await query
 
     return (

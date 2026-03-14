@@ -12,6 +12,7 @@ import {
     Filter,
 } from 'lucide-react'
 import { JobCard } from '@/components/ui/job-card'
+import { SortSelect } from '@/components/ui/sort-select'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -24,7 +25,7 @@ export const metadata: Metadata = {
 }
 
 interface Props {
-    searchParams: Promise<{ q?: string; type?: string; location?: string }>
+    searchParams: Promise<{ q?: string; type?: string; location?: string; sort?: string; experience?: string; candidate_type?: string; date?: string }>
 }
 
 export default async function JobsPage({ searchParams }: Props) {
@@ -35,7 +36,6 @@ export default async function JobsPage({ searchParams }: Props) {
 
     let savedJobIds = new Set<string>()
     if (user) {
-        // Fetch user's saved jobs
         const { data: savedJobs } = await supabase
             .from('saved_jobs')
             .select('job_id')
@@ -58,19 +58,40 @@ export default async function JobsPage({ searchParams }: Props) {
       )
     `)
         .eq('status', 'active')
-        .order('is_featured', { ascending: false })
-        .order('created_at', { ascending: false })
 
+    // Text search
     if (params.q) {
         query = query.or(`title.ilike.%${params.q}%,description.ilike.%${params.q}%`)
     }
 
+    // Job type filter (from top bar OR sidebar)
     if (params.type) {
         query = query.eq('job_type', params.type)
     }
 
+    // Location filter — uses correct column name location_city
     if (params.location) {
-        query = query.ilike('location', `%${params.location}%`)
+        query = query.ilike('location_city', `%${params.location}%`)
+    }
+
+    // Date filter
+    if (params.date) {
+        const now = new Date()
+        let since: Date | null = null
+        if (params.date === '24h') since = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+        else if (params.date === '7d') since = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        else if (params.date === '30d') since = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+        if (since) {
+            query = query.gte('created_at', since.toISOString())
+        }
+    }
+
+    // Sorting
+    if (params.sort === 'newest') {
+        query = query.order('created_at', { ascending: false })
+    } else {
+        // Default: featured first, then newest
+        query = query.order('is_featured', { ascending: false }).order('created_at', { ascending: false })
     }
 
     const { data: jobs } = await query
@@ -140,114 +161,71 @@ export default async function JobsPage({ searchParams }: Props) {
             {/* Main Content Area: Sidebar + Jobs List */}
             <section className="container mx-auto px-4 py-12 flex flex-col lg:flex-row gap-8">
                 
-                {/* Sidebar Filters */}
+                {/* Sidebar Filters - all inside a single <form> */}
                 <aside className="w-full lg:w-1/4 space-y-8">
-                    <div>
-                        <h3 className="text-lg font-semibold text-cream mb-4">الموقع</h3>
-                        <div className="space-y-3">
-                            <label className="flex items-center gap-3 text-cream-dark/60">
-                                <input type="checkbox" className="form-checkbox bg-navy border-gold/20 text-gold rounded focus:ring-gold focus:ring-offset-navy" />
-                                دبي
-                            </label>
-                            <label className="flex items-center gap-3 text-cream-dark/60">
-                                <input type="checkbox" className="form-checkbox bg-navy border-gold/20 text-gold rounded focus:ring-gold focus:ring-offset-navy" />
-                                أبوظبي
-                            </label>
-                            <label className="flex items-center gap-3 text-cream-dark/60">
-                                <input type="checkbox" className="form-checkbox bg-navy border-gold/20 text-gold rounded focus:ring-gold focus:ring-offset-navy" />
-                                الشارقة
-                            </label>
+                    <form>
+                        {/* Preserve existing top-bar params as hidden inputs */}
+                        {params.q && <input type="hidden" name="q" value={params.q} />}
+
+                        {/* Location checkboxes → converted to select with name */}
+                        <div className="mb-8">
+                            <h3 className="text-lg font-semibold text-cream mb-4">الموقع</h3>
+                            <select
+                                name="location"
+                                defaultValue={params.location || ''}
+                                className="w-full h-11 px-3 bg-navy border border-gold/15 rounded-xl text-cream-dark/60 focus-visible:ring-1 focus-visible:ring-gold outline-none appearance-none"
+                            >
+                                <option value="">جميع المواقع</option>
+                                <option value="دبي">دبي</option>
+                                <option value="أبوظبي">أبوظبي</option>
+                                <option value="الشارقة">الشارقة</option>
+                                <option value="عجمان">عجمان</option>
+                                <option value="رأس الخيمة">رأس الخيمة</option>
+                                <option value="أم القيوين">أم القيوين</option>
+                                <option value="الفجيرة">الفجيرة</option>
+                            </select>
                         </div>
-                    </div>
 
-                    <div>
-                        <h3 className="text-lg font-semibold text-cream mb-4">القطاع</h3>
-                        <select className="w-full h-11 px-3 bg-navy border border-gold/15 rounded-xl text-cream-dark/60 focus-visible:ring-1 focus-visible:ring-gold outline-none appearance-none">
-                            <option value="">جميع القطاعات</option>
-                            <option value="tech">التكنولوجيا</option>
-                            <option value="finance">المالية والبنوك</option>
-                            <option value="healthcare">الرعاية الصحية</option>
-                            <option value="marketing">التسويق</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <h3 className="text-lg font-semibold text-cream mb-4">مستوى الخبرة</h3>
-                        <div className="space-y-3">
-                            <label className="flex items-center gap-3 text-cream-dark/60">
-                                <input type="checkbox" className="form-checkbox bg-navy border-gold/20 text-gold rounded focus:ring-gold focus:ring-offset-navy" />
-                                مبتدئ (0-2 سنوات)
-                            </label>
-                            <label className="flex items-center gap-3 text-cream-dark/60">
-                                <input type="checkbox" className="form-checkbox bg-navy border-gold/20 text-gold rounded focus:ring-gold focus:ring-offset-navy" />
-                                متوسط (3-5 سنوات)
-                            </label>
-                            <label className="flex items-center gap-3 text-cream-dark/60">
-                                <input type="checkbox" className="form-checkbox bg-navy border-gold/20 text-gold rounded focus:ring-gold focus:ring-offset-navy" />
-                                خبير (+5 سنوات)
-                            </label>
+                        {/* Job Type */}
+                        <div className="mb-8">
+                            <h3 className="text-lg font-semibold text-cream mb-4">نوع الوظيفة</h3>
+                            <select
+                                name="type"
+                                defaultValue={params.type || ''}
+                                className="w-full h-11 px-3 bg-navy border border-gold/15 rounded-xl text-cream-dark/60 focus-visible:ring-1 focus-visible:ring-gold outline-none appearance-none"
+                            >
+                                <option value="">جميع الأنواع</option>
+                                <option value="full_time">دوام كامل</option>
+                                <option value="part_time">دوام جزئي</option>
+                                <option value="contract">عقد</option>
+                                <option value="remote">عن بُعد</option>
+                                <option value="internship">تدريب</option>
+                            </select>
                         </div>
-                    </div>
 
-                    <div>
-                        <h3 className="text-lg font-semibold text-cream mb-4">نطاق الراتب</h3>
-                        <select className="w-full h-11 px-3 bg-navy border border-gold/15 rounded-xl text-cream-dark/60 focus-visible:ring-1 focus-visible:ring-gold outline-none appearance-none">
-                            <option value="">أي نطاق</option>
-                            <option value="0-5000">حتى 5,000 د.إ</option>
-                            <option value="5000-10000">5,000 - 10,000 د.إ</option>
-                            <option value="10000+">+10,000 د.إ</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <h3 className="text-lg font-semibold text-cream mb-4">نوع الوظيفة</h3>
-                        <div className="space-y-3">
-                            <label className="flex items-center gap-3 text-cream-dark/60">
-                                <input type="checkbox" className="form-checkbox bg-navy border-gold/20 text-gold rounded focus:ring-gold focus:ring-offset-navy" />
-                                دوام كامل
-                            </label>
-                            <label className="flex items-center gap-3 text-cream-dark/60">
-                                <input type="checkbox" className="form-checkbox bg-navy border-gold/20 text-gold rounded focus:ring-gold focus:ring-offset-navy" />
-                                دوام جزئي
-                            </label>
-                            <label className="flex items-center gap-3 text-cream-dark/60">
-                                <input type="checkbox" className="form-checkbox bg-navy border-gold/20 text-gold rounded focus:ring-gold focus:ring-offset-navy" />
-                                عقد
-                            </label>
-                            <label className="flex items-center gap-3 text-cream-dark/60">
-                                <input type="checkbox" className="form-checkbox bg-navy border-gold/20 text-gold rounded focus:ring-gold focus:ring-offset-navy" />
-                                تدريب
-                            </label>
+                        {/* Date Filter */}
+                        <div className="mb-8">
+                            <h3 className="text-lg font-semibold text-cream mb-4">تاريخ النشر</h3>
+                            <select
+                                name="date"
+                                defaultValue={params.date || ''}
+                                className="w-full h-11 px-3 bg-navy border border-gold/15 rounded-xl text-cream-dark/60 focus-visible:ring-1 focus-visible:ring-gold outline-none appearance-none"
+                            >
+                                <option value="">أي وقت</option>
+                                <option value="24h">آخر 24 ساعة</option>
+                                <option value="7d">آخر 7 أيام</option>
+                                <option value="30d">آخر 30 يوم</option>
+                            </select>
                         </div>
-                    </div>
 
-                    <div>
-                        <h3 className="text-lg font-semibold text-cream mb-4">نوع المرشح</h3>
-                        <div className="space-y-3">
-                            <label className="flex items-center gap-3 text-cream-dark/60">
-                                <input type="radio" name="candidate_type" defaultChecked className="form-radio bg-navy border-gold/20 text-gold focus:ring-gold focus:ring-offset-navy" />
-                                جميع الوظائف
-                            </label>
-                            <label className="flex items-center gap-3 text-cream-dark/60">
-                                <input type="radio" name="candidate_type" className="form-radio bg-navy border-gold/20 text-gold focus:ring-gold focus:ring-offset-navy" />
-                                🇦🇪 وظائف مواطنين
-                            </label>
-                            <label className="flex items-center gap-3 text-cream-dark/60">
-                                <input type="radio" name="candidate_type" className="form-radio bg-navy border-gold/20 text-gold focus:ring-gold focus:ring-offset-navy" />
-                                وظائف مقيمين
-                            </label>
-                        </div>
-                    </div>
-
-                    <div>
-                        <h3 className="text-lg font-semibold text-cream mb-4">تاريخ النشر</h3>
-                        <select className="w-full h-11 px-3 bg-navy border border-gold/15 rounded-xl text-cream-dark/60 focus-visible:ring-1 focus-visible:ring-gold outline-none appearance-none">
-                            <option value="">أي وقت</option>
-                            <option value="24h">آخر 24 ساعة</option>
-                            <option value="7d">آخر 7 أيام</option>
-                            <option value="30d">آخر 30 يوم</option>
-                        </select>
-                    </div>
+                        <Button
+                            type="submit"
+                            className="w-full h-11 bg-gradient-to-r from-gold to-gold-light hover:from-gold-dark hover:to-gold text-navy font-bold rounded-xl"
+                        >
+                            <Filter className="me-2 h-4 w-4" />
+                            تطبيق الفلاتر
+                        </Button>
+                    </form>
                 </aside>
 
                 {/* Jobs List */}
@@ -261,10 +239,7 @@ export default async function JobsPage({ searchParams }: Props) {
                         </h2>
                         <div className="flex items-center gap-2 text-sm text-cream-dark/40">
                             <span>ترتيب:</span>
-                            <select className="bg-transparent text-cream border-b border-gold/20 focus:outline-none focus:border-gold pb-1">
-                                <option className="bg-navy">الأكثر صلة</option>
-                                <option className="bg-navy">الأحدث</option>
-                            </select>
+                            <SortSelect defaultValue={params.sort || ''} />
                         </div>
                     </div>
 
