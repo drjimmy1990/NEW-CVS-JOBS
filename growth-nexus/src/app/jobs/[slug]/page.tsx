@@ -86,11 +86,8 @@ export default async function JobDetailPage({ params }: Props) {
         notFound()
     }
 
-    // Increment view count
-    await supabase
-        .from('jobs')
-        .update({ view_count: (job.view_count || 0) + 1 })
-        .eq('id', job.id)
+    // Increment view count atomically
+    await supabase.rpc('increment_job_views', { job_id_input: job.id }).then()
 
     const company = job.companies as any
 
@@ -176,7 +173,7 @@ export default async function JobDetailPage({ params }: Props) {
                                         </span>
                                         <span className="flex items-center gap-1">
                                             <Users className="h-4 w-4" />
-                                            {job.view_count || 0} views
+                                            {job.views_count || 0} views
                                         </span>
                                     </div>
                                     <ApplyButton

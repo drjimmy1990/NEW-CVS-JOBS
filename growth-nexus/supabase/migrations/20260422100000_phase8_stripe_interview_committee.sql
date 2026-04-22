@@ -58,6 +58,19 @@ CREATE POLICY "employers_read_evaluations" ON committee_evaluations
 ALTER TABLE applications ADD COLUMN IF NOT EXISTS committee_summary JSONB;
 
 -- ============================================
+-- Job Views Atomic Increment Function
+-- ============================================
+
+CREATE OR REPLACE FUNCTION increment_job_views(job_id_input UUID)
+RETURNS void AS $$
+BEGIN
+  UPDATE public.jobs
+  SET views_count = COALESCE(views_count, 0) + 1
+  WHERE id = job_id_input;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================
 -- Stripe pricing reference in system_config
 -- ============================================
 

@@ -31,7 +31,9 @@ ADD COLUMN IF NOT EXISTS nationality_requirements TEXT[];
 -- Already in schema, skip
 
 -- 7. UPDATE public_jobs_view to show entity type for confidential listings
-CREATE OR REPLACE VIEW public.public_jobs_view AS
+-- Must DROP first because PostgreSQL cannot rename/reorder columns with CREATE OR REPLACE VIEW
+DROP VIEW IF EXISTS public.public_jobs_view;
+CREATE VIEW public.public_jobs_view AS
 SELECT
     j.id,
     j.title,
