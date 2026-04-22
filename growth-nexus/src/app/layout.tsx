@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Cairo } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
-import { Navbar } from "@/components/layout/navbar";
+import { NavbarWrapper } from "@/components/layout/navbar-wrapper";
 import "./globals.css";
 
 const cairo = Cairo({
@@ -25,12 +25,10 @@ export default function RootLayout({
       <body
         className={`${cairo.variable} font-sans antialiased`}
       >
-        <Navbar />
+        <NavbarWrapper />
         {children}
         <Toaster richColors position="bottom-left" />
       </body>
     </html>
   );
 }
-
-

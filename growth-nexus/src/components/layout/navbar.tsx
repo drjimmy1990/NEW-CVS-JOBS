@@ -24,9 +24,16 @@ export function Navbar() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUser(user);
-        const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+        const { data, error } = await supabase.from('profiles').select('role').eq('id', user.id).single();
         if (data) {
           setProfile(data);
+        } else {
+          // Fallback: check user_metadata for role
+          const metaRole = user.user_metadata?.role;
+          if (metaRole) {
+            setProfile({ role: metaRole });
+          }
+          if (error) console.warn('[Navbar] Profile fetch error:', error.message);
         }
       }
     };
