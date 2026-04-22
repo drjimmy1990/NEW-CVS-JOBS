@@ -108,15 +108,30 @@ export default function NewJobPage() {
             return
         }
         setAiLoading(true)
-        // Simulated AI response - in production this would call an n8n webhook
-        setTimeout(() => {
-            const aiDescription = `نبحث عن ${formData.title} متميز/ة للانضمام إلى فريقنا. سيكون المرشح/ة مسؤولاً عن تطوير وتنفيذ الحلول التقنية المتقدمة، والعمل مع فريق متعدد التخصصات لتحقيق أهداف الشركة.\n\nالمهام الرئيسية:\n• تطوير وصيانة الأنظمة والتطبيقات\n• التعاون مع الفرق الأخرى لتحقيق الأهداف المشتركة\n• المشاركة في مراجعة الكود وتحسين الجودة\n• تقديم حلول مبتكرة للتحديات التقنية`
-            const aiRequirements = `• خبرة لا تقل عن 3 سنوات في المجال\n• إجادة اللغتين العربية والإنجليزية\n• مهارات تواصل ممتازة\n• القدرة على العمل ضمن فريق\n• مهارات حل المشكلات والتفكير التحليلي`
-            updateField('description', aiDescription)
-            updateField('requirements', aiRequirements)
-            setAiLoading(false)
-            toast.success('تم توليد الوصف الوظيفي بنجاح!')
-        }, 1500)
+        try {
+            const res = await fetch('/api/ai/job-description', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: formData.title,
+                    job_type: formData.job_type,
+                    location: formData.location,
+                    experience_level: formData.experience_level,
+                    skills: formData.skills,
+                }),
+            })
+            const data = await res.json()
+            if (data.success) {
+                updateField('description', data.description)
+                updateField('requirements', data.requirements)
+                toast.success('تم توليد الوصف الوظيفي بنجاح!')
+            } else {
+                toast.error('فشل توليد الوصف')
+            }
+        } catch {
+            toast.error('حدث خطأ في الاتصال')
+        }
+        setAiLoading(false)
     }
 
     const canProceedStep1 = formData.title && formData.job_type && formData.location
