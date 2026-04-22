@@ -1,75 +1,769 @@
--- Function 1: Upsert Candidate from Private Form
-create or replace function upsert_private_candidate(
-  p_email text,
-  p_full_name text,
-  p_cv_url text
-) returns uuid as $$
-declare
-  v_candidate_id uuid;
-begin
-  -- Try to find existing profile
-  select id into v_candidate_id from public.profiles where email = p_email;
+[
+  "lesson":"العصر الحجري القديم في الأردن",
   
-  -- If not found, create a shell profile and candidate record
-  if v_candidate_id is null then
-    -- Generate a new UUID
-    v_candidate_id := gen_random_uuid();
-    
-    -- Insert into profiles (bypass RLS by using security definer)
-    -- We can only do this because this function runs with elevated privileges!
-    insert into public.profiles (id, email, full_name, role)
-    values (v_candidate_id, p_email, p_full_name, 'candidate');
-    
-    -- Insert into candidates
-    insert into public.candidates (id, cv_url, is_public)
-    values (v_candidate_id, p_cv_url, false);
-  else
-    -- Update existing candidate's CV
-    update public.candidates set cv_url = p_cv_url where id = v_candidate_id;
-  end if;
-
-  return v_candidate_id;
-end;
-$$ language plpgsql security definer;
-
--- Function 2: Get or Create Private Tracking Job
-create or replace function get_or_create_private_job(
-  p_company_id uuid,
-  p_landing_page_id uuid
-) returns uuid as $$
-declare
-  v_job_id uuid;
-  v_slug text;
-begin
-  -- We'll use a magic slug format to identify these
-  v_slug := 'private-campaign-' || p_landing_page_id;
-
-  select id into v_job_id from public.jobs where slug = v_slug;
-
-  if v_job_id is null then
-    insert into public.jobs (
-      company_id, title, slug, description, location_city, status, job_type
-    ) values (
-      p_company_id, 
-      'Private Campaign Applicants', 
-      v_slug, 
-      'Hidden job used to collect applicants from custom landing page links.', 
-      'Remote', 
-      'archived', -- Keep it hidden from public boards!
-      'full_time'
-    ) returning id into v_job_id;
-  end if;
-
-  return v_job_id;
-end;
-$$ language plpgsql security definer;
-
--- Also we need a quick RPC to increment views
-create or replace function increment_landing_page_views(page_id uuid)
-returns void as $$
-begin
-  update public.landing_pages
-  set views_count = views_count + 1
-  where id = page_id;
-end;
-$$ language plpgsql security definer;
+  "sublesson":"تعريف العصر الحجري القديم"
+  {
+    "stages": [
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "يُعرّف العصر الحجري القديم بأنه العصر الذي بدأ الإنسان فيه بصنع أدواته من الحجر.",
+          "blanks": [
+            {
+              "item_id": 1,
+              "from": 0,
+              "to": 0
+            }
+          ],
+          "distractors": [
+            "هو العصر الذي اخترع فيه الإنسان الزراعة",
+            "هو العصر الذي استخدم فيه الإنسان معدن البرونز",
+            "هو العصر الذي بنى فيه الإنسان أول المدن"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "عاش الإنسان في العصر الحجري القديم صيادًا للحيوانات وجامعًا للطعام.",
+          "blanks": [
+            {
+              "item_id": 2,
+              "from": 35,
+              "to": 66
+            }
+          ],
+          "distractors": [
+            "كمزارع ومنتج للغذاء",
+            "تاجرًا ومقايضًا",
+            "حرفيًا متخصصًا"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "موقع دوقرة يقع في وادي الزرقاء ويعود تاريخه إلى 2.5 مليون سنة تقريبًا.",
+          "blanks": [
+            {
+              "item_id": 3,
+              "from": 0,
+              "to": 0
+            }
+          ],
+          "distractors": [
+            "يقع في محافظة إربد ويعود إلى 5 ملايين سنة",
+            "يقع في محافظة الكرك ويعود إلى مليون سنة",
+            "يقع في البحر الميت ويعود إلى 3 ملايين سنة"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "يُعتبر موقع دوقرة مهمًا أثريًا لأنه يعتبر من أقدم مواقع العصر الحجري القديم في قارة آسيا.",
+          "blanks": [
+            {
+              "item_id": 4,
+              "from": 31,
+              "to": 88
+            }
+          ],
+          "distractors": [
+            "لأنه يحتوي على أقدم مدينة في الأردن",
+            "لأنه يضم أول معبد في التاريخ",
+            "لأنه يحتوي على أقدم كتابات في العالم"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "من المواقع الأثرية الأخرى للعصر الحجري القديم في الأردن: وادي الحسا واللجون وطبقة فحل.",
+          "blanks": [
+            {
+              "item_id": 5,
+              "from": 57,
+              "to": 85
+            }
+          ],
+          "distractors": [
+            "عين غزال وبسطة وتل أبو الصوان",
+            "عيون الحمام والأزرق والخرانة",
+            "باب ذراع وجاوا وتل السعودية"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "يقع وادي الحسا واللجون في محافظتي الطفيلة والكرك.",
+          "blanks": [
+            {
+              "item_id": 6,
+              "from": 23,
+              "to": 48
+            }
+          ],
+          "distractors": [
+            "في محافظة إربد",
+            "في محافظة عمان",
+            "في محافظة المفرق"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "تقع طبقة فحل في غور الأردن الشمالي التابع لمحافظة إربد.",
+          "blanks": [
+            {
+              "item_id": 7,
+              "from": 13,
+              "to": 54
+            }
+          ],
+          "distractors": [
+            "في محافظة الزرقاء",
+            "في محافظة الكرك",
+            "في محافظة معان"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "عاش الإنسان في العصر الحجري القديم حياة التنقل والترحال من مكان إلى آخر.",
+          "blanks": [
+            {
+              "item_id": 8,
+              "from": 0,
+              "to": 0
+            }
+          ],
+          "distractors": [
+            "استقر في قرى زراعية منظمة",
+            "بنى أسوارًا دفاعية حول مدنه",
+            "عاش في معابد دينية"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "سكن الإنسان في العصر الحجري القديم في الكهوف والملاجئ الصخرية.",
+          "blanks": [
+            {
+              "item_id": 9,
+              "from": 38,
+              "to": 61
+            }
+          ],
+          "distractors": [
+            "في بيوت مبنية من الطين",
+            "في قصور فاخرة",
+            "في خيام مصنوعة من الجلود"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "كان الإنسان في العصر الحجري القديم يقتات على الجمع والالتقاط والصيد.",
+          "blanks": [
+            {
+              "item_id": 10,
+              "from": 45,
+              "to": 67
+            }
+          ],
+          "distractors": [
+            "الحبوب المزروعة والألبان",
+            "اللحوم المحفوظة والدهون",
+            "الخضروات المجففة والفواكه"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "كان الإنسان يجمع طعامه في العصر الحجري القديم من خلال جمع البذور والثمار المختلفة واصطياد الحيوانات.",
+          "blanks": [
+            {
+              "item_id": 11,
+              "from": 54,
+              "to": 99
+            }
+          ],
+          "distractors": [
+            "من خلال الزراعة المنظمة",
+            "من خلال التجارة والمبادلة",
+            "من خلال الرعي المنظم"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "كان الإنسان في العصر الحجري القديم يصطاد الثيران والماعز البري والغزلان والطيور.",
+          "blanks": [
+            {
+              "item_id": 12,
+              "from": 41,
+              "to": 79
+            }
+          ],
+          "distractors": [
+            "الخيول والإبل فقط",
+            "الأسود والنمور والفيلة",
+            "الأغنام والماعز الأليف"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "صنع الإنسان أدواته في العصر الحجري القديم من الشظايا المقطوعة من الحجارة أو العظام أو القرون.",
+          "blanks": [
+            {
+              "item_id": 13,
+              "from": 42,
+              "to": 92
+            }
+          ],
+          "distractors": [
+            "من المعادن فقط",
+            "من الخشب والنباتات",
+            "من الطين والنحاس"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "عرف الإنسان القديم استخدام النار في العصر الحجري القديم.",
+          "blanks": [
+            {
+              "item_id": 14,
+              "from": 0,
+              "to": 0
+            }
+          ],
+          "distractors": [
+            "لا، لم يعرف النار",
+            "عرفها فقط في نهاية هذا العصر",
+            "استخدمها في الحروب فقط"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "كانت خصائص الأدوات التي استخدمها الإنسان في العصر الحجري القديم هي شظايا مقطوعة من الحجارة والعظام والقرون.",
+          "blanks": [
+            {
+              "item_id": 15,
+              "from": 67,
+              "to": 106
+            }
+          ],
+          "distractors": [
+            "أدوات متطورة وحادة جدًا",
+            "أدوات معدنية مصقولة",
+            "أدوات خزفية مزينة"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "يعود تاريخ أقدم بقايا أثرية للإنسان في الأردن إلى 2.5 مليون سنة تقريبًا.",
+          "blanks": [
+            {
+              "item_id": 16,
+              "from": 50,
+              "to": 63
+            }
+          ],
+          "distractors": [
+            "مليون سنة",
+            "1.5 مليون سنة",
+            "3 ملايين سنة"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "الاختلاف الرئيسي بين العصر الحجري القديم وما يليه من عصور حجرية هو عدم الاستقرار والتنقل المستمر في العصر الحجري القديم.",
+          "blanks": [
+            {
+              "item_id": 17,
+              "from": 67,
+              "to": 119
+            }
+          ],
+          "distractors": [
+            "استخدام الحجر فقط في العصر الحجري القديم",
+            "استخدام النار فقط في العصر الحجري القديم",
+            "عدم معرفة الزراعة في العصر الحجري القديم"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "كان الإنسان في العصر الحجري القديم جامعًا للغذاء من الطبيعة وليس منتجًا له.",
+          "blanks": [
+            {
+              "item_id": 18,
+              "from": 0,
+              "to": 0
+            }
+          ],
+          "distractors": [
+            "كان منتجًا للغذاء من خلال الزراعة",
+            "كان يمارس التجارة فقط",
+            "كان يعتمد على المقايضة"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "تسمية 'العصر الحجري القديم' تعني العصر الذي بدأ الإنسان فيه بصنع أدواته من الحجر.",
+          "blanks": [
+            {
+              "item_id": 19,
+              "from": 33,
+              "to": 80
+            }
+          ],
+          "distractors": [
+            "العصر الذي استخدم فيه الإنسان المعادس",
+            "العصر الذي عرف فيه الإنسان الكتابة",
+            "العصر الذي بدأت فيه الحضارات الأولى"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "لم يكن هناك تنظيم اجتماعي معقد في العصر الحجري القديم، بل عاش الناس حياة بدائية مع تنقل مستمر.",
+          "blanks": [
+            {
+              "item_id": 20,
+              "from": 0,
+              "to": 0
+            }
+          ],
+          "distractors": [
+            "نعم، كان هناك نظام حكومي منظم",
+            "كان هناك نظام تجاري منظم",
+            "كانت هناك ممالك منفصلة"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "جعل اعتدال المناخ ووفرة المياه والتربة الخصبة الأردن مكانًا مناسبًا لاستقرار الإنسان القديم.",
+          "blanks": [
+            {
+              "item_id": 21,
+              "from": 4,
+              "to": 45
+            }
+          ],
+          "distractors": [
+            "البرودة الشديدة والثلوج",
+            "الرمال الشاسعة والجفاف",
+            "الارتفاعات الجبلية فقط"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "يبلغ عدد المواقع الأثرية المكتشفة في الأردن حوالي 100 ألف موقع.",
+          "blanks": [
+            {
+              "item_id": 22,
+              "from": 44,
+              "to": 62
+            }
+          ],
+          "distractors": [
+            "حوالي 5000 موقع",
+            "حوالي 10000 موقع",
+            "حوالي 50 ألف موقع"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "يبلغ عدد المواقع الأثرية المسجلة رسميًا في الأردن حوالي 15 ألف موقع.",
+          "blanks": [
+            {
+              "item_id": 23,
+              "from": 50,
+              "to": 67
+            }
+          ],
+          "distractors": [
+            "حوالي 5000 موقع",
+            "حوالي 30 ألف موقع",
+            "حوالي 50 ألف موقع"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "معظم المواقع الأثرية المكتشفة في الأردن تعود إلى عصور ما قبل التاريخ بشكل أساسي.",
+          "blanks": [
+            {
+              "item_id": 24,
+              "from": 40,
+              "to": 79
+            }
+          ],
+          "distractors": [
+            "تعود إلى العصور التاريخية بشكل أساسي",
+            "موزعة بالتساوي بين الفترتين",
+            "لا توجد معلومات واضحة عن ذلك"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "يتميز الموقع الجغرافي للأردن بكونه موقع متوسط بين حضارات بلاد الشام وبلاد الرافدين من جهة، وحضارات شبه الجزيرة العربية ومصر من جهة أخرى.",
+          "blanks": [
+            {
+              "item_id": 25,
+              "from": 35,
+              "to": 135
+            }
+          ],
+          "distractors": [
+            "في القلب من صحراء كبيرة معزولة",
+            "في أقصى الشرق بعيدًا عن الحضارات الأخرى",
+            "في قلب البحر الأبيض المتوسط"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "استطاع علم الآثار فهم حياة الإنسان في العصور القديمة من خلال الأدوات التي كان يستخدمها رغم عدم وجود نقوش وكتابات.",
+          "blanks": [
+            {
+              "item_id": 26,
+              "from": 53,
+              "to": 112
+            }
+          ],
+          "distractors": [
+            "من خلال النصوص والكتابات فقط",
+            "من خلال الرسومات على الجدران فقط",
+            "من خلال المقابلات مع السكان القدماء"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "لم يعط الدرس معلومات محددة عن معتقدات الإنسان في العصر الحجري القديم.",
+          "blanks": [
+            {
+              "item_id": 27,
+              "from": 0,
+              "to": 0
+            }
+          ],
+          "distractors": [
+            "لا يوجد أي دليل على معتقدات دينية",
+            "نعم، كان يعبد عدة آلهة",
+            "كانت لديه معتقدات دينية منظمة جدًا"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "كانت أنواع الحيوانات البرية الموجودة في الأردن في العصر الحجري القديم هي الثيران والماعز البري والغزلان والطيور.",
+          "blanks": [
+            {
+              "item_id": 28,
+              "from": 73,
+              "to": 111
+            }
+          ],
+          "distractors": [
+            "الأسود والنمور فقط",
+            "الجمال والخيول فقط",
+            "الأفيال والوحيد فقط"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "اعتمد الإنسان في العصر الحجري القديم على صيد أنواع محددة مثل الثيران والماعز والغزلان والطيور.",
+          "blanks": [
+            {
+              "item_id": 29,
+              "from": 0,
+              "to": 0
+            }
+          ],
+          "distractors": [
+            "اعتمد على صيد جميع الحيوانات الموجودة",
+            "لم يصطد أي حيوان",
+            "اعتمد فقط على صيد الأسماك"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "بدأ الإنسان في الأردن باستقرار دائم في العصر الحجري الحديث.",
+          "blanks": [
+            {
+              "item_id": 30,
+              "from": 36,
+              "to": 58
+            }
+          ],
+          "distractors": [
+            "في العصر الحجري القديم",
+            "في العصر الحجري الوسيط",
+            "في العصر الحجري النحاسي"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "المؤشر الرئيسي على تطور الإنسان من العصر الحجري القديم هو صنع أدوات من الحجر واستخدام النار.",
+          "blanks": [
+            {
+              "item_id": 31,
+              "from": 58,
+              "to": 91
+            }
+          ],
+          "distractors": [
+            "اختراع الكتابة",
+            "بناء المعابد",
+            "اكتشاف المعادن"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "لا يوجد دليل على تدجين حيوانات في العصر الحجري القديم، بل كان يصطادها فقط.",
+          "blanks": [
+            {
+              "item_id": 32,
+              "from": 0,
+              "to": 0
+            }
+          ],
+          "distractors": [
+            "كان يملك حيوانات أليفة منظمة",
+            "كان يملك خيول وإبل",
+            "كان يملك أغنام وماعز"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "كان الإنسان يشتغل في العصر الحجري القديم كصياد وجامع للطعام.",
+          "blanks": [
+            {
+              "item_id": 33,
+              "from": 41,
+              "to": 59
+            }
+          ],
+          "distractors": [
+            "كحرفي في الورش",
+            "كمزارع في الحقول",
+            "كتاجر وناقل بضائع"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "كان الإنسان في العصر الحجري القديم يجمع البذور والثمار المختلفة من النباتات.",
+          "blanks": [
+            {
+              "item_id": 34,
+              "from": 40,
+              "to": 63
+            }
+          ],
+          "distractors": [
+            "فقط البذور الكبيرة",
+            "فقط النباتات الشائكة",
+            "فقط جذور النباتات"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "لا يوجد دليل على معرفة طبية للإنسان في العصر الحجري القديم حسب الدرس.",
+          "blanks": [
+            {
+              "item_id": 35,
+              "from": 0,
+              "to": 0
+            }
+          ],
+          "distractors": [
+            "نعم، كان لديه معرفة طبية متقدمة",
+            "كان يعتمد على السحر فقط",
+            "كان لديه علاجات عشبية معروفة"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "يبلغ عدد تقسيمات العصور الحجرية المذكورة في الدرس خمسة تقسيمات.",
+          "blanks": [
+            {
+              "item_id": 36,
+              "from": 50,
+              "to": 62
+            }
+          ],
+          "distractors": [
+            "ثلاثة تقسيمات",
+            "أربعة تقسيمات",
+            "ستة تقسيمات"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "العصور الحجرية المذكورة في الدرس بالترتيب التاريخي هي القديم - الوسيط - الحديث - النحاسي - البرونزي.",
+          "blanks": [
+            {
+              "item_id": 37,
+              "from": 54,
+              "to": 99
+            }
+          ],
+          "distractors": [
+            "القديم - الحديث - الوسيط - النحاسي - البرونزي",
+            "الوسيط - القديم - الحديث - النحاسي - البرونزي",
+            "النحاسي - البرونزي - القديم - الوسيط - الحديث"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "لم يكن الإنسان في العصر الحجري القديم يعرف الكتابة، حيث اخترعت في عصور لاحقة.",
+          "blanks": [
+            {
+              "item_id": 38,
+              "from": 0,
+              "to": 0
+            }
+          ],
+          "distractors": [
+            "نعم، كان يكتب على الحجارة",
+            "كان يكتب على الجلود فقط",
+            "كان يرسم رسومات تمثل الكتابة"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "لم يعتمد الإنسان في العصر الحجري القديم على التجارة والمبادلة، حيث ظهرت التجارة في عصور لاحقة.",
+          "blanks": [
+            {
+              "item_id": 39,
+              "from": 0,
+              "to": 0
+            }
+          ],
+          "distractors": [
+            "نعم، كان نشطًا في التجارة",
+            "كان يتاجر بالحيوانات فقط",
+            "كان يتاجر بالأدوات الحجرية فقط"
+          ]
+        }
+      },
+      {
+        "stage_type": "FILL_BLANK",
+        "config": {
+          "instruction": "أكمل الفراغ التالي",
+          "text": "أهمية موقع دوقرة الأثرية في فهم التاريخ البشري تكمن في أنه يعتبر من أقدم مواقع العصر الحجري القديم في قارة آسيا مع أدوات حجرية.",
+          "blanks": [
+            {
+              "item_id": 40,
+              "from": 55,
+              "to": 126
+            }
+          ],
+          "distractors": [
+            "أنه يحتوي على أقدم مدينة",
+            "أنه يحتوي على أول كتابة معروفة",
+            "أنه موقع أول حضارة"
+          ]
+        }
+      }
+    ]
+  }
+]
