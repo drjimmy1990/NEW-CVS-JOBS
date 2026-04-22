@@ -14,7 +14,9 @@ import {
     Search,
     Heart,
     UserCheck,
-    MessageSquare
+    MessageSquare,
+    BarChart3,
+    Flag
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -30,6 +32,8 @@ const sidebarLinks = [
     { href: '/employer/saved-candidates', label: 'المرشحون المحفوظون', icon: Heart },
     { href: '/employer/messages', label: 'الرسائل', icon: MessageSquare },
     { href: '/employer/landing-pages', label: 'صفحات التوظيف', icon: FileText },
+    { href: '/employer/analytics', label: 'التحليلات', icon: BarChart3 },
+    { href: '/employer/emiratisation', label: 'التوطين', icon: Flag },
     { href: '/employer/settings', label: 'إعدادات الشركة', icon: Settings },
 ]
 

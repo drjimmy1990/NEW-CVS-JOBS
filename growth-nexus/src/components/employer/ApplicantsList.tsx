@@ -5,100 +5,124 @@ import { createClient } from '@/utils/supabase/client'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { User, Mail, FileText, Calendar, ExternalLink, ChevronDown } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { User, Mail, FileText, Calendar, ExternalLink, ChevronDown, Filter, Search, AlertTriangle } from 'lucide-react'
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { toast } from 'sonner'
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog"
+import {
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { REJECTION_REASONS } from '@/lib/types'
 
 const statusOptions = [
-    { value: 'applied', label: 'Applied', color: 'bg-blue-500/20 text-blue-400' },
-    { value: 'reviewing', label: 'Reviewing', color: 'bg-yellow-500/20 text-yellow-400' },
-    { value: 'shortlisted', label: 'Shortlisted', color: 'bg-emerald-500/20 text-emerald-400' },
-    { value: 'interview', label: 'Interview', color: 'bg-purple-500/20 text-purple-400' },
-    { value: 'offered', label: 'Offered', color: 'bg-indigo-500/20 text-indigo-400' },
-    { value: 'hired', label: 'Hired', color: 'bg-green-500/20 text-green-400' },
-    { value: 'rejected', label: 'Rejected', color: 'bg-red-500/20 text-red-400' },
+    { value: 'applied', label: 'تقدّم', color: 'bg-blue-500/20 text-blue-400' },
+    { value: 'reviewing', label: 'قيد المراجعة', color: 'bg-yellow-500/20 text-yellow-400' },
+    { value: 'shortlisted', label: 'قائمة مختصرة', color: 'bg-emerald-500/20 text-emerald-400' },
+    { value: 'interview', label: 'مقابلة', color: 'bg-purple-500/20 text-purple-400' },
+    { value: 'offer', label: 'عرض وظيفي', color: 'bg-gold/20 text-gold' },
+    { value: 'hired', label: 'تم التعيين', color: 'bg-green-500/20 text-green-400' },
+    { value: 'rejected', label: 'مرفوض', color: 'bg-red-500/20 text-red-400' },
 ]
 
-interface ApplicantsListProps {
-    initialApplicants: any[]
-}
+interface ApplicantsListProps { initialApplicants: any[] }
 
 export function ApplicantsList({ initialApplicants }: ApplicantsListProps) {
     const supabase = createClient()
     const [applicants, setApplicants] = useState(initialApplicants)
-    const [updatingParams, setUpdatingParams] = useState<string | null>(null)
+    const [updatingId, setUpdatingId] = useState<string | null>(null)
     const [selectedApplicant, setSelectedApplicant] = useState<any | null>(null)
+    // Rejection flow
+    const [rejectConfirmOpen, setRejectConfirmOpen] = useState(false)
+    const [rejectReasonOpen, setRejectReasonOpen] = useState(false)
+    const [appToReject, setAppToReject] = useState<any | null>(null)
+    const [rejectReason, setRejectReason] = useState('')
+    const [rejectNote, setRejectNote] = useState('')
+    // Filters
+    const [searchTerm, setSearchTerm] = useState('')
+    const [filterStatus, setFilterStatus] = useState<string>('all')
 
     const handleStatusChange = async (appId: string, newStatus: string) => {
-        setUpdatingParams(appId)
-
-        const { error } = await supabase
-            .from('applications')
-            .update({ status: newStatus })
-            .eq('id', appId)
-
-        if (error) {
-            toast.error('Failed to update status')
-        } else {
-            toast.success('Status updated successfully')
-            setApplicants(applicants.map(app =>
-                app.id === appId ? { ...app, status: newStatus } : app
-            ))
+        // Intercept rejection with confirmation
+        if (newStatus === 'rejected') {
+            const app = applicants.find(a => a.id === appId)
+            setAppToReject(app)
+            setRejectConfirmOpen(true)
+            return
         }
-        setUpdatingParams(null)
+
+        setUpdatingId(appId)
+        const { error } = await supabase.from('applications').update({ status: newStatus }).eq('id', appId)
+        if (error) { toast.error('فشل تحديث الحالة') } else {
+            toast.success('تم تحديث الحالة')
+            setApplicants(applicants.map(a => a.id === appId ? { ...a, status: newStatus } : a))
+        }
+        setUpdatingId(null)
     }
 
-    const getStatusColor = (statusValue: string) => {
-        const status = statusOptions.find(s => s.value === statusValue)
-        return status?.color || 'bg-slate-500/20 text-slate-400'
+    const handleRejectConfirm = () => {
+        setRejectConfirmOpen(false)
+        setRejectReasonOpen(true)
     }
+
+    const handleRejectSubmit = async () => {
+        if (!appToReject || !rejectReason) { toast.error('يرجى اختيار سبب الرفض'); return }
+        setUpdatingId(appToReject.id)
+        const reasonLabel = REJECTION_REASONS.find(r => r.value === rejectReason)?.label || rejectReason
+        const fullReason = rejectNote ? `${reasonLabel}: ${rejectNote}` : reasonLabel
+
+        const { error } = await supabase.from('applications')
+            .update({ status: 'rejected', rejection_reason: fullReason }).eq('id', appToReject.id)
+
+        if (error) { toast.error('فشل رفض المتقدم') } else {
+            toast.success('تم رفض المتقدم وتسجيل السبب')
+            setApplicants(applicants.map(a => a.id === appToReject.id ? { ...a, status: 'rejected', rejection_reason: fullReason } : a))
+        }
+        setRejectReasonOpen(false); setAppToReject(null); setRejectReason(''); setRejectNote(''); setUpdatingId(null)
+    }
+
+    const getStatusColor = (v: string) => statusOptions.find(s => s.value === v)?.color || 'bg-cream-dark/15 text-cream-dark/50'
+    const getStatusLabel = (v: string) => statusOptions.find(s => s.value === v)?.label || v
+
+    // Filtered applicants
+    const filtered = applicants.filter(app => {
+        if (filterStatus !== 'all' && app.status !== filterStatus) return false
+        if (searchTerm) {
+            const name = (app.profiles?.full_name || '').toLowerCase()
+            const email = (app.profiles?.email || '').toLowerCase()
+            return name.includes(searchTerm.toLowerCase()) || email.includes(searchTerm.toLowerCase())
+        }
+        return true
+    })
 
     const renderAiInsights = (parsedData: any) => {
-        if (!parsedData) return null;
-
+        if (!parsedData) return null
         return (
             <div className="space-y-4 mt-4">
-                <h4 className="text-sm font-semibold text-cyan-400">AI Extracted Insights</h4>
-
+                <h4 className="text-sm font-semibold text-gold">رؤى الذكاء الاصطناعي</h4>
                 {parsedData.yearsOfExperience !== undefined && (
-                    <div className="text-sm">
-                        <span className="text-slate-400">Experience:</span> <span className="text-white font-medium">{parsedData.yearsOfExperience} years</span>
+                    <div className="text-sm"><span className="text-cream-dark/50">الخبرة:</span> <span className="text-cream font-medium">{parsedData.yearsOfExperience} سنة</span></div>
+                )}
+                {parsedData.education?.length > 0 && (
+                    <div className="text-sm"><span className="text-cream-dark/50">التعليم:</span>
+                        <ul className="list-disc list-inside text-cream mt-1">{parsedData.education.map((edu: any, i: number) => (
+                            <li key={i}>{typeof edu === 'object' ? `${edu.degree} - ${edu.institution}` : edu}</li>
+                        ))}</ul>
                     </div>
                 )}
-
-                {parsedData.education && parsedData.education.length > 0 && (
-                    <div className="text-sm">
-                        <span className="text-slate-400">Education:</span>
-                        <ul className="list-disc list-inside text-white mt-1">
-                            {parsedData.education.map((edu: any, i: number) => (
-                                <li key={i}>{typeof edu === 'object' ? `${edu.degree} - ${edu.institution}` : edu}</li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
-
-                {parsedData.skills && parsedData.skills.length > 0 && (
-                    <div className="text-sm">
-                        <span className="text-slate-400 block mb-1">Extracted Skills:</span>
-                        <div className="flex flex-wrap gap-2">
-                            {parsedData.skills.map((skill: string, i: number) => (
-                                <Badge key={i} variant="secondary" className="bg-slate-800 text-slate-300">
-                                    {skill}
-                                </Badge>
-                            ))}
-                        </div>
+                {parsedData.skills?.length > 0 && (
+                    <div className="text-sm"><span className="text-cream-dark/50 block mb-1">المهارات:</span>
+                        <div className="flex flex-wrap gap-2">{parsedData.skills.map((s: string, i: number) => (
+                            <Badge key={i} variant="secondary" className="bg-navy-lighter text-cream-dark">{s}</Badge>
+                        ))}</div>
                     </div>
                 )}
             </div>
@@ -107,119 +131,85 @@ export function ApplicantsList({ initialApplicants }: ApplicantsListProps) {
 
     if (!applicants || applicants.length === 0) {
         return (
-            <Card className="bg-slate-900 border-slate-800">
-                <CardContent className="py-16 text-center">
-                    <User className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-white mb-2">No applicants yet</h3>
-                    <p className="text-slate-400 mb-6">
-                        When candidates apply for this job, they'll appear here
-                    </p>
-                </CardContent>
-            </Card>
+            <Card className="bg-navy-light border-gold/10"><CardContent className="py-16 text-center" dir="rtl">
+                <User className="h-16 w-16 text-cream-dark/20 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-cream mb-2">لا يوجد متقدمون بعد</h3>
+                <p className="text-cream-dark/40">عندما يتقدم المرشحون لهذه الوظيفة، سيظهرون هنا</p>
+            </CardContent></Card>
         )
     }
 
     return (
         <>
+            {/* Filter Bar */}
+            <div className="flex items-center gap-3 mb-4 flex-wrap" dir="rtl">
+                <div className="relative flex-1 max-w-xs">
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-cream-dark/30" />
+                    <Input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="بحث بالاسم أو البريد..."
+                        className="bg-navy-lighter border-gold/10 text-cream pr-10" />
+                </div>
+                <div className="flex items-center gap-2">
+                    <Filter className="h-4 w-4 text-cream-dark/30" />
+                    {[{ value: 'all', label: 'الكل' }, { value: 'applied', label: 'تقدّم' }, { value: 'reviewing', label: 'مراجعة' }, { value: 'shortlisted', label: 'مختصرة' }, { value: 'interview', label: 'مقابلة' }, { value: 'offer', label: 'عرض' }].map(f => (
+                        <button key={f.value} onClick={() => setFilterStatus(f.value)}
+                            className={`px-2.5 py-1 rounded-full text-xs transition-colors ${filterStatus === f.value ? 'bg-gold/20 text-gold border border-gold/30' : 'bg-navy-lighter text-cream-dark/40 border border-gold/5 hover:border-gold/15'}`}>
+                            {f.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
             <div className="space-y-4">
-                {applicants.map((app: any) => (
-                    <Card key={app.id} className="bg-slate-900 border-slate-800 hover:border-slate-700 transition-colors">
-                        <CardContent className="p-6">
+                {filtered.map((app: any) => (
+                    <Card key={app.id} className="bg-navy-light border-gold/10 hover:border-gold/20 transition-colors">
+                        <CardContent className="p-6" dir="rtl">
                             <div className="flex items-start justify-between">
                                 <div className="flex gap-4">
-                                    {/* Avatar */}
-                                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center text-white font-bold text-lg">
-                                        {app.profiles?.full_name?.charAt(0)?.toUpperCase() || 'C'}
+                                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gold to-gold-light flex items-center justify-center text-navy font-bold text-lg">
+                                        {app.profiles?.full_name?.charAt(0)?.toUpperCase() || 'م'}
                                     </div>
-
                                     <div>
                                         <div className="flex items-center gap-3 mb-1">
-                                            <h3 className="text-lg font-semibold text-white">
-                                                {app.profiles?.full_name || 'Candidate'}
-                                            </h3>
-
-                                            {/* Status Dropdown */}
+                                            <h3 className="text-lg font-semibold text-cream">{app.profiles?.full_name || 'مرشح'}</h3>
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className={`h-6 text-xs px-2 ${getStatusColor(app.status)} hover:opacity-80`}
-                                                        disabled={updatingParams === app.id}
-                                                    >
-                                                        {app.status}
-                                                        <ChevronDown className="ml-1 h-3 w-3" />
+                                                    <Button variant="ghost" size="sm" className={`h-6 text-xs px-2 ${getStatusColor(app.status)} hover:opacity-80`} disabled={updatingId === app.id}>
+                                                        {getStatusLabel(app.status)}<ChevronDown className="ms-1 h-3 w-3" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="start" className="bg-slate-800 border-slate-700">
-                                                    {statusOptions.map((status) => (
-                                                        <DropdownMenuItem
-                                                            key={status.value}
-                                                            className={`cursor-pointer ${app.status === status.value ? 'bg-slate-700' : 'hover:bg-slate-700'} text-slate-200`}
-                                                            onClick={() => handleStatusChange(app.id, status.value)}
-                                                        >
-                                                            <div className="flex items-center gap-2">
-                                                                <div className={`w-2 h-2 rounded-full ${status.color.split(' ')[0]}`} />
-                                                                {status.label}
-                                                            </div>
+                                                <DropdownMenuContent align="start" className="bg-navy-light border-gold/10">
+                                                    {statusOptions.map((s) => (
+                                                        <DropdownMenuItem key={s.value} className={`cursor-pointer ${app.status === s.value ? 'bg-navy-lighter' : 'hover:bg-navy-lighter'} text-cream-dark`}
+                                                            onClick={() => handleStatusChange(app.id, s.value)}>
+                                                            <div className="flex items-center gap-2"><div className={`w-2 h-2 rounded-full ${s.color.split(' ')[0]}`} />{s.label}</div>
                                                         </DropdownMenuItem>
                                                     ))}
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </div>
-
-                                        {app.candidates?.headline && (
-                                            <p className="text-slate-400 text-sm mb-2">{app.candidates.headline}</p>
-                                        )}
-
-                                        <div className="flex items-center gap-4 text-sm text-slate-400">
-                                            {app.profiles?.email && (
-                                                <span className="flex items-center gap-1">
-                                                    <Mail className="h-3 w-3" />
-                                                    {app.profiles.email}
-                                                </span>
-                                            )}
-                                            <span className="flex items-center gap-1">
-                                                <Calendar className="h-3 w-3" />
-                                                Applied {new Date(app.created_at).toLocaleDateString()}
-                                            </span>
+                                        {app.candidates?.headline && <p className="text-cream-dark/50 text-sm mb-2">{app.candidates.headline}</p>}
+                                        <div className="flex items-center gap-4 text-sm text-cream-dark/40">
+                                            {app.profiles?.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{app.profiles.email}</span>}
+                                            <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />تقدّم {new Date(app.created_at).toLocaleDateString('ar-AE')}</span>
                                         </div>
-
-                                        {/* Skills - limited preview */}
-                                        {app.candidates?.skills && app.candidates.skills.length > 0 && (
+                                        {app.candidates?.skills?.length > 0 && (
                                             <div className="flex flex-wrap gap-2 mt-3">
-                                                {app.candidates.skills.slice(0, 5).map((skill: string, i: number) => (
-                                                    <Badge key={i} variant="outline" className="border-slate-600 text-slate-300">
-                                                        {skill}
-                                                    </Badge>
-                                                ))}
-                                                {app.candidates.skills.length > 5 && (
-                                                    <Badge variant="outline" className="border-slate-600 text-slate-400">
-                                                        +{app.candidates.skills.length - 5} more
-                                                    </Badge>
-                                                )}
+                                                {app.candidates.skills.slice(0, 5).map((s: string, i: number) => (<Badge key={i} variant="outline" className="border-gold/15 text-cream-dark/60">{s}</Badge>))}
+                                                {app.candidates.skills.length > 5 && <Badge variant="outline" className="border-gold/10 text-cream-dark/30">+{app.candidates.skills.length - 5}</Badge>}
                                             </div>
+                                        )}
+                                        {app.status === 'rejected' && app.rejection_reason && (
+                                            <div className="mt-2 text-xs text-red-400/70 flex items-center gap-1"><AlertTriangle className="h-3 w-3" />سبب الرفض: {app.rejection_reason}</div>
                                         )}
                                     </div>
                                 </div>
-
                                 <div className="flex flex-col gap-2">
-                                    <Button
-                                        variant="default"
-                                        size="sm"
-                                        className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 text-white"
-                                        onClick={() => setSelectedApplicant(app)}
-                                    >
-                                        <User className="mr-2 h-4 w-4" />
-                                        View Full Profile
+                                    <Button variant="default" size="sm" className="bg-gradient-to-r from-gold to-gold-light hover:from-gold-dark text-navy font-medium" onClick={() => setSelectedApplicant(app)}>
+                                        <User className="me-2 h-4 w-4" />عرض الملف
                                     </Button>
-
                                     {app.candidates?.cv_url && (
                                         <a href={app.candidates.cv_url} target="_blank" rel="noopener noreferrer">
-                                            <Button variant="outline" size="sm" className="w-full border-slate-700 text-slate-300 hover:bg-slate-800">
-                                                <FileText className="mr-2 h-4 w-4" />
-                                                Download CV
-                                            </Button>
+                                            <Button variant="outline" size="sm" className="w-full border-gold/15 text-cream-dark/60 hover:bg-navy-lighter"><FileText className="me-2 h-4 w-4" />تحميل CV</Button>
                                         </a>
                                     )}
                                 </div>
@@ -231,78 +221,96 @@ export function ApplicantsList({ initialApplicants }: ApplicantsListProps) {
 
             {/* Candidate Details Modal */}
             <Dialog open={!!selectedApplicant} onOpenChange={() => setSelectedApplicant(null)}>
-                <DialogContent className="bg-slate-900 border-slate-800 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
-                    {selectedApplicant && (
-                        <>
-                            <DialogHeader>
-                                <div className="flex items-center gap-4 mb-2">
-                                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center text-white font-bold text-2xl">
-                                        {selectedApplicant.profiles?.full_name?.charAt(0)?.toUpperCase() || 'C'}
-                                    </div>
-                                    <div>
-                                        <DialogTitle className="text-2xl">{selectedApplicant.profiles?.full_name || 'Candidate'}</DialogTitle>
-                                        <DialogDescription className="text-slate-400 text-base mt-1">
-                                            {selectedApplicant.candidates?.headline || 'No headline available'}
-                                        </DialogDescription>
-                                    </div>
+                <DialogContent className="bg-navy-light border-gold/10 text-cream max-w-2xl max-h-[90vh] overflow-y-auto" dir="rtl">
+                    {selectedApplicant && (<>
+                        <DialogHeader>
+                            <div className="flex items-center gap-4 mb-2">
+                                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gold to-gold-light flex items-center justify-center text-navy font-bold text-2xl">
+                                    {selectedApplicant.profiles?.full_name?.charAt(0)?.toUpperCase() || 'م'}
                                 </div>
-                            </DialogHeader>
-
-                            <div className="space-y-6 mt-4">
-                                <div className="flex flex-wrap gap-4 text-sm text-slate-300 pb-4 border-b border-slate-800">
-                                    {selectedApplicant.profiles?.email && (
-                                        <span className="flex items-center gap-2">
-                                            <Mail className="h-4 w-4 text-cyan-400" />
-                                            <a href={`mailto:${selectedApplicant.profiles.email}`} className="hover:text-cyan-400">{selectedApplicant.profiles.email}</a>
-                                        </span>
-                                    )}
-                                    <span className="flex items-center gap-2">
-                                        <Calendar className="h-4 w-4 text-cyan-400" />
-                                        Applied: {new Date(selectedApplicant.created_at).toLocaleDateString()}
-                                    </span>
-                                </div>
-
-                                {selectedApplicant.cover_letter && (
-                                    <div className="space-y-2">
-                                        <h4 className="text-sm font-semibold text-slate-200">Cover Letter</h4>
-                                        <div className="p-4 bg-slate-800/50 rounded-lg text-slate-300 text-sm whitespace-pre-line leading-relaxed">
-                                            {selectedApplicant.cover_letter}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* AI Insights Section */}
-                                {selectedApplicant.candidates?.parsed_data ? (
-                                    <div className="bg-slate-800/30 border border-cyan-500/20 rounded-lg p-4">
-                                        {renderAiInsights(selectedApplicant.candidates.parsed_data)}
-                                    </div>
-                                ) : (
-                                    <div className="text-sm text-slate-500 italic p-4 bg-slate-800/30 rounded-lg">
-                                        No AI insights available for this candidate yet.
-                                    </div>
-                                )}
-
-                                <div className="pt-4 flex gap-3">
-                                    {selectedApplicant.candidates?.cv_url && (
-                                        <a href={selectedApplicant.candidates.cv_url} target="_blank" rel="noopener noreferrer" className="flex-1">
-                                            <Button className="w-full bg-slate-800 hover:bg-slate-700 text-white">
-                                                <FileText className="mr-2 h-4 w-4" />
-                                                Download Latest CV
-                                            </Button>
-                                        </a>
-                                    )}
-                                    {selectedApplicant.resume_snapshot_url && (
-                                        <a href={selectedApplicant.resume_snapshot_url} target="_blank" rel="noopener noreferrer" className="flex-1">
-                                            <Button className="w-full bg-slate-800 hover:bg-slate-700 text-white">
-                                                <ExternalLink className="mr-2 h-4 w-4" />
-                                                Application CV Snapshot
-                                            </Button>
-                                        </a>
-                                    )}
+                                <div>
+                                    <DialogTitle className="text-2xl">{selectedApplicant.profiles?.full_name || 'مرشح'}</DialogTitle>
+                                    <DialogDescription className="text-cream-dark/50 text-base mt-1">{selectedApplicant.candidates?.headline || 'لا يوجد عنوان'}</DialogDescription>
                                 </div>
                             </div>
-                        </>
-                    )}
+                        </DialogHeader>
+                        <div className="space-y-6 mt-4">
+                            <div className="flex flex-wrap gap-4 text-sm text-cream-dark/70 pb-4 border-b border-gold/10">
+                                {selectedApplicant.profiles?.email && <span className="flex items-center gap-2"><Mail className="h-4 w-4 text-gold" /><a href={`mailto:${selectedApplicant.profiles.email}`} className="hover:text-gold">{selectedApplicant.profiles.email}</a></span>}
+                                <span className="flex items-center gap-2"><Calendar className="h-4 w-4 text-gold" />تقدّم: {new Date(selectedApplicant.created_at).toLocaleDateString('ar-AE')}</span>
+                            </div>
+                            {selectedApplicant.cover_letter && (
+                                <div className="space-y-2"><h4 className="text-sm font-semibold text-cream-dark">خطاب التقديم</h4>
+                                    <div className="p-4 bg-navy-lighter/50 rounded-lg text-cream-dark/70 text-sm whitespace-pre-line">{selectedApplicant.cover_letter}</div>
+                                </div>
+                            )}
+                            {selectedApplicant.candidates?.parsed_data ? (
+                                <div className="bg-navy-lighter/30 border border-gold/10 rounded-lg p-4">{renderAiInsights(selectedApplicant.candidates.parsed_data)}</div>
+                            ) : (
+                                <div className="text-sm text-cream-dark/30 italic p-4 bg-navy-lighter/30 rounded-lg">لا تتوفر رؤى AI لهذا المرشح حتى الآن.</div>
+                            )}
+                            <div className="pt-4 flex gap-3">
+                                {selectedApplicant.candidates?.cv_url && (
+                                    <a href={selectedApplicant.candidates.cv_url} target="_blank" rel="noopener noreferrer" className="flex-1">
+                                        <Button className="w-full bg-navy-lighter hover:bg-navy text-cream"><FileText className="me-2 h-4 w-4" />تحميل آخر CV</Button>
+                                    </a>
+                                )}
+                                {selectedApplicant.resume_snapshot_url && (
+                                    <a href={selectedApplicant.resume_snapshot_url} target="_blank" rel="noopener noreferrer" className="flex-1">
+                                        <Button className="w-full bg-navy-lighter hover:bg-navy text-cream"><ExternalLink className="me-2 h-4 w-4" />CV وقت التقديم</Button>
+                                    </a>
+                                )}
+                            </div>
+                        </div>
+                    </>)}
+                </DialogContent>
+            </Dialog>
+
+            {/* Rejection Confirmation */}
+            <AlertDialog open={rejectConfirmOpen} onOpenChange={setRejectConfirmOpen}>
+                <AlertDialogContent className="bg-navy-light border-gold/10" dir="rtl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-cream flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-red-400" />تأكيد رفض المتقدم</AlertDialogTitle>
+                        <AlertDialogDescription className="text-cream-dark/50">
+                            هل أنت متأكد من رفض &quot;{appToReject?.profiles?.full_name}&quot;؟ سيتم طلب سبب الرفض في الخطوة التالية.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="flex-row-reverse gap-2">
+                        <AlertDialogCancel className="bg-navy-lighter border-gold/10 text-cream">إلغاء</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleRejectConfirm} className="bg-red-600 hover:bg-red-700 text-white">نعم، أرفض</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Rejection Reason Dialog */}
+            <Dialog open={rejectReasonOpen} onOpenChange={(v) => { if (!v) { setRejectReasonOpen(false); setAppToReject(null) } }}>
+                <DialogContent className="bg-navy-light border-gold/10 text-cream" dir="rtl">
+                    <DialogHeader>
+                        <DialogTitle>سبب الرفض</DialogTitle>
+                        <DialogDescription className="text-cream-dark/50">يرجى اختيار سبب الرفض لتحسين تقارير التحليلات</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 mt-2">
+                        <div className="space-y-2">
+                            <Label className="text-cream-dark">السبب الرئيسي *</Label>
+                            <Select value={rejectReason} onValueChange={setRejectReason}>
+                                <SelectTrigger className="bg-navy-lighter border-gold/10 text-cream"><SelectValue placeholder="اختر السبب" /></SelectTrigger>
+                                <SelectContent className="bg-navy-light border-gold/10">
+                                    {REJECTION_REASONS.map(r => <SelectItem key={r.value} value={r.value} className="text-cream">{r.label}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-cream-dark">ملاحظات إضافية (اختياري)</Label>
+                            <Textarea value={rejectNote} onChange={(e) => setRejectNote(e.target.value)} placeholder="أضف تفاصيل إضافية..."
+                                rows={3} className="bg-navy-lighter border-gold/10 text-cream resize-none" />
+                        </div>
+                    </div>
+                    <DialogFooter className="flex-row-reverse gap-2 mt-4">
+                        <Button variant="outline" onClick={() => { setRejectReasonOpen(false); setAppToReject(null) }} className="border-gold/10 text-cream-dark">إلغاء</Button>
+                        <Button onClick={handleRejectSubmit} disabled={!rejectReason || updatingId === appToReject?.id} className="bg-red-600 hover:bg-red-700 text-white">
+                            تأكيد الرفض
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </>
