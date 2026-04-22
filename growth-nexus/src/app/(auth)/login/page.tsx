@@ -52,7 +52,7 @@ function LoginForm() {
                 } else if (profile.role === 'candidate') {
                     router.push('/candidate/dashboard')
                 } else if (profile.role === 'admin') {
-                    router.push('/admin/config')
+                    router.push('/admin/dashboard')
                 } else {
                     router.push('/')
                 }

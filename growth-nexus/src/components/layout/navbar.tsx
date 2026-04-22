@@ -1,20 +1,21 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Search, Briefcase, Building2, BookOpen, LogIn } from 'lucide-react';
+import { Search, Briefcase, Building2, BookOpen, LogIn, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
 
-  // Hide navbar on employer and candidate dashboards, and auth pages
-  const isDashboard = pathname?.startsWith('/employer') || pathname?.startsWith('/candidate');
+  // Hide navbar on dashboard and auth pages
+  const isDashboard = pathname?.startsWith('/employer') || pathname?.startsWith('/candidate') || pathname?.startsWith('/admin');
   const isAuthPage = pathname?.startsWith('/login') || pathname?.startsWith('/register');
 
   useEffect(() => {
@@ -36,10 +37,11 @@ export function Navbar() {
     return null;
   }
 
-  const getDashboardLink = () => {
-    if (profile?.role === 'employer') return '/employer/dashboard';
-    if (profile?.role === 'candidate') return '/candidate/dashboard';
-    return '/';
+  const handleDashboardClick = () => {
+    if (profile?.role === 'admin') router.push('/admin/dashboard');
+    else if (profile?.role === 'employer') router.push('/employer/dashboard');
+    else if (profile?.role === 'candidate') router.push('/candidate/dashboard');
+    else router.push('/');
   };
 
   return (
@@ -84,11 +86,13 @@ export function Navbar() {
           </Link>
           
           {user ? (
-             <Link href={getDashboardLink()}>
-               <Button className="bg-gradient-to-r from-gold to-gold-light hover:from-gold-dark hover:to-gold text-navy border-0 font-bold">
-                 لوحة التحكم
-               </Button>
-             </Link>
+             <Button 
+               onClick={handleDashboardClick}
+               className="bg-gradient-to-r from-gold to-gold-light hover:from-gold-dark hover:to-gold text-navy border-0 font-bold gap-2"
+             >
+               {profile?.role === 'admin' && <Shield className="w-4 h-4" />}
+               {profile?.role === 'admin' ? 'لوحة الإدارة' : 'لوحة التحكم'}
+             </Button>
           ) : (
              <Link href="/login">
                <Button className="bg-gold text-navy hover:bg-gold-light gap-2 font-bold">
