@@ -12,75 +12,79 @@ This is the definitive, step-by-step master plan for the GrowthNexus platform. I
 
 ---
 
-## 🟡 Phase 5: ATS Pipeline & Job Enhancements (IN PROGRESS)
-**Goal:** Enhance how employers interact with job listings and applicants.
-
-### 5.1 Job Posting Enhancements
-- **AI Assistant:** Integrate an AI button in `/employer/jobs/new` to auto-generate Job Titles, Descriptions, and Requirements based on a brief prompt.
-- **Location & Nationality:** Replace free-text inputs with strict Dropdowns:
-  - UAE Cities: Abu Dhabi, Dubai, Sharjah, Ajman, Umm Al Quwain, Ras Al Khaimah, Fujairah, Al Ain, Kalba, Hatta, Al Dhafra, Ruwais.
-  - Nationality: Multi-select (All, UAE Nationals, GCC, Arab Nationals, Expats).
-- **Confidentiality Update:** Modify the frontend and `public_jobs_view` so that hidden companies display their `company_type` (e.g., "Government Entity", "Semi-Government Entity") instead of a generic "Private Company".
-
-### 5.2 Job Management & Employer Dashboard
-- **Job Actions:** Implement UI to Pause, Duplicate, Share, and Promote (Boost) jobs from the employer dashboard.
-- **Filtering & Sorting:** Add toggles to view Active, Paused, Closed, and Draft jobs. Sort by newest, oldest, or most applicants.
-- **Notifications:** Create a notification dropdown for events like new applications or messages.
-
-### 5.3 Advanced Application Pipeline (Kanban)
-- **New Statuses:** Add "Offer" (`عرض وظيفي`) to the application columns.
-- **Safe Rejection:** When dragging a candidate to "Rejected", trigger a confirmation modal.
-- **Rejection Reasons:** Require the employer to select a reason (e.g., "Experience Mismatch", "Salary Expectations") which saves to the `applications` table for Analytics.
-- **Candidate Filtering:** Allow employers to filter applicants within a job by Nationality, Specialization, Degree, Experience, and AI Match Score.
+## ✅ Phase 5: ATS Pipeline & Job Enhancements (COMPLETED)
+- **Job Posting:** UAE cities dropdown, nationality multi-select, skills tags, AI assist, AED currency.
+- **Job Management:** Pause/Resume/Duplicate/Share, filtering/sorting, Arabic localization.
+- **Application Pipeline:** Offer status, rejection confirmation modal, rejection reasons, search/filter.
+- **New Modules:** Analytics Dashboard + Emiratisation Tracker with sidebar navigation.
 
 ---
 
-## 🛠 Phase 6: The 6 SaaS Modules & Automation (NEW)
-**Goal:** Build the enterprise features that justify the B2B SaaS subscription.
-
-### 6.1 Interview AI System
-- Build a dedicated page where candidates can take automated AI interviews.
-- Use `gn-interview-eval` n8n webhook to score the responses and append the report to the candidate's application profile for the employer to review.
-
-### 6.2 Candidate Evaluation Committee
-- Allow employers to invite team members to evaluate a candidate.
-- Build a scorecard UI.
-- Use `gn-committee-summary` webhook to aggregate scores and highlight discrepancies.
-
-### 6.3 Offer & Contract Automation
-- Build a template manager for employers to upload standard contracts.
-- Use `gn-contract-gen` webhook to merge candidate details into the contract and send it via an e-sign provider.
-
-### 6.4 Analytics & KPI Dashboard
-- Build `/employer/analytics`.
-- Aggregate data to show Time-to-Fill, Offer Acceptance Rate, and Rejection Reason breakdown.
-
-### 6.5 Forecasting Engine
-- Implement UI to show AI predictions (e.g., "This job will likely take 27 days to fill"). Data provided by backend/n8n analysis of historical DB trends.
-
-### 6.6 Emiratisation Engine
-- Build `/employer/emiratisation`.
-- Show current UAE National headcount vs targets.
-- Highlight candidates tagged as `candidate_type = 'emirati'` in the ATS view.
+## ✅ Phase 6: Admin Panel (COMPLETED)
+- Admin layout with `role === 'admin'` guard.
+- Dashboard (KPI cards: users, companies, jobs, applications, transactions).
+- System Config CRUD (inline editing, grouped by category).
+- Users management (search, role filter, inline role change).
+- Companies management (verify/reject, company type dropdown).
+- Jobs moderation (force-close, feature/unfeature, status filters).
+- Transactions viewer (all payments + total revenue).
 
 ---
 
-## 🏢 Phase 7: Verification & Monetization
-**Goal:** Secure the platform and implement the billing logic.
-
-### 7.1 Company Verification Flow (Trust Score)
-- For companies registering with generic emails (e.g., @gmail.com), force a Trade License upload step.
-- Trigger `gn-company-verify` webhook to perform OCR and registry matching.
-- Restrict job posting privileges until verification is complete or conditionally approved.
-
-### 7.2 SaaS Pricing & EdfaPay Integration
-- Build a unified Pricing page that dynamically shows packages (Starter, Growth, Pro, Enterprise) *only* when the user intends to upgrade.
-- Integrate EdfaPay checkout APIs.
-- Handle fulfillment via the `gn-payment-verify` webhook (updating `companies.subscription_tier` and `job_credits`).
+## ✅ Phase 7: n8n Guides & AI API (COMPLETED)
+- Rewrote N8N_WORKFLOW_GUIDE.md with 11 workflows (6 existing + 5 new).
+- Rewrote N8N_WEBHOOK_GUIDE.md with full contracts for all 11 webhooks.
+- Created `/api/ai/job-description` route (calls n8n → Gemini, falls back to mock).
 
 ---
 
-## 🌐 Phase 8: Polish, Localization & Launch
-- Implement full RTL support and Arabic/English toggling via `next-intl`.
-- Finalize SEO metadata and sitemaps.
-- Comprehensive end-to-end testing of the employer and candidate flows.
+## ✅ Phase 8: Stripe + Interview AI + Committee Evaluation (COMPLETED)
+
+### 8A: Stripe SaaS Billing
+- Database migration: `stripe_customer_id`, `stripe_subscription_id`, `subscription_status`, `subscription_expires_at`.
+- `/api/stripe/checkout` — Creates Stripe Checkout Session for tier-based subscriptions.
+- `/api/stripe/webhook` — Handles lifecycle events (checkout complete, invoice paid, subscription updated/deleted).
+- `/api/stripe/portal` — Billing Portal session for self-service subscription management.
+- Redesigned `/pricing` — Features visible, prices hidden until checkout (per client requirement).
+- `/payment/success` + `/payment/cancel` — Post-checkout pages.
+
+### 8B: Interview AI System (n8n-backed)
+- `/api/interview/questions` — Generates 5 interview questions via n8n or mock.
+- `/api/interview/submit` — Sends answers to n8n for AI evaluation, saves scores.
+- `/candidate/interview/[applicationId]` — Step-by-step interview wizard with score results.
+- Database: `auto_interview`, `interview_score`, `interview_report` columns.
+
+### 8C: Committee Evaluation (n8n-backed)
+- `committee_evaluations` table with RLS policies.
+- `/api/evaluation/submit` — Saves scorecard, triggers n8n summary when ≥2 evaluators.
+- `/employer/evaluate/[applicationId]` — Scorecard UI with criteria sliders and notes.
+- Auto-aggregation: average score, outlier detection, recommendation.
+
+---
+
+## 🛠 Phase 9: Offer & Contract Automation + Forecasting (NEXT)
+### 9.1 Offer & Contract Automation
+- Build contract template manager.
+- Use `gn-contract-gen` webhook to merge candidate data into MOHRE-aligned templates.
+- Document status tracking: sent → viewed → signed → declined → expired.
+- E-sign integration (future).
+
+### 9.2 Forecasting Engine
+- Build AI predictions UI (time-to-fill, offer acceptance, hiring difficulty).
+- Backed by n8n analysis of historical DB trends.
+
+---
+
+## 🛠 Phase 10: Verification, i18n & Launch
+### 10.1 Company Verification Flow (Trust Score)
+- Trade License upload step for companies with generic emails.
+- `gn-company-verify` webhook: OCR → registry matching → trust score.
+
+### 10.2 Candidate Services (B2C)
+- CV Analyzer, CV Builder, Career Path Generator, Job Alerts.
+- Stripe one-time payments + credit system.
+
+### 10.3 i18n & SEO Polish
+- Full RTL support and Arabic/English toggling via `next-intl`.
+- Dynamic metadata, sitemaps, OG images.
+- End-to-end testing.
