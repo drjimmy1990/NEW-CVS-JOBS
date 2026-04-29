@@ -52,6 +52,15 @@ export default async function ApplicantsPage({ params }: ApplicantsPageProps) {
         .order('created_at', { ascending: false })
 
     console.log('[applicants] job_id:', id, '| count:', applications?.length, '| error:', appError?.message)
+    if (applications?.[0]) {
+        console.log('[applicants] first app fields:', {
+            id: applications[0].id,
+            interview_score: applications[0].interview_score,
+            interview_report: applications[0].interview_report ? 'EXISTS' : 'NULL',
+            ai_match_score: applications[0].ai_match_score,
+            ai_analysis: applications[0].ai_analysis ? 'EXISTS' : 'NULL',
+        })
+    }
 
     // Enrich with profile data (full_name, email) from profiles table
     let enrichedApplications = applications || []

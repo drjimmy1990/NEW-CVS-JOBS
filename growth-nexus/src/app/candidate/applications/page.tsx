@@ -21,6 +21,7 @@ type Application = {
     id: string
     status: ApplicationStatus
     created_at: string
+    interview_score: number | null
     job: {
         id: string
         title: string
@@ -75,6 +76,7 @@ export default function ApplicationsPage() {
                 id,
                 status,
                 created_at,
+                interview_score,
                 job:jobs (
                     id,
                     title,
@@ -240,10 +242,19 @@ export default function ApplicationsPage() {
                                         </div>
                                     </div>
 
-                                    {/* Status Badge */}
-                                    <Badge className={statusConfig[app.status].color}>
-                                        {statusConfig[app.status].label}
-                                    </Badge>
+                                    {/* Status Badge + Interview Button */}
+                                    <div className="flex flex-col items-end gap-2">
+                                        <Badge className={statusConfig[app.status].color}>
+                                            {statusConfig[app.status].label}
+                                        </Badge>
+                                        {app.status === 'interview' && (
+                                            <Link href={`/candidate/interview/${app.id}`}>
+                                                <Button size="sm" className={`text-xs font-bold ${app.interview_score != null ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-gold hover:bg-gold-dark text-navy'}`}>
+                                                    {app.interview_score != null ? `عرض نتيجة المقابلة (${app.interview_score}%)` : 'ابدأ المقابلة الآلية'}
+                                                </Button>
+                                            </Link>
+                                        )}
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>

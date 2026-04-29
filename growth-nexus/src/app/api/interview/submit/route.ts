@@ -55,11 +55,28 @@ export async function POST(request: NextRequest) {
         }
     }
 
-    // Save to database
-    await supabase.from('applications').update({
-        interview_score: result.overall_score,
-        interview_report: result,
-    }).eq('id', application_id)
+    // Save to database via RPC (bypasses RLS)
+    const { error: updateError } = await supabase.rpc('save_interview_result', {
+        p_application_id: application_id,
+        p_interview_score: result.overall_score ?? 0,
+        p_interview_report: result,
+    })
+
+    if (updateError) {
+        console.error('[interview-submit] DB save error:', updateError.message)
+        // Fallback: try direct update
+        const { error: fallbackError } = await supabase.from('applications').update({
+            interview_score: result.overall_score,
+            interview_report: result,
+        }).eq('id', application_id)
+        if (fallbackError) {
+            console.error('[interview-submit] Fallback update also failed:', fallbackError.message)
+        } else {
+            console.log('[interview-submit] Saved via fallback update')
+        }
+    } else {
+        console.log('[interview-submit] Saved score:', result.overall_score, 'for application:', application_id)
+    }
 
     return NextResponse.json(result)
 }

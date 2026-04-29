@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { User, Mail, FileText, Calendar, ExternalLink, ChevronDown, Filter, Search, AlertTriangle, Loader2 } from 'lucide-react'
+import { User, Users, Mail, FileText, Calendar, ExternalLink, ChevronDown, Filter, Search, AlertTriangle, Loader2 } from 'lucide-react'
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -238,6 +238,15 @@ export function ApplicantsList({ initialApplicants }: ApplicantsListProps) {
                                                     تطابق {app.ai_match_score}%
                                                 </Badge>
                                             )}
+                                            {app.interview_score != null && (
+                                                <Badge className={`text-xs font-bold ${
+                                                    app.interview_score >= 75 ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' :
+                                                    app.interview_score >= 50 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                                                    'bg-red-500/20 text-red-400 border-red-500/30'
+                                                }`}>
+                                                    مقابلة {app.interview_score}%
+                                                </Badge>
+                                            )}
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                     <Button variant="ghost" size="sm" className={`h-6 text-xs px-2 ${getStatusColor(app.status)} hover:opacity-80`} disabled={updatingId === app.id}>
@@ -329,6 +338,40 @@ export function ApplicantsList({ initialApplicants }: ApplicantsListProps) {
                                     )}
                                 </div>
                             )}
+                            {/* Interview Results */}
+                            {selectedApplicant.interview_score != null && (
+                                <div className="p-4 rounded-lg border border-purple-500/20 bg-purple-500/5">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h4 className="text-sm font-semibold text-purple-400">نتيجة المقابلة الآلية</h4>
+                                        <span className={`text-2xl font-bold ${
+                                            selectedApplicant.interview_score >= 75 ? 'text-emerald-400' :
+                                            selectedApplicant.interview_score >= 50 ? 'text-yellow-400' :
+                                            'text-red-400'
+                                        }`}>{selectedApplicant.interview_score}%</span>
+                                    </div>
+                                    <div className="w-full bg-navy rounded-full h-2 mb-3">
+                                        <div className={`h-2 rounded-full ${
+                                            selectedApplicant.interview_score >= 75 ? 'bg-emerald-500' :
+                                            selectedApplicant.interview_score >= 50 ? 'bg-yellow-500' :
+                                            'bg-red-500'
+                                        }`} style={{ width: `${selectedApplicant.interview_score}%` }} />
+                                    </div>
+                                    {selectedApplicant.interview_report?.recommendation && (
+                                        <p className="text-sm text-cream-dark/60 mb-3">{selectedApplicant.interview_report.recommendation}</p>
+                                    )}
+                                    {selectedApplicant.interview_report?.evaluation?.map((ev: any, i: number) => (
+                                        <div key={i} className="flex items-center justify-between py-1.5 border-t border-purple-500/10">
+                                            <span className="text-xs text-cream-dark/50">السؤال {i + 1}</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs text-cream-dark/40">{ev.feedback?.slice(0, 50)}</span>
+                                                <Badge className={`text-xs ${ev.score >= 8 ? 'bg-emerald-500/15 text-emerald-400' : ev.score >= 6 ? 'bg-yellow-500/15 text-yellow-400' : 'bg-red-500/15 text-red-400'}`}>
+                                                    {ev.score}/{ev.max}
+                                                </Badge>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                             {selectedApplicant.cover_letter && (
                                 <div className="space-y-2"><h4 className="text-sm font-semibold text-cream-dark">خطاب التقديم</h4>
                                     <div className="p-4 bg-navy-lighter/50 rounded-lg text-cream-dark/70 text-sm whitespace-pre-line">{selectedApplicant.cover_letter}</div>
@@ -351,6 +394,11 @@ export function ApplicantsList({ initialApplicants }: ApplicantsListProps) {
                                     </a>
                                 )}
                             </div>
+                            <a href={`/employer/evaluate/${selectedApplicant.id}`} className="block">
+                                <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white mt-2">
+                                    <Users className="me-2 h-4 w-4" />تقييم اللجنة
+                                </Button>
+                            </a>
                         </div>
                     </>)}
                 </DialogContent>

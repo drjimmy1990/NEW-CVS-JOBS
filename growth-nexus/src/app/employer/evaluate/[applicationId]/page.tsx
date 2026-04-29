@@ -37,11 +37,21 @@ export default function EvaluatePage() {
 
     const loadData = async () => {
         setLoading(true)
-        const { data: app } = await supabase
+        const { data: app, error: appError } = await supabase
             .from('applications')
-            .select('*, jobs(title), profiles!applications_candidate_id_fkey(full_name, email)')
+            .select('*, jobs(title)')
             .eq('id', applicationId)
             .single()
+
+        if (app) {
+            // Fetch candidate profile separately (FK only points to candidates table)
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('full_name, email')
+                .eq('id', app.candidate_id)
+                .single()
+            app.profiles = profile || { full_name: 'غير محدد', email: '' }
+        }
         setApplication(app)
 
         // Check if already evaluated
