@@ -2,7 +2,13 @@ import { type NextRequest } from 'next/server'
 import { updateSession } from '@/utils/supabase/middleware'
 
 export async function proxy(request: NextRequest) {
-    return await updateSession(request)
+    // Run Supabase session refresh + route protection
+    const response = await updateSession(request)
+
+    // Inject pathname header for server components (NavbarWrapper)
+    response.headers.set('x-pathname', request.nextUrl.pathname)
+
+    return response
 }
 
 export const config = {

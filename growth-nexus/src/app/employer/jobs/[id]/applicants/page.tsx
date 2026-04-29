@@ -36,24 +36,38 @@ export default async function ApplicantsPage({ params }: ApplicantsPageProps) {
     }
 
     // Get applications for this job
-    const { data: applications } = await supabase
+    const { data: applications, error: appError } = await supabase
         .from('applications')
         .select(`
             *,
-            profiles:candidate_id (
-                id,
-                full_name,
-                email
-            ),
             candidates:candidate_id (
+                id,
                 headline,
                 skills,
                 cv_url,
-                parsed_data
+                resume_parsed_data
             )
         `)
         .eq('job_id', id)
         .order('created_at', { ascending: false })
+
+    console.log('[applicants] job_id:', id, '| count:', applications?.length, '| error:', appError?.message)
+
+    // Enrich with profile data (full_name, email) from profiles table
+    let enrichedApplications = applications || []
+    if (applications && applications.length > 0) {
+        const candidateIds = applications.map((a: any) => a.candidate_id)
+        const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, full_name, email')
+            .in('id', candidateIds)
+
+        const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]))
+        enrichedApplications = applications.map((app: any) => ({
+            ...app,
+            profiles: profileMap.get(app.candidate_id) || { full_name: 'مرشح', email: '' }
+        }))
+    }
 
     return (
         <div className="space-y-6">
@@ -67,13 +81,13 @@ export default async function ApplicantsPage({ params }: ApplicantsPageProps) {
                 <div>
                     <h1 className="text-3xl font-bold text-white">Applicants</h1>
                     <p className="text-slate-400 mt-1">
-                        {job.title} • {applications?.length || 0} applicants
+                        {job.title} • {enrichedApplications.length} applicants
                     </p>
                 </div>
             </div>
 
             {/* Interactive Applicants List */}
-            <ApplicantsList initialApplicants={applications || []} />
+            <ApplicantsList initialApplicants={enrichedApplications} />
         </div>
     )
 }

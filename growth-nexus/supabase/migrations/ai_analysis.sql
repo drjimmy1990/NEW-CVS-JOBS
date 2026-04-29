@@ -1,0 +1,3 @@
+ALTER TABLE public.applications
+ADD COLUMN IF NOT EXISTS ai_match_score INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS ai_analysis TEXT;

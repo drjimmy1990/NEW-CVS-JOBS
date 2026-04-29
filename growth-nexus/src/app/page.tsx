@@ -225,7 +225,7 @@ export default function HomePage() {
       <section className="container mx-auto px-4 py-20">
         <div className="relative rounded-3xl overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-gold to-gold-dark opacity-90" />
-          <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-20" />
+          <div className="absolute inset-0 opacity-20" />
 
           <div className="relative px-8 py-16 md:py-20 text-center">
             <h2 className="text-3xl md:text-4xl font-bold text-navy mb-4">

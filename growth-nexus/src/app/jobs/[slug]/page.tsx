@@ -36,12 +36,13 @@ const typeLabels: Record<string, string> = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { slug } = await params
+    const decodedSlug = decodeURIComponent(slug)
     const supabase = await createClient()
 
     const { data: job } = await supabase
         .from('jobs')
-        .select('title, description, location, companies(name)')
-        .eq('slug', slug)
+        .select('title, description, location_city, companies(name)')
+        .eq('slug', decodedSlug)
         .single()
 
     if (!job) {
@@ -62,6 +63,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function JobDetailPage({ params }: Props) {
     const { slug } = await params
+    const decodedSlug = decodeURIComponent(slug)
     const supabase = await createClient()
 
     const { data: job } = await supabase
@@ -79,7 +81,7 @@ export default async function JobDetailPage({ params }: Props) {
         size_range
       )
     `)
-        .eq('slug', slug)
+        .eq('slug', decodedSlug)
         .single()
 
     if (!job) {
@@ -192,9 +194,10 @@ export default async function JobDetailPage({ params }: Props) {
                             </CardHeader>
                             <CardContent>
                                 <div className="prose prose-invert prose-slate max-w-none">
-                                    <div className="text-slate-300 whitespace-pre-wrap">
-                                        {job.description || 'No description provided.'}
-                                    </div>
+                                    <div 
+                                        className="text-slate-300 whitespace-pre-wrap"
+                                        dangerouslySetInnerHTML={{ __html: job.description || 'No description provided.' }}
+                                    />
                                 </div>
                             </CardContent>
                         </Card>
@@ -206,9 +209,10 @@ export default async function JobDetailPage({ params }: Props) {
                                     <CardTitle className="text-white">Requirements</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-slate-300 whitespace-pre-wrap">
-                                        {job.requirements}
-                                    </div>
+                                    <div 
+                                        className="text-slate-300 whitespace-pre-wrap prose prose-invert max-w-none prose-ul:list-disc prose-ul:ps-6 prose-li:mb-1"
+                                        dangerouslySetInnerHTML={{ __html: job.requirements }}
+                                    />
                                 </CardContent>
                             </Card>
                         )}

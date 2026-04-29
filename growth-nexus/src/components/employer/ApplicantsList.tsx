@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { User, Mail, FileText, Calendar, ExternalLink, ChevronDown, Filter, Search, AlertTriangle } from 'lucide-react'
+import { User, Mail, FileText, Calendar, ExternalLink, ChevronDown, Filter, Search, AlertTriangle, Loader2 } from 'lucide-react'
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -49,6 +49,26 @@ export function ApplicantsList({ initialApplicants }: ApplicantsListProps) {
     // Filters
     const [searchTerm, setSearchTerm] = useState('')
     const [filterStatus, setFilterStatus] = useState<string>('all')
+    // Offer flow
+    const [offerModalOpen, setOfferModalOpen] = useState(false)
+    const [appToOffer, setAppToOffer] = useState<any | null>(null)
+    const [offerSalary, setOfferSalary] = useState('')
+    const [offerStartDate, setOfferStartDate] = useState('')
+    const [offerTemplate, setOfferTemplate] = useState('')
+    const [templates, setTemplates] = useState<any[]>([])
+    const [generatingOffer, setGeneratingOffer] = useState(false)
+
+    useEffect(() => {
+        const loadTemplates = async () => {
+            const { data } = await supabase.from('contract_templates').select('*')
+            if (data) {
+                setTemplates(data)
+                if (data.length > 0) setOfferTemplate(data[0].id)
+            }
+        }
+        loadTemplates()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
     const handleStatusChange = async (appId: string, newStatus: string) => {
         // Intercept rejection with confirmation
@@ -56,6 +76,13 @@ export function ApplicantsList({ initialApplicants }: ApplicantsListProps) {
             const app = applicants.find(a => a.id === appId)
             setAppToReject(app)
             setRejectConfirmOpen(true)
+            return
+        }
+        // Intercept offer to generate contract
+        if (newStatus === 'offer') {
+            const app = applicants.find(a => a.id === appId)
+            setAppToOffer(app)
+            setOfferModalOpen(true)
             return
         }
 
@@ -87,6 +114,37 @@ export function ApplicantsList({ initialApplicants }: ApplicantsListProps) {
             setApplicants(applicants.map(a => a.id === appToReject.id ? { ...a, status: 'rejected', rejection_reason: fullReason } : a))
         }
         setRejectReasonOpen(false); setAppToReject(null); setRejectReason(''); setRejectNote(''); setUpdatingId(null)
+    }
+
+    const handleOfferSubmit = async () => {
+        if (!appToOffer || !offerSalary || !offerStartDate || !offerTemplate) {
+            toast.error('يرجى تعبئة جميع الحقول')
+            return
+        }
+        setGeneratingOffer(true)
+        try {
+            const res = await fetch('/api/contracts/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    applicationId: appToOffer.id,
+                    templateId: offerTemplate,
+                    salary: offerSalary,
+                    startDate: offerStartDate
+                })
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'فشل توليد العقد')
+            
+            toast.success('تم إنشاء العقد وتحديث الحالة بنجاح')
+            setApplicants(applicants.map(a => a.id === appToOffer.id ? { ...a, status: 'offer' } : a))
+            setOfferModalOpen(false)
+            setAppToOffer(null)
+        } catch (error: any) {
+            toast.error(error.message)
+        } finally {
+            setGeneratingOffer(false)
+        }
     }
 
     const getStatusColor = (v: string) => statusOptions.find(s => s.value === v)?.color || 'bg-cream-dark/15 text-cream-dark/50'
@@ -171,6 +229,15 @@ export function ApplicantsList({ initialApplicants }: ApplicantsListProps) {
                                     <div>
                                         <div className="flex items-center gap-3 mb-1">
                                             <h3 className="text-lg font-semibold text-cream">{app.profiles?.full_name || 'مرشح'}</h3>
+                                            {app.ai_match_score > 0 && (
+                                                <Badge className={`text-xs font-bold ${
+                                                    app.ai_match_score >= 70 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
+                                                    app.ai_match_score >= 40 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                                                    'bg-red-500/20 text-red-400 border-red-500/30'
+                                                }`}>
+                                                    تطابق {app.ai_match_score}%
+                                                </Badge>
+                                            )}
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                     <Button variant="ghost" size="sm" className={`h-6 text-xs px-2 ${getStatusColor(app.status)} hover:opacity-80`} disabled={updatingId === app.id}>
@@ -239,13 +306,36 @@ export function ApplicantsList({ initialApplicants }: ApplicantsListProps) {
                                 {selectedApplicant.profiles?.email && <span className="flex items-center gap-2"><Mail className="h-4 w-4 text-gold" /><a href={`mailto:${selectedApplicant.profiles.email}`} className="hover:text-gold">{selectedApplicant.profiles.email}</a></span>}
                                 <span className="flex items-center gap-2"><Calendar className="h-4 w-4 text-gold" />تقدّم: {new Date(selectedApplicant.created_at).toLocaleDateString('ar-AE')}</span>
                             </div>
+                            {/* AI Match Score */}
+                            {selectedApplicant.ai_match_score > 0 && (
+                                <div className="p-4 rounded-lg border border-gold/10 bg-navy-lighter/30">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h4 className="text-sm font-semibold text-gold">نسبة التطابق بالذكاء الاصطناعي</h4>
+                                        <span className={`text-2xl font-bold ${
+                                            selectedApplicant.ai_match_score >= 70 ? 'text-emerald-400' :
+                                            selectedApplicant.ai_match_score >= 40 ? 'text-yellow-400' :
+                                            'text-red-400'
+                                        }`}>{selectedApplicant.ai_match_score}%</span>
+                                    </div>
+                                    <div className="w-full bg-navy rounded-full h-2 mb-2">
+                                        <div className={`h-2 rounded-full ${
+                                            selectedApplicant.ai_match_score >= 70 ? 'bg-emerald-500' :
+                                            selectedApplicant.ai_match_score >= 40 ? 'bg-yellow-500' :
+                                            'bg-red-500'
+                                        }`} style={{ width: `${selectedApplicant.ai_match_score}%` }} />
+                                    </div>
+                                    {selectedApplicant.ai_analysis && (
+                                        <p className="text-sm text-cream-dark/60 mt-2">{selectedApplicant.ai_analysis}</p>
+                                    )}
+                                </div>
+                            )}
                             {selectedApplicant.cover_letter && (
                                 <div className="space-y-2"><h4 className="text-sm font-semibold text-cream-dark">خطاب التقديم</h4>
                                     <div className="p-4 bg-navy-lighter/50 rounded-lg text-cream-dark/70 text-sm whitespace-pre-line">{selectedApplicant.cover_letter}</div>
                                 </div>
                             )}
-                            {selectedApplicant.candidates?.parsed_data ? (
-                                <div className="bg-navy-lighter/30 border border-gold/10 rounded-lg p-4">{renderAiInsights(selectedApplicant.candidates.parsed_data)}</div>
+                            {selectedApplicant.candidates?.resume_parsed_data ? (
+                                <div className="bg-navy-lighter/30 border border-gold/10 rounded-lg p-4">{renderAiInsights(selectedApplicant.candidates.resume_parsed_data)}</div>
                             ) : (
                                 <div className="text-sm text-cream-dark/30 italic p-4 bg-navy-lighter/30 rounded-lg">لا تتوفر رؤى AI لهذا المرشح حتى الآن.</div>
                             )}
@@ -309,6 +399,41 @@ export function ApplicantsList({ initialApplicants }: ApplicantsListProps) {
                         <Button variant="outline" onClick={() => { setRejectReasonOpen(false); setAppToReject(null) }} className="border-gold/10 text-cream-dark">إلغاء</Button>
                         <Button onClick={handleRejectSubmit} disabled={!rejectReason || updatingId === appToReject?.id} className="bg-red-600 hover:bg-red-700 text-white">
                             تأكيد الرفض
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Offer Generation Dialog */}
+            <Dialog open={offerModalOpen} onOpenChange={(v) => { if (!v && !generatingOffer) { setOfferModalOpen(false); setAppToOffer(null) } }}>
+                <DialogContent className="bg-navy-light border-gold/10 text-cream" dir="rtl">
+                    <DialogHeader>
+                        <DialogTitle>توليد عرض وظيفي</DialogTitle>
+                        <DialogDescription className="text-cream-dark/50">قم بإدخال تفاصيل العرض ليتم توليد العقد تلقائياً (MOHRE)</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 mt-2">
+                        <div className="space-y-2">
+                            <Label className="text-cream-dark">الراتب (بالدرهم) *</Label>
+                            <Input type="number" value={offerSalary} onChange={(e) => setOfferSalary(e.target.value)} placeholder="مثال: 15000" className="bg-navy-lighter border-gold/10 text-cream" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-cream-dark">تاريخ المباشرة *</Label>
+                            <Input type="date" value={offerStartDate} onChange={(e) => setOfferStartDate(e.target.value)} className="bg-navy-lighter border-gold/10 text-cream block text-left" style={{direction: "ltr"}} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-cream-dark">قالب العقد *</Label>
+                            <Select value={offerTemplate} onValueChange={setOfferTemplate}>
+                                <SelectTrigger className="bg-navy-lighter border-gold/10 text-cream"><SelectValue placeholder="اختر القالب" /></SelectTrigger>
+                                <SelectContent className="bg-navy-light border-gold/10">
+                                    {templates.map(t => <SelectItem key={t.id} value={t.id} className="text-cream">{t.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <DialogFooter className="flex-row-reverse gap-2 mt-4">
+                        <Button variant="outline" onClick={() => { setOfferModalOpen(false); setAppToOffer(null) }} className="border-gold/10 text-cream-dark" disabled={generatingOffer}>إلغاء</Button>
+                        <Button onClick={handleOfferSubmit} disabled={generatingOffer || !offerSalary || !offerStartDate} className="bg-gold hover:bg-gold-dark text-navy font-bold">
+                            {generatingOffer ? <><Loader2 className="me-2 h-4 w-4 animate-spin" /> جاري التوليد...</> : 'إنشاء العقد'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

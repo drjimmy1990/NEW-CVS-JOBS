@@ -89,7 +89,7 @@ export function ApplyModal({ isOpen, onClose, jobId, jobTitle, companyName }: Ap
         }
 
         // Submit application
-        const { error } = await supabase
+        const { data, error } = await supabase
             .from('applications')
             .insert({
                 job_id: jobId,
@@ -98,6 +98,8 @@ export function ApplyModal({ isOpen, onClose, jobId, jobTitle, companyName }: Ap
                 resume_snapshot_url: candidateData?.cv_url || null,
                 status: 'applied'
             })
+            .select()
+            .single()
 
         if (error) {
             toast.error('Failed to apply: ' + error.message)
@@ -105,7 +107,16 @@ export function ApplyModal({ isOpen, onClose, jobId, jobTitle, companyName }: Ap
             return
         }
 
-        // Optionally update job applicants count (ignore errors)
+        // Trigger AI Match Score generation (await to prevent browser cancellation on navigation)
+        try {
+            await fetch('/api/ai/match-score', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ applicationId: data.id })
+            })
+        } catch (err) {
+            console.error('Failed to trigger match score:', err)
+        }
 
         toast.success('Application submitted! 🎉')
         setLoading(false)

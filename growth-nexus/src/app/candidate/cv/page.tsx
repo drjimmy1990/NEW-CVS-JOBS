@@ -170,17 +170,17 @@ export default function CVPage() {
             })
 
             if (response.ok) {
-                toast.success('تم إرسال السيرة للتحليل بالذكاء الاصطناعي!')
-                setTimeout(loadCandidateData, 5000)
+                toast.success('تم تحليل السيرة الذاتية بنجاح!')
+                await loadCandidateData()
             } else {
                 toast.error('فشل تحليل الذكاء الاصطناعي')
             }
         } catch (error) {
             console.error('AI parsing error:', error)
             toast.error('تحليل الذكاء الاصطناعي غير متاح مؤقتاً')
+        } finally {
+            setParsing(false)
         }
-
-        setParsing(false)
     }
 
     const deleteCV = async () => {
