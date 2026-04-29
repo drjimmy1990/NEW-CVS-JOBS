@@ -14,7 +14,7 @@
 | 3 | **Match Score Calculator** | `/gn-match-score` | ✅ Done | Triggered on job application → AI compares candidate vs job → saves `ai_match_score` + `ai_analysis` to `applications` |
 | 4 | **Interview Questions** | `/gn-interview-questions` | ✅ Done | Generates 5 AI interview questions based on job title/type. ⚠️ If LLM node errors, frontend falls back to mock questions |
 | 5 | **Interview Evaluation** | `/gn-interview-eval` | ✅ Done | AI evaluates candidate answers → saves `interview_score` + `interview_report` via RPC. ⚠️ If LLM node errors, frontend falls back to random mock scores |
-| 6 | **Application Notification** | `/gn-application-notify` | ❌ Not Started | Should notify employer (email/Telegram) when someone applies to their job |
+| 6 | **Application Notification** | `/gn-application-notify` | 🔧 Code Ready | In-app notification bell ✅ + API trigger on apply. **n8n needed only for email/Telegram** |
 | 7 | **Smart Candidate Matching** | `/gn-smart-match` | ❌ Not Started | Employer searches for best candidates for a specific job from the candidates pool |
 | 8 | **Message Notification** | `/gn-message-notify` | ❌ Not Started | Notify user when they receive a new message in the messaging system |
 | 9 | **Payment Verification** | `/gn-payment-verify` | ❌ Not Started | Verify Stripe/EdfaPay payment and fulfill subscription or priority application |
@@ -29,8 +29,8 @@
 | Status | Count |
 |--------|-------|
 | ✅ Done | 5 |
-| 🔧 Code Ready (needs n8n workflow) | 2 |
-| ❌ Not Started | 5 |
+| 🔧 Code Ready (needs n8n workflow) | 3 |
+| ❌ Not Started | 4 |
 
 ## Where Results Appear
 

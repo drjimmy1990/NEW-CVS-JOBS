@@ -118,6 +118,23 @@ export function ApplyModal({ isOpen, onClose, jobId, jobTitle, companyName }: Ap
             console.error('Failed to trigger match score:', err)
         }
 
+        // Trigger Application Notification (notify employer team)
+        try {
+            await fetch('/api/notifications/application-notify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    applicationId: data.id,
+                    jobId,
+                    jobTitle,
+                    candidateName: user.user_metadata?.full_name || user.email,
+                    companyName,
+                })
+            })
+        } catch (err) {
+            console.error('Failed to trigger notification:', err)
+        }
+
         toast.success('Application submitted! 🎉')
         setLoading(false)
         onClose()

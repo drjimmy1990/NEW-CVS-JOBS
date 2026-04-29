@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
+import { NotificationBell } from '@/components/employer/NotificationBell'
 
 const sidebarLinks = [
     { href: '/employer/dashboard', label: 'لوحة التحكم', icon: LayoutDashboard },
@@ -210,6 +211,13 @@ export default async function EmployerLayout({
 
             {/* Main Content */}
             <main className="flex-1 overflow-auto">
+                {/* Top Bar */}
+                <div className="sticky top-0 z-30 bg-navy/80 backdrop-blur-lg border-b border-gold/5 px-8 py-3 flex items-center justify-end gap-3">
+                    <NotificationBell />
+                    <div className="text-xs text-cream-dark/30">
+                        {profile?.full_name}
+                    </div>
+                </div>
                 <div className="p-8">
                     {children}
                 </div>
