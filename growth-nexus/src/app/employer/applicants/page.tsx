@@ -17,12 +17,19 @@ export default async function ApplicantsPage({
         return <div className="text-cream">يرجى تسجيل الدخول</div>
     }
 
-    // Get employer's company
-    const { data: company } = await supabase
-        .from('companies')
-        .select('id')
-        .eq('owner_id', user.id)
-        .single()
+    // Get employer's company (owner or team member)
+    let company: any = null
+    const { data: ownedCompany } = await supabase
+        .from('companies').select('id').eq('owner_id', user.id).single()
+
+    if (ownedCompany) {
+        company = ownedCompany
+    } else {
+        const { data: membership } = await supabase
+            .from('company_members').select('company_id')
+            .eq('user_id', user.id).eq('status', 'active').single()
+        if (membership) company = { id: membership.company_id }
+    }
 
     if (!company) {
         return <div className="text-cream">لم يتم العثور على شركة</div>

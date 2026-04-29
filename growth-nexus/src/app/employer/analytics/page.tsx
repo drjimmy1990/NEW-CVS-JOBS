@@ -7,8 +7,15 @@ export default async function AnalyticsPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return <div className="text-cream">يرجى تسجيل الدخول</div>
 
-    // Fetch company jobs and applications for analytics
-    const { data: company } = await supabase.from('companies').select('id').eq('owner_id', user.id).single()
+    // Fetch company (owner or member)
+    let companyId = null
+    const { data: ownedCo } = await supabase.from('companies').select('id').eq('owner_id', user.id).single()
+    if (ownedCo) { companyId = ownedCo.id }
+    else {
+        const { data: m } = await supabase.from('company_members').select('company_id').eq('user_id', user.id).eq('status', 'active').single()
+        if (m) companyId = m.company_id
+    }
+    const company = companyId ? { id: companyId } : null
     const { data: jobs } = await supabase.from('jobs').select('id, status, created_at').eq('company_id', company?.id || '')
     const jobIds = (jobs || []).map(j => j.id)
 

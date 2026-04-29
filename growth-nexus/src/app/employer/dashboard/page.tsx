@@ -19,7 +19,20 @@ export default async function EmployerDashboard() {
         return <div className="text-cream">يرجى تسجيل الدخول</div>
     }
 
-    const { data: jobs } = await supabase
+    // Get company access (owner or member)
+    let companyId = null
+    const { data: ownedCo } = await supabase
+        .from('companies').select('id').eq('owner_id', user.id).single()
+    if (ownedCo) {
+        companyId = ownedCo.id
+    } else {
+        const { data: membership } = await supabase
+            .from('company_members').select('company_id')
+            .eq('user_id', user.id).eq('status', 'active').single()
+        if (membership) companyId = membership.company_id
+    }
+
+    const { data: jobs } = companyId ? await supabase
         .from('jobs')
         .select(`
             id, title, slug, status, views_count, applicants_count, is_featured, created_at,
@@ -31,8 +44,9 @@ export default async function EmployerDashboard() {
                 cv_view_credits
             )
         `)
-        .eq('companies.owner_id', user.id)
+        .eq('company_id', companyId)
         .order('created_at', { ascending: false })
+    : { data: [] }
 
     const totalJobs = jobs?.length || 0
     const activeJobs = jobs?.filter(j => j.status === 'active').length || 0

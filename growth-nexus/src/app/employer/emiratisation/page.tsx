@@ -8,7 +8,13 @@ export default async function EmiratisationPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return <div className="text-cream">يرجى تسجيل الدخول</div>
 
-    const { data: company } = await supabase.from('companies').select('id, name, size_range').eq('owner_id', user.id).single()
+    let company: any = null
+    const { data: ownedCo } = await supabase.from('companies').select('id, name, size_range').eq('owner_id', user.id).single()
+    if (ownedCo) { company = ownedCo }
+    else {
+        const { data: m } = await supabase.from('company_members').select('company_id, companies(id, name, size_range)').eq('user_id', user.id).eq('status', 'active').single()
+        if (m?.companies) company = m.companies
+    }
     const { data: jobs } = await supabase.from('jobs').select('id').eq('company_id', company?.id || '')
     const jobIds = (jobs || []).map(j => j.id)
 

@@ -14,7 +14,20 @@ export default async function MyJobsPage() {
         return <div className="text-cream">يرجى تسجيل الدخول</div>
     }
 
-    const { data: jobs } = await supabase
+    // Get company access (owner or member)
+    let companyId = null
+    const { data: ownedCompany } = await supabase
+        .from('companies').select('id').eq('owner_id', user.id).single()
+    if (ownedCompany) {
+        companyId = ownedCompany.id
+    } else {
+        const { data: membership } = await supabase
+            .from('company_members').select('company_id')
+            .eq('user_id', user.id).eq('status', 'active').single()
+        if (membership) companyId = membership.company_id
+    }
+
+    const { data: jobs } = companyId ? await supabase
         .from('jobs')
         .select(`
             *,
@@ -24,8 +37,9 @@ export default async function MyJobsPage() {
                 name
             )
         `)
-        .eq('companies.owner_id', user.id)
+        .eq('company_id', companyId)
         .order('created_at', { ascending: false })
+    : { data: [] }
 
     const jobsWithCounts = await Promise.all(
         (jobs || []).map(async (job) => {

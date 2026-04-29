@@ -12,12 +12,16 @@ export default async function LandingPagesPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) redirect('/login')
 
-    // Get company ID
-    const { data: company } = await supabase
-        .from('companies')
-        .select('id')
-        .eq('owner_id', user.id)
-        .single()
+    // Get company ID (owner or member)
+    let company: any = null
+    const { data: ownedCo } = await supabase
+        .from('companies').select('id').eq('owner_id', user.id).single()
+    if (ownedCo) { company = ownedCo }
+    else {
+        const { data: m } = await supabase.from('company_members').select('company_id')
+            .eq('user_id', user.id).eq('status', 'active').single()
+        if (m) company = { id: m.company_id }
+    }
 
     if (!company) {
         return (

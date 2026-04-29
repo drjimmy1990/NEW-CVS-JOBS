@@ -144,9 +144,21 @@ export default function NewJobPage() {
 
         if (!user) { toast.error('يرجى تسجيل الدخول'); setLoading(false); return }
 
+        // Get company (owner or member)
         let { data: company } = await supabase.from('companies').select('id, job_credits').eq('owner_id', user.id).single()
 
         if (!company) {
+            // Check membership
+            const { data: membership } = await supabase.from('company_members')
+                .select('company_id, role, companies(id, job_credits)')
+                .eq('user_id', user.id).eq('status', 'active').single()
+            if (membership?.companies) {
+                company = membership.companies as any
+            }
+        }
+
+        if (!company) {
+            // Auto-create company for owner
             const fullName = user.user_metadata?.full_name || 'My'
             const companySlug = fullName.toLowerCase().replace(/\s+/g, '-') + '-company-' + Date.now()
             const { data: newCompany, error: companyError } = await supabase

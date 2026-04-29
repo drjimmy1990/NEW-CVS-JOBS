@@ -34,6 +34,7 @@ const sidebarLinks = [
     { href: '/employer/landing-pages', label: 'صفحات التوظيف', icon: FileText },
     { href: '/employer/analytics', label: 'التحليلات', icon: BarChart3 },
     { href: '/employer/emiratisation', label: 'التوطين', icon: Flag },
+    { href: '/employer/team', label: 'فريق العمل', icon: Users },
     { href: '/employer/settings', label: 'إعدادات الشركة', icon: Settings },
 ]
 
@@ -56,11 +57,33 @@ export default async function EmployerLayout({
         .eq('id', user.id)
         .single()
 
-    const { data: company } = await supabase
+    // Check company access: owner OR team member
+    let company: any = null
+    let memberRole = 'owner'
+
+    // First: check if owner
+    const { data: ownedCompany } = await supabase
         .from('companies')
         .select('*')
         .eq('owner_id', user.id)
         .single()
+
+    if (ownedCompany) {
+        company = ownedCompany
+    } else {
+        // Second: check team membership
+        const { data: membership } = await supabase
+            .from('company_members')
+            .select('company_id, role, companies(*)')
+            .eq('user_id', user.id)
+            .eq('status', 'active')
+            .single()
+
+        if (membership) {
+            company = membership.companies
+            memberRole = membership.role
+        }
+    }
 
     // Calculate total unread messages
     const { data: conversations } = await supabase

@@ -57,6 +57,17 @@ export default function CompanySettingsPage() {
 
             if (data) {
                 setCompany(data)
+            } else {
+                // Check team membership
+                const { data: membership } = await supabase
+                    .from('company_members')
+                    .select('company_id, companies(*)')
+                    .eq('user_id', user.id)
+                    .eq('status', 'active')
+                    .single()
+                if (membership?.companies) {
+                    setCompany(membership.companies as any)
+                }
             }
         }
         setLoading(false)
@@ -87,7 +98,7 @@ export default function CompanySettingsPage() {
                 industry: company.industry,
                 size_range: company.size_range,
             })
-            .eq('owner_id', user.id)
+            .eq('id', company.id)
 
         if (error) {
             toast.error('فشل الحفظ: ' + error.message)

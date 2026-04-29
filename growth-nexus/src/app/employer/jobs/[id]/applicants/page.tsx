@@ -16,7 +16,7 @@ export default async function ApplicantsPage({ params }: ApplicantsPageProps) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) redirect('/login')
 
-    // Get job details
+    // Get job details (without owner filter first)
     const { data: job } = await supabase
         .from('jobs')
         .select(`
@@ -28,10 +28,28 @@ export default async function ApplicantsPage({ params }: ApplicantsPageProps) {
             )
         `)
         .eq('id', id)
-        .eq('companies.owner_id', user.id)
         .single()
 
     if (!job) {
+        redirect('/employer/jobs')
+    }
+
+    // Verify access: owner OR team member
+    const isOwner = (job.companies as any)?.owner_id === user.id
+    let hasAccess = isOwner
+
+    if (!isOwner) {
+        const { data: membership } = await supabase
+            .from('company_members')
+            .select('id')
+            .eq('company_id', (job.companies as any)?.id)
+            .eq('user_id', user.id)
+            .eq('status', 'active')
+            .single()
+        hasAccess = !!membership
+    }
+
+    if (!hasAccess) {
         redirect('/employer/jobs')
     }
 
