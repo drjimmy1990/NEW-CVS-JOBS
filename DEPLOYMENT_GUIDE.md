@@ -14,9 +14,20 @@
 
 ## ⚡ Quick Update (استخدم هذا دائماً)
 
+> ⚠️ **ملاحظة مهمة:** الريبو فيه التطبيق داخل `growth-nexus/` كمجلد فرعي،
+> لكن على السيرفر الملفات موجودة مباشرة في مجلد الموقع.
+> لذلك نسحب من الريبو ثم ننسخ.
+
 ```bash
-cd /www/wwwroot/jobs-test.uae4jobs.ae
+# 1. سحب آخر نسخة من GitHub
+cd /www/wwwroot/jobs-test.uae4jobs.ae/NEW-CVS-JOBS
 git pull origin main
+
+# 2. نسخ الملفات المحدّثة لمجلد الموقع
+cp -r growth-nexus/* /www/wwwroot/jobs-test.uae4jobs.ae/
+
+# 3. بناء وإعادة تشغيل
+cd /www/wwwroot/jobs-test.uae4jobs.ae
 npm install
 npm run build
 pm2 restart growthnexus
@@ -35,10 +46,14 @@ pm2 restart growthnexus
 cat > /www/wwwroot/jobs-test.uae4jobs.ae/deploy.sh << 'EOF'
 #!/bin/bash
 echo "🔄 Pulling latest code..."
-cd /www/wwwroot/jobs-test.uae4jobs.ae
+cd /www/wwwroot/jobs-test.uae4jobs.ae/NEW-CVS-JOBS
 git pull origin main
 
+echo "📂 Copying updated files..."
+cp -r growth-nexus/* /www/wwwroot/jobs-test.uae4jobs.ae/
+
 echo "📦 Installing dependencies..."
+cd /www/wwwroot/jobs-test.uae4jobs.ae
 npm install
 
 echo "🏗️ Building..."
