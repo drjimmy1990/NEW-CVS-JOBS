@@ -12,11 +12,22 @@
 
 ---
 
+## 🔑 إعداد مرة واحدة (First Time Only)
+
+```bash
+# السماح لـ git بالعمل في مجلد الريبو
+git config --global --add safe.directory /www/wwwroot/jobs-test.uae4jobs.ae/NEW-CVS-JOBS
+
+# تثبيت PM2
+sudo npm install -g pm2
+```
+
+---
+
 ## ⚡ Quick Update (استخدم هذا دائماً)
 
-> ⚠️ **ملاحظة مهمة:** الريبو فيه التطبيق داخل `growth-nexus/` كمجلد فرعي،
+> ⚠️ الريبو فيه التطبيق داخل `growth-nexus/` كمجلد فرعي،
 > لكن على السيرفر الملفات موجودة مباشرة في مجلد الموقع.
-> لذلك نسحب من الريبو ثم ننسخ.
 
 ```bash
 # 1. سحب آخر نسخة من GitHub
@@ -33,6 +44,13 @@ npm run build
 pm2 restart growthnexus
 ```
 
+> 💡 لو ظهر `Process growthnexus not found` معناه PM2 ما اتفعّل بعد:
+> ```bash
+> pm2 start npm --name "growthnexus" -- start
+> pm2 save
+> pm2 startup
+> ```
+
 **أو إذا عندك الـ deploy script:**
 ```bash
 /www/wwwroot/jobs-test.uae4jobs.ae/deploy.sh
@@ -45,6 +63,8 @@ pm2 restart growthnexus
 ```bash
 cat > /www/wwwroot/jobs-test.uae4jobs.ae/deploy.sh << 'EOF'
 #!/bin/bash
+set -e
+
 echo "🔄 Pulling latest code..."
 cd /www/wwwroot/jobs-test.uae4jobs.ae/NEW-CVS-JOBS
 git pull origin main
@@ -60,7 +80,12 @@ echo "🏗️ Building..."
 npm run build
 
 echo "🔄 Restarting..."
-pm2 restart growthnexus
+if pm2 describe growthnexus > /dev/null 2>&1; then
+    pm2 restart growthnexus
+else
+    pm2 start npm --name "growthnexus" -- start
+    pm2 save
+fi
 
 echo "✅ Deploy complete!"
 pm2 status
