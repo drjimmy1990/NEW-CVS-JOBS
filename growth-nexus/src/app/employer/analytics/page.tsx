@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { BarChart3, TrendingUp, Clock, Users, CheckCircle, XCircle } from 'lucide-react'
+import { ForecastingWidget } from '@/components/employer/ForecastingWidget'
 
 export default async function AnalyticsPage() {
     const supabase = await createClient()
@@ -72,31 +73,7 @@ export default async function AnalyticsPage() {
             {/* Content Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* AI Forecasting Engine */}
-                <Card className="bg-navy-light border-gold/10 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-gold/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
-                    <CardHeader><CardTitle className="text-cream text-lg flex items-center gap-2">
-                        <svg className="h-5 w-5 text-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                        توقعات الذكاء الاصطناعي
-                    </CardTitle></CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="p-4 bg-navy-lighter/30 rounded-lg border border-gold/5 flex items-start gap-4 hover:border-gold/20 transition-colors">
-                            <Clock className="h-6 w-6 text-blue-400 shrink-0 mt-1" />
-                            <div>
-                                <h4 className="text-cream font-medium">متوسط وقت الإغلاق المتوقع</h4>
-                                <p className="text-cream-dark/60 text-sm mt-1 leading-relaxed">بناءً على الشواغر المشابهة في منصتنا (MOHRE Data)، يتوقع إغلاق وظائفك النشطة خلال <strong className="text-gold font-bold">14-21 يوماً</strong>.</p>
-                            </div>
-                        </div>
-                        <div className="p-4 bg-navy-lighter/30 rounded-lg border border-gold/5 flex items-start gap-4 hover:border-gold/20 transition-colors">
-                            <TrendingUp className="h-6 w-6 text-emerald-400 shrink-0 mt-1" />
-                            <div>
-                                <h4 className="text-cream font-medium">المنافسة في السوق</h4>
-                                <p className="text-cream-dark/60 text-sm mt-1 leading-relaxed">مستوى المنافسة <strong className="text-emerald-400 font-bold">متوسط</strong>. ننصح بتقديم حزم مرنة (Flexible Benefits) لجذب أفضل المواهب.</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                <ForecastingWidget />
 
                 {/* Rejection Reasons Breakdown */}
                 {Object.keys(rejectionBreakdown).length > 0 ? (

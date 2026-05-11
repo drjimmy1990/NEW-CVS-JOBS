@@ -14,6 +14,7 @@ function Tabs({
   return (
     <TabsPrimitive.Root
       data-slot="tabs"
+      dir="rtl"
       data-orientation={orientation}
       orientation={orientation}
       className={cn(

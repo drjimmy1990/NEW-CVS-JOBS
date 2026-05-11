@@ -1,0 +1,1361 @@
+{
+  "name": "new cv website",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gn-cv-parser",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -176,
+        32
+      ],
+      "id": "428772c1-dc43-4f0d-a160-a26fd0d80972",
+      "name": "Webhook",
+      "webhookId": "61070732-b696-48b8-ae98-63bfa9e243bd"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        496,
+        0
+      ],
+      "id": "c020b375-d390-45ce-a38f-5807cd851fc7",
+      "name": "Extract from File2"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.body.file_url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        160,
+        0
+      ],
+      "id": "ba227a0a-eef1-405c-8dc0-4c63fdbf295a",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=cv text:\n {{ $json.text }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=أنت خبير موارد بشرية ومحلل سير ذاتية محترف.\nمهمتك هي قراءة النص المستخرج من السيرة الذاتية المرفقة، واستخراج البيانات المحددة بدقة.\n\nيجب عليك إرجاع النتيجة بصيغة JSON صالح (Valid JSON) فقط، وبدون أي نصوص إضافية أو شروحات، وبدون علامات (```json).\nيجب أن يحتوي الـ JSON على الحقول الإنجليزية التالية حصراً (لكن المحتوى يجب أن يترجم للغة العربية):\n\n{\n  \"skills\": [\"اسم المهارة 1\", \"اسم المهارة 2\"], // مصفوفة من أهم المهارات التقنية والناعمة\n  \"experience_years\": 5, // إجمالي سنوات الخبرة كرقم صحيح (Integer) فقط، إذا لم يوجد ضع 0\n  \"education\": [\"اسم الدرجة - اسم الجامعة\"], // مصفوفة من المؤهلات العلمية\n  \"summary\": \"ملخص احترافي...\" // ملخص احترافي للمرشح من سطرين باللغة العربية\n}\n\nتأكد 100% أن المخرجات هي JSON فقط لكي يتمكن النظام من برمجتها.\n"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        752,
+        0
+      ],
+      "id": "24e4b01d-27e3-4476-882b-354402394ece",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        704,
+        208
+      ],
+      "id": "03c1d207-9686-4494-9192-8ead9a98118e",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "KFjbrLT6jbTkz70r",
+          "name": "rockdash2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// نقرأ النص الذي أرجعه الذكاء الاصطناعي (يسمى عادة text أو output)\nconst aiResponse = $input.first().json.text || $input.first().json.output;\n\ntry {\n  // نحاول تحويل النص إلى JSON حقيقي\n  const parsedData = JSON.parse(aiResponse);\n  \n  // نرجعه كبيانات منظمة\n  return {\n    parsed_data: parsedData,\n    user_id: $('Webhook').first().json.body.user_id // نسحب معرف المستخدم من الويب هوك الأول\n  };\n} catch (error) {\n  // في حال فشل الذكاء الاصطناعي في كتابة JSON صحيح\n  throw new Error(\"فشل تحويل نص الذكاء الاصطناعي إلى JSON: \" + error.message);\n}\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        0
+      ],
+      "id": "8d414f44-3388-42af-8af8-47b182366aab",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "candidates",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Webhook').item.json.body.user_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "skills",
+              "fieldValue": "={{ $json.parsed_data.skills }}"
+            },
+            {
+              "fieldId": "resume_parsed_data",
+              "fieldValue": "={{ $json.parsed_data }}"
+            },
+            {
+              "fieldId": "years_experience",
+              "fieldValue": "={{ $json.parsed_data.experience_years }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1312,
+        0
+      ],
+      "id": "4dbb5909-69d3-42dd-b83e-276719a2f6a1",
+      "name": "Update a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "l3pwTkC8nAXVlJg7",
+          "name": "cv new website"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{ \"success\": true }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1504,
+        0
+      ],
+      "id": "2ef8999a-4b9e-4845-867c-b21cb8128d6e",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gn-ai-job-description",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        288,
+        496
+      ],
+      "id": "1950af2e-7791-4f14-ad04-e909494a0c4f",
+      "name": "Webhook1",
+      "webhookId": "3bbb3a3f-318a-4808-a6e6-1ead7d77dddc",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ZYVz5oRuLvh1tFve",
+          "name": "cv jobs"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=المسمى الوظيفي: {{ $json.body.title }}\nنوع الوظيفة: {{ $json.body.job_type }}\nالمدينة: {{ $json.body.location }}\nالخبرة المطلوبة: {{ $json.body.experience_level }}\nالمهارات المطلوبة: {{ JSON.stringify($json.body.skills) }}\n",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=أنت خبير توظيف محترف في سوق العمل الإماراتي والخليجي.\nبناءً على المسمى الوظيفي والبيانات المدخلة، قم بكتابة وصف وظيفي جذاب واحترافي باللغة العربية، بالإضافة إلى قائمة بالمتطلبات والمؤهلات.\nيجب عليك إرجاع النتيجة بصيغة JSON صالح (Valid JSON) فقط، وبدون أي نصوص إضافية أو علامات (```json).\nيجب أن يحتوي الـ JSON على الحقلين التاليين حصراً:\n{\n  \"description\": \"الوصف هنا...\",\n  \"requirements\": \"المتطلبات هنا...\"\n}\n"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        800,
+        512
+      ],
+      "id": "7b34e3e2-056f-4cb6-beb7-91f9d2a7db76",
+      "name": "Basic LLM Chain1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        784,
+        752
+      ],
+      "id": "b0e773ee-eb4c-44a7-911f-daed3c860272",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "KFjbrLT6jbTkz70r",
+          "name": "rockdash2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let aiResponse = $input.first().json.text || $input.first().json.output;\n\n// تنظيف الرد من علامات الماركدوان إن وجدت (حتى لا يفشل التحويل)\naiResponse = aiResponse.replace(/```json/g, '').replace(/```/g, '').trim();\n\ntry {\n  const parsedData = JSON.parse(aiResponse);\n  \n  return {\n    success: true,\n    description: parsedData.description,\n    requirements: parsedData.requirements\n  };\n} catch (error) {\n  throw new Error(\"فشل تحويل نص الذكاء الاصطناعي إلى JSON: \" + error.message);\n}\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        480
+      ],
+      "id": "b193e1a0-8a6a-44c6-b537-d668931841c4",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1472,
+        480
+      ],
+      "id": "4f2f3b50-9717-4358-aaed-348c299cf51e",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gn-match-score",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        368,
+        1136
+      ],
+      "id": "a54388db-0c5f-4598-b6b0-e55a22dbed29",
+      "name": "Webhook2",
+      "webhookId": "3bbb3a3f-318a-4808-a6e6-1ead7d77dddc",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ZYVz5oRuLvh1tFve",
+          "name": "cv jobs"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "applications",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $json.body.application_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        544,
+        928
+      ],
+      "id": "b6a57839-2618-4885-8210-97895cff35f4",
+      "name": "Get a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "l3pwTkC8nAXVlJg7",
+          "name": "cv new website"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "==== بيانات المرشح ===\nالمهارات: {{ JSON.stringify($json.body.candidate_skills) }}\nالخبرة: {{ $json.body.candidate_experience }}\nالملخص: {{ $json.body.candidate_summary }}\nالتعليم: {{ JSON.stringify($json.body.candidate_education) }}\n\n=== متطلبات الوظيفة ===\nالوصف: {{ $json.body.job_description }}\nالمهارات المطلوبة: {{ JSON.stringify($json.body.job_skills_required) }}\n",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=أنت خبير موارد بشرية وتقييم مرشحين في سوق العمل الإماراتي.\nقارن بيانات المرشح مع متطلبات الوظيفة بإنصاف ودقة.\nأرجع النتيجة بصيغة JSON صالح فقط وبدون أي علامات أو نصوص إضافية، يحتوي على الحقلين التاليين حصراً:\n{\n  \"score\": 85,\n  \"reason\": \"سبب مختصر باللغة العربية يوضح نقاط القوة والضعف\"\n}\nالقواعد:\n- score رقم صحيح من 0 إلى 100\n- إذا تطابقت أغلب المهارات أعط 70+\n- إذا تطابق المجال لكن مهارات مختلفة أعط 40-70\n- إذا لا علاقة أعط أقل من 40\n"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        1040,
+        1136
+      ],
+      "id": "416dd2fc-a04a-412f-a7ed-1da3d303d427",
+      "name": "Basic LLM Chain2"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        944,
+        1376
+      ],
+      "id": "caf2c900-7a43-42b3-969e-7a070c159f12",
+      "name": "Google Gemini Chat Model2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "KFjbrLT6jbTkz70r",
+          "name": "rockdash2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let aiResponse = $input.first().json.text || $input.first().json.output;\n\n// تنظيف النص من وسوم Markdown وأي مسافات أو أسطر إضافية\naiResponse = aiResponse\n  .replace(/```json/gi, '')\n  .replace(/```/g, '')\n  .trim();\n\n// محاولة التحليل بشكل آمن\nlet parsed;\ntry {\n  parsed = JSON.parse(aiResponse);\n} catch (error) {\n  try {\n    // إذا فشل، جرّب استخراج JSON باستخدام regex\n    const match = aiResponse.match(/\\{[\\s\\S]*\\}/);\n    if (match) {\n      parsed = JSON.parse(match[0]);\n    }\n  } catch (innerError) {\n    parsed = null;\n  }\n}\n\nif (parsed && typeof parsed === 'object') {\n  return {\n    application_id: $('Webhook').first().json.body.application_id,\n    score: Math.min(100, Math.max(0, parseInt(parsed.score))),\n    reason: parsed.reason || 'لا يوجد تفاصيل'\n  };\n} else {\n  return {\n    application_id: $('Webhook').first().json.body.application_id,\n    score: 0,\n    reason: 'فشل في تحليل التطابق'\n  };\n}\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1456,
+        1136
+      ],
+      "id": "96e490ca-5480-4e78-adcf-40efc4c4d914",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "applications",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Webhook2').item.json.body.application_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "ai_match_score",
+              "fieldValue": "={{ $json.score }}"
+            },
+            {
+              "fieldId": "ai_analysis",
+              "fieldValue": "={{ $json.reason }}"
+            },
+            {
+              "fieldId": "cover_letter",
+              "fieldValue": "={{ $json.body.cover_letter }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1664,
+        1136
+      ],
+      "id": "466143b9-aefa-4985-89e9-27925bd2af14",
+      "name": "Update a row1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "l3pwTkC8nAXVlJg7",
+          "name": "cv new website"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, score: $json.score }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1872,
+        1136
+      ],
+      "id": "e4591387-51f0-4c89-9885-fdb5e7b0950c",
+      "name": "Respond to Webhook2"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gn-interview-questions",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        1504,
+        1696
+      ],
+      "id": "709904d3-e0e4-4b77-acb7-88bc749aae12",
+      "name": "Webhook3",
+      "webhookId": "fa203a0c-461b-4998-a295-f49fa2820afa"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=الوظيفة: {{ $json.body.job_title }} | النوع: {{ $json.body.job_type }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=أنت خبير موارد بشرية. أنشئ 5 أسئلة مقابلة احترافية بالعربية مخصصة للوظيفة المطلوبة. أرجع JSON صالح فقط بدون أي نص إضافي: {\"questions\": [\"سؤال1\", \"سؤال2\", ...]}"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        2112,
+        1776
+      ],
+      "id": "953b433b-04a3-47e0-92ce-bc0dbc6fd4a6",
+      "name": "Basic LLM Chain3"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2016,
+        2016
+      ],
+      "id": "a43c0164-ae5b-4e65-b3c9-eff59fbad94a",
+      "name": "Google Gemini Chat Model3",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "KFjbrLT6jbTkz70r",
+          "name": "rockdash2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let text = $input.first().json.text || $input.first().json.output;\ntext = text.replace(/```json/g, '').replace(/```/g, '').trim();\ntry {\n  return JSON.parse(text);\n} catch {\n  return { success: true, questions: [\"حدثنا عن خبرتك في هذا المجال\"] };\n}\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2464,
+        1776
+      ],
+      "id": "b595d72d-03a4-4479-97b9-f69497e74476",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2672,
+        1776
+      ],
+      "id": "154db508-be36-459a-8235-9318cc25c9cf",
+      "name": "Respond to Webhook3"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gn-interview-eval",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        1504,
+        2464
+      ],
+      "id": "b3eb5ae7-fa09-4b2a-9bd5-a5878615bd0a",
+      "name": "Webhook4",
+      "webhookId": "92f05c32-e462-4e38-b2b8-28723a6cffc2"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=أنت خبير موارد بشرية متخصص في تقييم إجابات المقابلات الوظيفية في سوق العمل الإماراتي.\n\nالوظيفة المطلوبة: {{ $json.body.job_title }}\n\nفيما يلي أسئلة المقابلة وإجابات المرشح:\n\n{{ $json.body.questions.map((q, i) => `السؤال ${i+1}: ${q}\\nإجابة المرشح: ${$json.body.answers[i]}`).join('\\n\\n---\\n\\n') }}\n\nقيّم كل إجابة من 10 بناءً على:\n- مدى صلة الإجابة بالسؤال\n- عمق التفكير والتحليل\n- وجود أمثلة عملية وملموسة\n- مهارات التواصل والوضوح\n- الملاءمة مع متطلبات الوظيفة\n\nأرجع النتيجة بصيغة JSON صالح فقط وبدون أي نصوص أو علامات إضافية قبله أو بعده:\n{\n  \"success\": true,\n  \"overall_score\": الدرجة_الإجمالية_من_100,\n  \"evaluation\": [\n    {\"question_index\": 0, \"score\": الدرجة_من_10, \"max\": 10, \"feedback\": \"تعليق مفصل بالعربية\"},\n    {\"question_index\": 1, \"score\": الدرجة_من_10, \"max\": 10, \"feedback\": \"تعليق مفصل بالعربية\"}\n  ],\n  \"recommendation\": \"توصية نهائية مختصرة بالعربية: هل يُنصح بالمتابعة مع المرشح أم لا؟\"\n}\n\nالقواعد:\n- overall_score = متوسط الدرجات × 10 (مثلاً إذا متوسط الدرجات 7.5 فالنتيجة 75)\n- إذا overall_score >= 75: \"مرشح جيد — يُنصح بالمتابعة مع مقابلة شخصية\"\n- إذا overall_score >= 50 وأقل من 75: \"مرشح متوسط — يحتاج تقييم إضافي\"\n- إذا overall_score < 50: \"أداء ضعيف — لا يُنصح بالمتابعة\"\n",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        1920,
+        2416
+      ],
+      "id": "36a7816f-6895-4ce2-937b-837727010817",
+      "name": "Basic LLM Chain4"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1824,
+        2656
+      ],
+      "id": "e4572274-e766-4a80-8a3d-5ba8e63d8088",
+      "name": "Google Gemini Chat Model4",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "5p0YKMLaCVAAMklV",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// تنظيف رد الذكاء الاصطناعي واستخراج JSON صالح\nlet aiResponse = $input.first().json.text || $input.first().json.output || '';\n\n// إزالة أي علامات Markdown\naiResponse = aiResponse.replace(/```json/g, '').replace(/```/g, '').trim();\n\n// محاولة إيجاد JSON داخل النص\nconst jsonMatch = aiResponse.match(/\\{[\\s\\S]*\\}/);\nif (jsonMatch) {\n  aiResponse = jsonMatch[0];\n}\n\ntry {\n  const parsed = JSON.parse(aiResponse);\n  \n  // التأكد من وجود الحقول المطلوبة\n  const result = {\n    success: true,\n    overall_score: Math.min(100, Math.max(0, parseInt(parsed.overall_score) || 0)),\n    evaluation: Array.isArray(parsed.evaluation) ? parsed.evaluation.map((e, i) => ({\n      question_index: e.question_index !== undefined ? e.question_index : i,\n      score: Math.min(10, Math.max(0, parseInt(e.score) || 0)),\n      max: 10,\n      feedback: e.feedback || 'لا يوجد تعليق'\n    })) : [],\n    recommendation: parsed.recommendation || 'لا توجد توصية'\n  };\n  \n  return result;\n  \n} catch (error) {\n  // في حالة فشل تحليل JSON، أرجع نتيجة افتراضية\n  return {\n    success: false,\n    overall_score: 0,\n    evaluation: [],\n    recommendation: 'فشل في تحليل نتائج التقييم - يرجى المحاولة مرة أخرى'\n  };\n}\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2384,
+        2448
+      ],
+      "id": "d764d872-3903-4bd2-a194-9cf951eb5e4f",
+      "name": "Code in JavaScript4"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2592,
+        2448
+      ],
+      "id": "b536bd55-a1ad-47cd-b5b9-fc0140fb8813",
+      "name": "Respond to Webhook4"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gn-committee-summary",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        2304,
+        2896
+      ],
+      "id": "185cc41e-754a-4148-aa23-a56715f3f045",
+      "name": "Webhook5",
+      "webhookId": "2e3817d5-87a5-45cf-95be-d904472e630d"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=أنت خبير موارد بشرية. حلل نتائج تقييم لجنة المقابلات التالية:\n\nالمقيّمون وتقييماتهم:\n{{ $json.body.scores.map(s => `${s.evaluator_name}: ${s.score}/100`).join('\\n') }}\n\nالمطلوب:\n1. احسب المتوسط والوسيط\n2. حدد أي مقيّم أعطى درجة مختلفة جداً عن الباقين (الانحراف > 15 نقطة)\n3. أعط توصية نهائية\n\nأرجع JSON فقط:\n{\"success\":true,\"average_score\":المتوسط,\"median_score\":الوسيط,\"recommendation\":\"توصية\",\"outliers\":[\"تعليق على أي انحراف\"],\"summary\":\"ملخص\"}\n",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        2720,
+        2912
+      ],
+      "id": "a421f1b3-9c05-4689-b2b7-9126f79ac3ec",
+      "name": "Basic LLM Chain5"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2624,
+        3152
+      ],
+      "id": "c7b0fd9d-2ee6-4d07-8bc0-cddf241b0c09",
+      "name": "Google Gemini Chat Model5",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "5p0YKMLaCVAAMklV",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        3360,
+        2912
+      ],
+      "id": "25c16721-9bf0-4ffb-b7e3-531b681d0511",
+      "name": "Respond to Webhook5"
+    },
+    {
+      "parameters": {
+        "jsCode": "// تنظيف رد الذكاء الاصطناعي واستخراج JSON صالح\nlet aiResponse = $input.first().json.text || $input.first().json.output || '';\n\n// إزالة أي علامات Markdown\naiResponse = aiResponse.replace(/```json/g, '').replace(/```/g, '').trim();\n\n// محاولة إيجاد JSON داخل النص\nconst jsonMatch = aiResponse.match(/\\{[\\s\\S]*\\}/);\nif (jsonMatch) {\n  aiResponse = jsonMatch[0];\n}\n\ntry {\n  const parsed = JSON.parse(aiResponse);\n  \n  return {\n    success: true,\n    average_score: Math.min(100, Math.max(0, parseInt(parsed.average_score) || 0)),\n    median_score: Math.min(100, Math.max(0, parseInt(parsed.median_score) || 0)),\n    recommendation: parsed.recommendation || 'لا توجد توصية',\n    outliers: Array.isArray(parsed.outliers) ? parsed.outliers : [],\n    summary: parsed.summary || 'لا يوجد ملخص'\n  };\n  \n} catch (error) {\n  // حساب يدوي في حالة فشل AI\n  const scores = $('Webhook3').first().json.body.scores || [];\n  const values = scores.map(s => s.score);\n  const avg = values.length > 0 ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : 0;\n  \n  return {\n    success: true,\n    average_score: avg,\n    median_score: avg,\n    recommendation: avg >= 75 ? 'تأهيل المرشح للعرض الوظيفي' : 'يحتاج مراجعة إضافية',\n    outliers: [],\n    summary: `تم تقييم المرشح من ${values.length} أعضاء. المتوسط ${avg}%.`\n  };\n}\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3072,
+        2912
+      ],
+      "id": "43049a66-7669-4e19-b388-235ea73501bf",
+      "name": "Code in JavaScript5"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gn-application-notify",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        2032,
+        3776
+      ],
+      "id": "bb7d80ed-650a-46a0-a2f3-8202fd655be2",
+      "name": "Webhook6",
+      "webhookId": "37d6a083-be6e-4806-9c61-2b99d00153cc",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ZYVz5oRuLvh1tFve",
+          "name": "cv jobs"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let aiResponse = $input.first().json.text || $input.first().json.output;\naiResponse = aiResponse.replace(/```json/g, '').replace(/```/g, '').trim();\n\ntry {\n  const parsed = JSON.parse(aiResponse);\n  return {\n    application_id: $('Webhook').first().json.body.application_id,\n    score: Math.min(100, Math.max(0, parseInt(parsed.score))),\n    reason: parsed.reason || 'لا يوجد تفاصيل'\n  };\n} catch (error) {\n  return {\n    application_id: $('Webhook').first().json.body.application_id,\n    score: 0,\n    reason: 'فشل في تحليل التطابق'\n  };\n}\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        960
+      ],
+      "id": "9830c2eb-5897-40ee-8140-9768bd715b12",
+      "name": "Code in JavaScript6"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "profiles",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $json.body.owner_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2368,
+        3760
+      ],
+      "id": "5cbf8ce0-1058-4e57-b9c1-52ca443b78d7",
+      "name": "Get a row1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "l3pwTkC8nAXVlJg7",
+          "name": "cv new website"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "html": "=<div dir=\"rtl\" style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0f1729; color: #f5f0e8; padding: 30px; border-radius: 12px;\">\n    \n    <div style=\"text-align: center; padding: 20px 0; border-bottom: 1px solid rgba(212, 175, 55, 0.2);\">\n        <h1 style=\"color: #D4AF37; font-size: 24px; margin: 0;\">GrowthNexus</h1>\n        <p style=\"color: #999; font-size: 12px; margin-top: 5px;\">منصة التوظيف الذكية</p>\n    </div>\n\n    <div style=\"padding: 30px 0;\">\n        <h2 style=\"color: #D4AF37; font-size: 20px;\">📋 طلب توظيف جديد!</h2>\n        \n        <p style=\"font-size: 16px; line-height: 1.8;\">\n            مرحباً <strong>{{ $json.full_name }}</strong>،\n        </p>\n        \n        <p style=\"font-size: 15px; line-height: 1.8; color: #ccc;\">\n            تقدم مرشح جديد لإحدى وظائفكم:\n        </p>\n\n        <div style=\"background: #1a2332; border: 1px solid rgba(212, 175, 55, 0.15); border-radius: 8px; padding: 20px; margin: 20px 0;\">\n            <table style=\"width: 100%; border-collapse: collapse;\">\n                <tr>\n                    <td style=\"padding: 8px 0; color: #999; width: 120px;\">المرشح:</td>\n                    <td style=\"padding: 8px 0; color: #f5f0e8; font-weight: bold;\">{{ $('Webhook6').item.json.body.candidate_name }}</td>\n                </tr>\n                <tr>\n                    <td style=\"padding: 8px 0; color: #999;\">الوظيفة:</td>\n                    <td style=\"padding: 8px 0; color: #D4AF37; font-weight: bold;\">{{ $('Webhook6').item.json.body.job_title }}</td>\n                </tr>\n                <tr>\n                    <td style=\"padding: 8px 0; color: #999;\">التاريخ:</td>\n                    <td style=\"padding: 8px 0; color: #f5f0e8;\">{{ $('Webhook6').item.json.body.timestamp }}</td>\n                </tr>\n            </table>\n        </div>\n\n        <a href=\"https://your-domain.com/employer/jobs/{{ $('Webhook6').item.json.body.job_id }}/applicants\" \n           style=\"display: inline-block; background: linear-gradient(135deg, #D4AF37, #C5A028); color: #0f1729; font-weight: bold; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-size: 14px; margin-top: 10px;\">\n            عرض المتقدمين ←\n        </a>\n    </div>\n\n    <div style=\"border-top: 1px solid rgba(212, 175, 55, 0.1); padding-top: 15px; text-align: center;\">\n        <p style=\"color: #666; font-size: 11px;\">هذا الإيميل مرسل تلقائياً من منصة GrowthNexus</p>\n    </div>\n</div>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        2624,
+        5344
+      ],
+      "id": "317a99fb-ffcd-4e68-ac71-55ce695160ae",
+      "name": "Send email",
+      "webhookId": "eb2e808d-e10e-48a4-98d3-fbb34f117296",
+      "credentials": {
+        "smtp": {
+          "id": "UJq7VA6EGQgVwRUd",
+          "name": "SMTP account"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n    \"success\": true,\n    \"message\": \"Notification sent\",\n    \"email_sent_to\": \"{{ $json.email }}\"\n} ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        3072,
+        3808
+      ],
+      "id": "4630dc54-e697-4e02-bb06-a4b1aa34b3d5",
+      "name": "Respond to Webhook6"
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n.asra3.com",
+            "x-real-ip": "162.158.23.153",
+            "x-forwarded-for": "41.235.175.50,41.235.175.50, 162.158.23.153",
+            "x-forwarded-proto": "https",
+            "connection": "Upgrade",
+            "content-length": "229",
+            "priority": "u=1, i",
+            "sec-ch-ua-platform": "\"Windows\"",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+            "sec-ch-ua": "\"Google Chrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+            "content-type": "application/json",
+            "sec-ch-ua-mobile": "?0",
+            "accept": "*/*",
+            "origin": "http://localhost:3001",
+            "sec-fetch-site": "cross-site",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-dest": "empty",
+            "referer": "http://localhost:3001/",
+            "accept-encoding": "gzip, br",
+            "accept-language": "en-US,en;q=0.9",
+            "cf-ray": "9f39aa154f241296-MRS",
+            "cdn-loop": "cloudflare; loops=1",
+            "cf-connecting-ip": "41.235.175.50",
+            "cf-ipcountry": "EG",
+            "cf-visitor": "{\"scheme\":\"https\"}"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "file_url": "https://cqahtitdamlunqjxeyeo.supabase.co/storage/v1/object/public/resumes/b8299103-4d02-413f-8699-320cfa2740cd/1777417029262-4b577f42-d543-4708-ad06-b47256c7f438.pdf",
+            "user_id": "b8299103-4d02-413f-8699-320cfa2740cd"
+          },
+          "webhookUrl": "https://n8n.asra3.com/webhook/gn-cv-parser",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Webhook1": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n.asra3.com",
+            "x-real-ip": "172.68.234.123",
+            "x-forwarded-for": "41.235.175.50,41.235.175.50, 172.68.234.123",
+            "x-forwarded-proto": "https",
+            "connection": "Upgrade",
+            "content-length": "135",
+            "accept": "*/*",
+            "accept-language": "*",
+            "accept-encoding": "gzip, br",
+            "user-agent": "node",
+            "cf-ray": "9f39dec37b12e1d1-MRS",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "sec-fetch-mode": "cors",
+            "content-type": "application/json",
+            "x-webhook-secret": "change-me-to-a-strong-secret",
+            "cdn-loop": "cloudflare; loops=1",
+            "cf-connecting-ip": "41.235.175.50",
+            "cf-ipcountry": "EG"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "title": "مطور sql",
+            "job_type": "full_time",
+            "location": "رأس الخيمة",
+            "experience_level": "قيادي / مدير",
+            "skills": []
+          },
+          "webhookUrl": "https://n8n.asra3.com/webhook/gn-ai-job-description",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Webhook4": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n.asra3.com",
+            "x-real-ip": "162.158.23.154",
+            "x-forwarded-for": "41.235.175.50,41.235.175.50, 162.158.23.154",
+            "x-forwarded-proto": "https",
+            "connection": "Upgrade",
+            "content-length": "1399",
+            "accept": "*/*",
+            "accept-language": "*",
+            "accept-encoding": "gzip, br",
+            "user-agent": "node",
+            "cf-ray": "9f3a5802acf61858-MRS",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "sec-fetch-mode": "cors",
+            "content-type": "application/json",
+            "x-webhook-secret": "change-me-to-a-strong-secret",
+            "cdn-loop": "cloudflare; loops=1",
+            "cf-connecting-ip": "41.235.175.50",
+            "cf-ipcountry": "EG"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "application_id": "9b784f95-8052-4b83-ba00-62a399d7f00f",
+            "job_id": "2deb6950-654d-4ed5-a5df-dbfd1a957b89",
+            "job_title": "مبرمج",
+            "questions": [
+              "حدثنا عن لغات البرمجة والتقنيات التي تتقنها، وكيف قمت بتطبيقها في مشاريع سابقة لتقديم حلول فعالة؟",
+              "صف لنا موقفًا واجهت فيه مشكلة برمجية معقدة. كيف قمت بتحليلها، وما هي الخطوات التي اتخذتها لحلها، وماذا كانت النتيجة؟",
+              "كيف تضمن جودة الكود الذي تكتبه وقابليته للصيانة والتوسع؟ وما هو دورك في مراجعة كود الزملاء (Code Review)؟",
+              "اذكر مشروعًا برمجيًا كنت فخورًا به بشكل خاص. ما هو التحدي الرئيسي الذي واجهته فيه، وكيف تغلبت عليه، وماذا تعلمت من تلك التجربة؟",
+              "عالم البرمجة يتطور باستمرار. كيف تواكب أحدث التقنيات وأفضل الممارسات في مجال عملك؟ وهل لديك شغف بمجال معين أو تقنية ترغب في استكشافها أكثر؟"
+            ],
+            "answers": [
+              "dkygsdofudsgfsdkjhfbgdskjhfgsdkj",
+              "sdljkkfbhsdoifhosdfbhsdlfjbhdsoifsd",
+              "sdliufghdsljfhdsljfsdblfkshfs",
+              "sldufhsdpiufhdspdiufhsdpiufhds",
+              "sdpiufhsdpifhspdiufhsdpiufhsdp"
+            ]
+          },
+          "webhookUrl": "https://n8n.asra3.com/webhook/gn-interview-eval",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Webhook2": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n.asra3.com",
+            "x-real-ip": "162.158.23.153",
+            "x-forwarded-for": "41.235.175.50,41.235.175.50, 162.158.23.153",
+            "x-forwarded-proto": "https",
+            "connection": "Upgrade",
+            "content-length": "3940",
+            "accept": "*/*",
+            "accept-language": "*",
+            "accept-encoding": "gzip, br",
+            "user-agent": "node",
+            "cf-ray": "9f3ac9bc3df63d27-MRS",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "sec-fetch-mode": "cors",
+            "content-type": "application/json",
+            "x-webhook-secret": "change-me-to-a-strong-secret",
+            "cdn-loop": "cloudflare; loops=1",
+            "cf-connecting-ip": "41.235.175.50",
+            "cf-ipcountry": "EG"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "application_id": "d0dbba6a-e880-4d59-a1ef-e44103cf6320",
+            "candidate_skills": [
+              "Python",
+              "Java",
+              "JavaScript",
+              "AWS",
+              "Docker",
+              "Kubernetes",
+              "SQL",
+              "NoSQL",
+              "منهجيات Agile",
+              "تطوير البرمجيات",
+              "إدارة المشاريع",
+              "قيادة الفريق",
+              "تطوير خدمات خلفية قابلة للتطوير"
+            ],
+            "candidate_experience": "7 سنة",
+            "candidate_summary": "محترف متحمس وموجه نحو النتائج، يتمتع بخبرة 7 سنوات في تطوير البرمجيات وإدارة المشاريع وقيادة الفرق.\nيمتلك قدرة مثبتة على تسليم المشاريع المعقدة في الوقت المحدد وضمن الميزانية، والتميز في البيئات التعاونية سريعة الوتيرة.",
+            "candidate_education": [
+              "ماجستير في علوم الحاسوب - جامعة التكنولوجيا",
+              "بكالوريوس في هندسة الحاسوب - جامعة الولاية"
+            ],
+            "cover_letter": "cover letter test",
+            "job_description": "نبحث عن مبرمج خبير وموهوب للانضمام إلى فريقنا الديناميكي في دبي. إذا كنت تمتلك شغفًا ببناء حلول برمجية مبتكرة وعالية الأداء، ولديك سجل حافل في قيادة المشاريع المعقدة وتوجيه الفرق، فإننا ندعوك لتكون جزءًا من رحلتنا. ستلعب دورًا محوريًا في تصميم وتطوير وتنفيذ أنظمة برمجية متطورة، وتحسين البنية التحتية الحالية، وتقديم التوجيه التقني للمطورين الآخرين. هذه فرصة فريدة للمساهمة في بيئة عمل محفزة ومليئة بالتحديات، حيث يمكنك إحداث تأثير حقيقي على منتجاتنا وتقنياتنا، والمساهمة في دفع الابتكار داخل سوق العمل الإماراتي والخليجي.\n\nالمتطلبات:\nشهادة بكالوريوس في علوم الحاسوب، هندسة البرمجيات، أو مجال ذي صلة.,خبرة عملية لا تقل عن 5 سنوات في تطوير البرمجيات، مع سجل مثبت في بناء وإطلاق تطبيقات ناجحة ومعقدة.,إتقان عميق لعدة لغات برمجة وأطر عمل رائدة (مثل Python، Java، C#، Node.js، Go، أو غيرها).,فهم قوي لمبادئ التصميم المعماري للأنظمة، وهياكل البيانات، والخوارزميات، وأنماط التصميم.,خبرة واسعة في العمل مع قواعد البيانات العلائقية (مثل PostgreSQL, MySQL) وغير العلائقية (مثل MongoDB, Redis).,تجربة في تصميم وتطوير واجهات برمجة التطبيقات (APIs RESTful/gRPC) الآمنة والقابلة للتطوير.,معرفة وخبرة في بيئات الحوسبة السحابية (مثل AWS, Azure, GCP).,فهم قوي لممارسات DevOps وأدوات التكامل المستمر والتسليم المستمر (CI/CD) ونظام التحكم في الإصدار (Git).,القدرة على تحليل المتطلبات المعقدة وتحويلها إلى حلول برمجية عملية وفعالة.,مهارات قيادية وتوجيهية قوية، مع القدرة على إرشاد المطورين المبتدئين والمتوسطين.,مهارات ممتازة في حل المشكلات والتفكير النقدي، والاهتمام بالتفاصيل.,إتقان اللغة العربية والإنجليزية (كتابة ومحادثة).,القدرة على العمل بشكل فعال ضمن فريق وفي بيئة سريعة التغير في دبي.,الالتزام بالتحسين المستمر للتعليم واكتساب التقنيات الجديدة.",
+            "job_skills_required": []
+          },
+          "webhookUrl": "https://n8n.asra3.com/webhook/gn-match-score",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Webhook6": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n.asra3.com",
+            "x-real-ip": "162.158.23.153",
+            "x-forwarded-for": "41.235.175.50,41.235.175.50, 162.158.23.153",
+            "x-forwarded-proto": "https",
+            "connection": "Upgrade",
+            "content-length": "398",
+            "accept": "*/*",
+            "accept-language": "*",
+            "accept-encoding": "gzip, br",
+            "user-agent": "node",
+            "cf-ray": "9f3ac9fcbc843d27-MRS",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "sec-fetch-mode": "cors",
+            "content-type": "application/json",
+            "x-webhook-secret": "change-me-to-a-strong-secret",
+            "cdn-loop": "cloudflare; loops=1",
+            "cf-connecting-ip": "41.235.175.50",
+            "cf-ipcountry": "EG"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "application_id": "d0dbba6a-e880-4d59-a1ef-e44103cf6320",
+            "job_id": "ac54049f-7ca1-4a04-9eca-f035e176d211",
+            "job_title": "مبرمج",
+            "candidate_name": "mohamed gamal",
+            "company_name": "mohamed's Company",
+            "company_id": "1071a264-2fb3-4939-8ad8-25a25dc0a4ee",
+            "owner_id": "fcbed745-664b-491b-bc5d-bea6031af82f",
+            "team_member_ids": [
+              "fcbed745-664b-491b-bc5d-bea6031af82f"
+            ],
+            "timestamp": "2026-04-29T02:13:42.731Z"
+          },
+          "webhookUrl": "https://n8n.asra3.com/webhook/gn-application-notify",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Extract from File2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File2": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Update a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a row": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook2": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a row": {
+      "main": [
+        []
+      ]
+    },
+    "Basic LLM Chain2": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Update a row1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a row1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain3",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook3": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain3": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain4",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook4": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain4": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript4": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model5": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain5",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook5": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain5": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript5": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook6": {
+      "main": [
+        [
+          {
+            "node": "Get a row1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a row1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1fb62eec-68ad-4263-b3f2-8d9a269f6d58",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c522d6cf09b0723c95e34292cfbafc5cdf9b6368e7bfb1a7b64562f91c23ca99"
+  },
+  "id": "Ks1oGZo16tmecB2p",
+  "tags": []
+}

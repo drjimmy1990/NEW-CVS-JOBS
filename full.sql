@@ -269,11 +269,11 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can read own profile" ON public.profiles FOR
 SELECT USING (auth.uid () = id);
 
-CREATE POLICY "Users can update own profile" ON public.profiles
-FOR UPDATE
-    USING (auth.uid () = id);
+CREATE POLICY "Users can update own profile" ON public.profiles FOR
+UPDATE USING (auth.uid () = id);
 
-CREATE POLICY "Users can insert own profile" ON public.profiles FOR INSERT
+CREATE POLICY "Users can insert own profile" ON public.profiles FOR
+INSERT
 WITH
     CHECK (auth.uid () = id);
 
@@ -283,13 +283,13 @@ ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public can read companies" ON public.companies FOR
 SELECT USING (true);
 
-CREATE POLICY "Owner can insert company" ON public.companies FOR INSERT
+CREATE POLICY "Owner can insert company" ON public.companies FOR
+INSERT
 WITH
     CHECK (auth.uid () = owner_id);
 
-CREATE POLICY "Owner can update company" ON public.companies
-FOR UPDATE
-    USING (auth.uid () = owner_id);
+CREATE POLICY "Owner can update company" ON public.companies FOR
+UPDATE USING (auth.uid () = owner_id);
 
 -- Jobs RLS
 ALTER TABLE public.jobs ENABLE ROW LEVEL SECURITY;
@@ -317,7 +317,8 @@ CREATE POLICY "Owner can manage own candidate profile" ON public.candidates FOR 
 -- Applications RLS
 ALTER TABLE public.applications ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Candidate can insert" ON public.applications FOR INSERT
+CREATE POLICY "Candidate can insert" ON public.applications FOR
+INSERT
 WITH
     CHECK (candidate_id = auth.uid ());
 
@@ -339,21 +340,20 @@ SELECT USING (
         )
     );
 
-CREATE POLICY "Employer can update application status" ON public.applications
-FOR UPDATE
-    USING (
-        job_id IN (
-            SELECT id
-            FROM public.jobs
-            WHERE
-                company_id IN (
-                    SELECT id
-                    FROM public.companies
-                    WHERE
-                        owner_id = auth.uid ()
-                )
-        )
-    );
+CREATE POLICY "Employer can update application status" ON public.applications FOR
+UPDATE USING (
+    job_id IN (
+        SELECT id
+        FROM public.jobs
+        WHERE
+            company_id IN (
+                SELECT id
+                FROM public.companies
+                WHERE
+                    owner_id = auth.uid ()
+            )
+    )
+);
 
 -- Landing Pages RLS
 ALTER TABLE public.landing_pages ENABLE ROW LEVEL SECURITY;
@@ -649,7 +649,8 @@ WHERE
 -- Update system_config pricing descriptions
 UPDATE public.system_config
 SET
-    description = REPLACE(description, 'SAR', 'AED')
+    description =
+REPLACE (description, 'SAR', 'AED')
 WHERE
     description LIKE '%SAR%';
 
@@ -765,17 +766,17 @@ SELECT USING (
         auth.uid () IN (participant_1, participant_2)
     );
 
-CREATE POLICY "Users can insert conversations they participate in" ON public.conversations FOR INSERT
+CREATE POLICY "Users can insert conversations they participate in" ON public.conversations FOR
+INSERT
 WITH
     CHECK (
         auth.uid () IN (participant_1, participant_2)
     );
 
-CREATE POLICY "Users can update their own conversations" ON public.conversations
-FOR UPDATE
-    USING (
-        auth.uid () IN (participant_1, participant_2)
-    );
+CREATE POLICY "Users can update their own conversations" ON public.conversations FOR
+UPDATE USING (
+    auth.uid () IN (participant_1, participant_2)
+);
 
 -- 6. RLS Policies for messages
 CREATE POLICY "Users can view messages in their conversations" ON public.messages FOR
@@ -788,7 +789,8 @@ SELECT USING (
         )
     );
 
-CREATE POLICY "Users can send messages in their conversations" ON public.messages FOR INSERT
+CREATE POLICY "Users can send messages in their conversations" ON public.messages FOR
+INSERT
 WITH
     CHECK (
         auth.uid () = sender_id
@@ -800,16 +802,15 @@ WITH
         )
     );
 
-CREATE POLICY "Users can mark messages as read" ON public.messages
-FOR UPDATE
-    USING (
-        conversation_id IN (
-            SELECT id
-            FROM public.conversations
-            WHERE
-                auth.uid () IN (participant_1, participant_2)
-        )
-    );
+CREATE POLICY "Users can mark messages as read" ON public.messages FOR
+UPDATE USING (
+    conversation_id IN (
+        SELECT id
+        FROM public.conversations
+        WHERE
+            auth.uid () IN (participant_1, participant_2)
+    )
+);
 
 -- 7. CV Unlocks table (for paywall)
 CREATE TABLE IF NOT EXISTS public.cv_unlocks (
@@ -825,7 +826,8 @@ ALTER TABLE public.cv_unlocks ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Employers can view their unlocks" ON public.cv_unlocks FOR
 SELECT USING (auth.uid () = employer_id);
 
-CREATE POLICY "Employers can insert unlocks" ON public.cv_unlocks FOR INSERT
+CREATE POLICY "Employers can insert unlocks" ON public.cv_unlocks FOR
+INSERT
 WITH
     CHECK (auth.uid () = employer_id);
 
@@ -871,3 +873,1228 @@ CREATE TRIGGER update_unread_counts_trigger
 AFTER INSERT OR UPDATE OR DELETE ON public.messages
 FOR EACH ROW
 EXECUTE FUNCTION public.update_unread_counts();
+
+-- ==========================================
+-- 004_applicants_count_trigger.sql
+-- ==========================================
+
+-- Function to recalculate the applicants_count on a job whenever an application is added, removed, or changed.
+CREATE OR REPLACE FUNCTION update_job_applicants_count()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_job_id UUID;
+  v_count INT;
+BEGIN
+  -- Determine the related job_id
+  IF TG_OP = 'DELETE' THEN
+    v_job_id := OLD.job_id;
+  ELSE
+    v_job_id := NEW.job_id;
+  END IF;
+
+  -- Recalculate the total number of applications for this job
+  SELECT count(*) INTO v_count
+  FROM public.applications
+  WHERE job_id = v_job_id;
+
+  -- Update the jobs table
+  UPDATE public.jobs
+  SET applicants_count = v_count,
+      updated_at = now()
+  WHERE id = v_job_id;
+
+  RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger to fire the function after INSERT, UPDATE (if job_id changes), or DELETE
+DROP TRIGGER IF EXISTS trigger_update_job_applicants_count ON public.applications;
+
+CREATE TRIGGER trigger_update_job_applicants_count
+AFTER INSERT OR DELETE OR UPDATE OF job_id
+ON public.applications
+FOR EACH ROW
+EXECUTE FUNCTION update_job_applicants_count();
+
+-- Optional: Run a backfill to correct any existing discrepancies
+UPDATE public.jobs j
+SET
+    applicants_count = (
+        SELECT count(*)
+        FROM public.applications a
+        WHERE
+            a.job_id = j.id
+    );
+
+-- ============================================
+-- GrowthNexus Phase 5: SaaS Enhancements Migration
+-- Run this in Supabase SQL Editor
+-- ============================================
+
+-- 1. ADD 'paused' to job_status enum
+ALTER TYPE job_status ADD VALUE IF NOT EXISTS 'paused';
+
+-- 2. ADD 'offer' to app_status enum
+ALTER TYPE app_status ADD VALUE IF NOT EXISTS 'offer' BEFORE 'hired';
+
+-- 3. ADD company_type enum and column
+DO $$ BEGIN
+  CREATE TYPE company_type_enum AS ENUM ('government', 'semi_government', 'private');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+ALTER TABLE public.companies
+ADD COLUMN IF NOT EXISTS company_type company_type_enum DEFAULT 'private';
+
+-- 4. ADD rejection_reason to applications
+ALTER TABLE public.applications
+ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+
+-- 5. ADD nationality_requirements to jobs (multi-select)
+ALTER TABLE public.jobs
+ADD COLUMN IF NOT EXISTS nationality_requirements TEXT[];
+
+-- 6. ADD skills_required if missing (already exists but ensure)
+-- Already in schema, skip
+
+-- 7. UPDATE public_jobs_view to show entity type for confidential listings
+-- Must DROP first because PostgreSQL cannot rename/reorder columns with CREATE OR REPLACE VIEW
+DROP VIEW IF EXISTS public.public_jobs_view;
+
+CREATE VIEW public.public_jobs_view AS
+SELECT
+    j.id,
+    j.title,
+    j.slug,
+    j.job_type,
+    j.location_city,
+    j.salary_min,
+    j.salary_max,
+    j.currency,
+    j.skills_required,
+    j.nationality_requirements,
+    j.is_featured,
+    j.created_at,
+    j.expires_at,
+    j.applicants_count,
+    -- Confidentiality Logic: show entity type instead of generic text
+    CASE
+        WHEN j.is_confidential
+        AND c.company_type = 'government' THEN 'جهة حكومية'
+        WHEN j.is_confidential
+        AND c.company_type = 'semi_government' THEN 'جهة شبه حكومية'
+        WHEN j.is_confidential THEN 'جهة خاصة'
+        ELSE c.name
+    END AS company_name,
+    CASE
+        WHEN j.is_confidential THEN NULL
+        ELSE c.logo_url
+    END AS company_logo,
+    CASE
+        WHEN j.is_confidential THEN NULL
+        ELSE c.slug
+    END AS company_slug
+FROM public.jobs j
+    JOIN public.companies c ON j.company_id = c.id
+WHERE
+    j.status = 'active'
+    AND (
+        j.expires_at IS NULL
+        OR j.expires_at > now()
+    );
+
+-- 8. INSERT UAE cities into system_config for reference
+INSERT INTO
+    public.system_config (
+        key,
+        value,
+        group_name,
+        description
+    )
+VALUES (
+        'uae_cities',
+        '["أبوظبي","دبي","الشارقة","عجمان","أم القيوين","رأس الخيمة","الفجيرة","العين","كلباء","حتا","الظفرة","الرويس"]',
+        'location',
+        'UAE cities list for job posting dropdown'
+    ) ON CONFLICT (key) DO
+UPDATE
+SET
+    value = EXCLUDED.value;
+
+-- 9. INSERT nationality options into system_config
+INSERT INTO
+    public.system_config (
+        key,
+        value,
+        group_name,
+        description
+    )
+VALUES (
+        'nationality_options',
+        '[{"value":"all","label":"جميع الجنسيات"},{"value":"uae","label":"مواطنون إماراتيون"},{"value":"gcc","label":"دول الخليج"},{"value":"arab","label":"الجنسيات العربية"},{"value":"expat","label":"الجنسيات الأجنبية"}]',
+        'hiring',
+        'Nationality filter options for job posting'
+    ) ON CONFLICT (key) DO
+UPDATE
+SET
+    value = EXCLUDED.value;
+
+-- 10. INSERT rejection reasons into system_config
+INSERT INTO
+    public.system_config (
+        key,
+        value,
+        group_name,
+        description
+    )
+VALUES (
+        'rejection_reasons',
+        '[{"value":"not_suitable","label":"غير مناسب"},{"value":"low_experience","label":"خبرة قليلة"},{"value":"salary_mismatch","label":"راتب غير مناسب"},{"value":"overqualified","label":"مؤهلات أعلى من المطلوب"},{"value":"location_mismatch","label":"الموقع غير مناسب"},{"value":"skills_gap","label":"فجوة في المهارات"},{"value":"other","label":"سبب آخر"}]',
+        'hiring',
+        'Predefined rejection reason options'
+    ) ON CONFLICT (key) DO
+UPDATE
+SET
+    value = EXCLUDED.value;
+
+-- Phase 8: Stripe Billing + Interview AI + Committee Evaluation
+-- Run this migration after 20260422000000_phase5_enhancements.sql
+
+-- ============================================
+-- 8A: Stripe Billing Columns
+-- ============================================
+
+-- Stripe fields on companies (employer subscriptions)
+ALTER TABLE companies
+ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+
+ALTER TABLE companies
+ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
+
+ALTER TABLE companies
+ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'inactive';
+
+ALTER TABLE companies
+ADD COLUMN IF NOT EXISTS subscription_expires_at TIMESTAMPTZ;
+
+-- Stripe fields on profiles (candidate one-time purchases)
+ALTER TABLE profiles
+ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+
+-- ============================================
+-- 8B: Interview AI Columns
+-- ============================================
+
+ALTER TABLE jobs
+ADD COLUMN IF NOT EXISTS auto_interview BOOLEAN DEFAULT false;
+
+ALTER TABLE applications
+ADD COLUMN IF NOT EXISTS interview_score INTEGER;
+
+ALTER TABLE applications
+ADD COLUMN IF NOT EXISTS interview_report JSONB;
+
+-- ============================================
+-- 8C: Committee Evaluation
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS committee_evaluations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
+    application_id UUID REFERENCES applications (id) ON DELETE CASCADE,
+    evaluator_id UUID REFERENCES profiles (id),
+    scores JSONB NOT NULL,
+    notes TEXT,
+    total_score INTEGER,
+    submitted_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE (application_id, evaluator_id)
+);
+
+ALTER TABLE committee_evaluations ENABLE ROW LEVEL SECURITY;
+
+-- Evaluators can manage their own evaluations
+CREATE POLICY "evaluators_own" ON committee_evaluations FOR ALL USING (evaluator_id = auth.uid ());
+
+-- Employers can read evaluations for their jobs
+CREATE POLICY "employers_read_evaluations" ON committee_evaluations FOR
+SELECT USING (
+        application_id IN (
+            SELECT a.id
+            FROM
+                applications a
+                JOIN jobs j ON a.job_id = j.id
+                JOIN companies c ON j.company_id = c.id
+            WHERE
+                c.owner_id = auth.uid ()
+        )
+    );
+
+-- Committee summary stored on applications
+ALTER TABLE applications
+ADD COLUMN IF NOT EXISTS committee_summary JSONB;
+
+-- ============================================
+-- Stripe pricing reference in system_config
+-- ============================================
+
+INSERT INTO
+    system_config (
+        key,
+        value,
+        description,
+        group_name
+    )
+VALUES (
+        'stripe_starter_monthly',
+        '349',
+        'Starter plan monthly price (AED)',
+        'pricing'
+    ),
+    (
+        'stripe_growth_monthly',
+        '799',
+        'Growth plan monthly price (AED)',
+        'pricing'
+    ),
+    (
+        'stripe_pro_monthly',
+        '1499',
+        'Pro plan monthly price (AED)',
+        'pricing'
+    ),
+    (
+        'stripe_starter_yearly',
+        '3490',
+        'Starter plan yearly price (AED)',
+        'pricing'
+    ),
+    (
+        'stripe_growth_yearly',
+        '7990',
+        'Growth plan yearly price (AED)',
+        'pricing'
+    ),
+    (
+        'stripe_pro_yearly',
+        '14990',
+        'Pro plan yearly price (AED)',
+        'pricing'
+    ) ON CONFLICT (key) DO NOTHING;
+
+-- ============================================
+-- Job Views Atomic Increment Function
+-- ============================================
+
+CREATE OR REPLACE FUNCTION increment_job_views(job_id_input UUID)
+RETURNS void AS $$
+BEGIN
+  UPDATE public.jobs
+  SET views_count = COALESCE(views_count, 0) + 1
+  WHERE id = job_id_input;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Allow users to read their own profile
+CREATE POLICY "Users read own profile" ON profiles FOR
+SELECT USING (auth.uid () = id);
+
+-- Phase 9: Contract Automation
+-- Creates the contract_templates table and seed data
+
+CREATE TABLE IF NOT EXISTS public.contract_templates (
+    id UUID DEFAULT uuid_generate_v4 () PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    html_content TEXT NOT NULL,
+    company_id UUID REFERENCES public.companies (id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS
+ALTER TABLE public.contract_templates ENABLE ROW LEVEL SECURITY;
+
+-- Employers can read system templates (company_id IS NULL) and their own templates
+CREATE POLICY "Employers can view system and own templates" ON public.contract_templates FOR
+SELECT USING (
+        company_id IS NULL
+        OR company_id IN (
+            SELECT id
+            FROM public.companies
+            WHERE
+                owner_id = auth.uid ()
+        )
+    );
+
+-- Employers can insert their own templates
+CREATE POLICY "Employers can insert own templates" ON public.contract_templates FOR
+INSERT
+WITH
+    CHECK (
+        company_id IN (
+            SELECT id
+            FROM public.companies
+            WHERE
+                owner_id = auth.uid ()
+        )
+    );
+
+-- Employers can update their own templates
+CREATE POLICY "Employers can update own templates" ON public.contract_templates FOR
+UPDATE USING (
+    company_id IN (
+        SELECT id
+        FROM public.companies
+        WHERE
+            owner_id = auth.uid ()
+    )
+);
+
+-- Employers can delete their own templates
+CREATE POLICY "Employers can delete own templates" ON public.contract_templates FOR DELETE USING (
+    company_id IN (
+        SELECT id
+        FROM public.companies
+        WHERE
+            owner_id = auth.uid ()
+    )
+);
+
+-- Insert Default MOHRE Template
+INSERT INTO
+    public.contract_templates (
+        name,
+        html_content,
+        company_id
+    )
+VALUES (
+        'عقد عمل قياسي - وزارة الموارد البشرية (MOHRE)',
+        '<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: "Arial", sans-serif; padding: 40px; line-height: 1.6; }
+        h1 { text-align: center; color: #0A1628; border-bottom: 2px solid #C8973A; padding-bottom: 10px; }
+        .details { margin-top: 30px; }
+        .details p { margin: 10px 0; font-size: 16px; }
+        .signature { margin-top: 60px; display: flex; justify-content: space-between; }
+        .sig-box { width: 40%; text-align: center; border-top: 1px solid #333; padding-top: 10px; }
+    </style>
+</head>
+<body>
+    <h1>عقد عمل محدد المدة</h1>
+    
+    <div class="details">
+        <p><strong>الطرف الأول (صاحب العمل):</strong> {{company_name}}</p>
+        <p><strong>الطرف الثاني (العامل):</strong> {{candidate_name}}</p>
+        <p><strong>المسمى الوظيفي:</strong> {{position}}</p>
+        <p><strong>الراتب الإجمالي:</strong> {{salary}} درهم إماراتي</p>
+        <p><strong>تاريخ المباشرة:</strong> {{start_date}}</p>
+    </div>
+
+    <div class="terms">
+        <h3>الشروط والأحكام:</h3>
+        <ol>
+            <li>يخضع هذا العقد لقوانين وزارة الموارد البشرية والتوطين في دولة الإمارات العربية المتحدة.</li>
+            <li>فترة التجربة محددة بـ 6 أشهر تبدأ من تاريخ المباشرة.</li>
+            <li>المزايا الإضافية: {{benefits}}</li>
+        </ol>
+    </div>
+
+    <div class="signature">
+        <div class="sig-box">توقيع الطرف الأول<br>{{company_name}}</div>
+        <div class="sig-box">توقيع الطرف الثاني<br>{{candidate_name}}</div>
+    </div>
+</body>
+</html>',
+        NULL
+    ) ON CONFLICT DO NOTHING;
+
+ALTER TABLE public.applications
+ADD COLUMN IF NOT EXISTS ai_match_score INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS ai_analysis TEXT;
+
+-- ==========================================
+-- Save Interview Results (Bypass RLS)
+-- ==========================================
+-- This function allows saving interview results
+-- from the candidate's session without needing
+-- a service role key.
+
+CREATE OR REPLACE FUNCTION save_interview_result(
+    p_application_id UUID,
+    p_interview_score INTEGER,
+    p_interview_report JSONB
+)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE public.applications
+    SET 
+        interview_score = p_interview_score,
+        interview_report = p_interview_report
+    WHERE id = p_application_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Also ensure candidates can read their own interview data
+-- and employers can read interview data for their job applicants
+
+-- ==========================================
+-- MIGRATION: Company Team Members
+-- ==========================================
+-- Adds multi-user team support for companies.
+-- Each company can have multiple members with roles.
+
+-- ==========================================
+-- 1. CREATE COMPANY_MEMBERS TABLE
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS public.company_members (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4 (),
+    company_id UUID REFERENCES public.companies (id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES auth.users (id) ON DELETE CASCADE NOT NULL,
+    role TEXT NOT NULL DEFAULT 'member', -- 'owner', 'admin', 'member', 'viewer'
+    invited_by UUID REFERENCES auth.users (id),
+    invited_email TEXT,
+    invited_at TIMESTAMPTZ DEFAULT now(),
+    accepted_at TIMESTAMPTZ,
+    status TEXT DEFAULT 'active', -- 'pending', 'active', 'revoked'
+    created_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE (company_id, user_id)
+);
+
+-- ==========================================
+-- 2. RLS POLICIES
+-- ==========================================
+
+ALTER TABLE public.company_members ENABLE ROW LEVEL SECURITY;
+
+-- Members can see other members of their company
+CREATE POLICY "Members can view company members" ON public.company_members FOR
+SELECT USING (
+        company_id IN (
+            SELECT company_id
+            FROM public.company_members
+            WHERE
+                user_id = auth.uid ()
+                AND status = 'active'
+        )
+        OR user_id = auth.uid ()
+    );
+
+-- Only owners and admins can insert (invite)
+CREATE POLICY "Owners and admins can invite members" ON public.company_members FOR
+INSERT
+WITH
+    CHECK (
+        company_id IN (
+            SELECT company_id
+            FROM public.company_members
+            WHERE
+                user_id = auth.uid ()
+                AND status = 'active'
+                AND role IN ('owner', 'admin')
+        )
+        OR company_id IN (
+            SELECT id
+            FROM public.companies
+            WHERE
+                owner_id = auth.uid ()
+        )
+    );
+
+-- Only owners and admins can update (change role, accept)
+CREATE POLICY "Owners and admins can update members" ON public.company_members FOR
+UPDATE USING (
+    company_id IN (
+        SELECT company_id
+        FROM public.company_members
+        WHERE
+            user_id = auth.uid ()
+            AND status = 'active'
+            AND role IN ('owner', 'admin')
+    )
+    OR user_id = auth.uid () -- Members can accept their own invitation
+);
+
+-- Only owners can delete (remove members)
+CREATE POLICY "Owners can remove members" ON public.company_members FOR DELETE USING (
+    company_id IN (
+        SELECT company_id
+        FROM public.company_members
+        WHERE
+            user_id = auth.uid ()
+            AND status = 'active'
+            AND role IN ('owner', 'admin')
+    )
+);
+
+-- ==========================================
+-- 3. INDEXES
+-- ==========================================
+
+CREATE INDEX IF NOT EXISTS idx_company_members_company ON public.company_members (company_id);
+
+CREATE INDEX IF NOT EXISTS idx_company_members_user ON public.company_members (user_id);
+
+CREATE INDEX IF NOT EXISTS idx_company_members_status ON public.company_members (status);
+
+-- ==========================================
+-- 4. AUTO-POPULATE EXISTING OWNERS
+-- ==========================================
+-- Every existing company owner becomes a team member with 'owner' role
+
+INSERT INTO
+    public.company_members (
+        company_id,
+        user_id,
+        role,
+        status,
+        accepted_at
+    )
+SELECT id, owner_id, 'owner', 'active', now()
+FROM public.companies
+WHERE
+    owner_id IS NOT NULL ON CONFLICT (company_id, user_id) DO NOTHING;
+
+-- ==========================================
+-- 5. HELPER FUNCTION: Get company for user
+-- ==========================================
+-- Returns the company a user belongs to (as owner OR member)
+
+CREATE OR REPLACE FUNCTION get_user_company(p_user_id UUID)
+RETURNS TABLE (
+    company_id UUID,
+    company_name TEXT,
+    member_role TEXT
+) AS $$
+BEGIN
+    RETURN QUERY
+    -- First check ownership
+    SELECT c.id, c.name, 'owner'::TEXT
+    FROM public.companies c
+    WHERE c.owner_id = p_user_id
+    UNION ALL
+    -- Then check membership
+    SELECT cm.company_id, c.name, cm.role
+    FROM public.company_members cm
+    JOIN public.companies c ON c.id = cm.company_id
+    WHERE cm.user_id = p_user_id AND cm.status = 'active' AND cm.role != 'owner'
+    LIMIT 1;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+-- ==========================================
+-- MIGRATION: Notifications System
+-- ==========================================
+-- In-app notifications for employers and candidates
+
+CREATE TABLE IF NOT EXISTS public.notifications (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4 (),
+    user_id UUID REFERENCES auth.users (id) ON DELETE CASCADE NOT NULL,
+    type TEXT NOT NULL, -- 'new_application', 'interview_complete', 'status_change', 'message', 'system'
+    title TEXT NOT NULL,
+    body TEXT,
+    data JSONB DEFAULT '{}', -- { job_id, application_id, candidate_name, etc. }
+    is_read BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- RLS
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own notifications" ON public.notifications FOR
+SELECT USING (user_id = auth.uid ());
+
+CREATE POLICY "Users can update own notifications" ON public.notifications FOR
+UPDATE USING (user_id = auth.uid ());
+
+-- System can insert via SECURITY DEFINER function
+CREATE OR REPLACE FUNCTION create_notification(
+    p_user_id UUID,
+    p_type TEXT,
+    p_title TEXT,
+    p_body TEXT DEFAULT NULL,
+    p_data JSONB DEFAULT '{}'
+) RETURNS UUID AS $$
+DECLARE
+    v_id UUID;
+BEGIN
+    INSERT INTO public.notifications (user_id, type, title, body, data)
+    VALUES (p_user_id, p_type, p_title, p_body, p_data)
+    RETURNING id INTO v_id;
+    RETURN v_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON public.notifications (user_id);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_unread ON public.notifications (user_id, is_read)
+WHERE
+    is_read = false;
+
+CREATE INDEX IF NOT EXISTS idx_notifications_created ON public.notifications (created_at DESC);
+
+-- ============================================
+-- GrowthNexus: Emiratisation / Nafis Compliance Module
+-- Run this in Supabase SQL Editor
+-- ============================================
+
+-- 1. EMIRATISATION PROFILES TABLE
+-- Stores company workforce data for Emiratisation calculations
+CREATE TABLE IF NOT EXISTS public.emiratisation_profiles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE NOT NULL UNIQUE,
+
+-- Company Emiratisation Info
+company_type TEXT DEFAULT 'private', -- private, semi_government, government
+economic_sector TEXT,
+emirate TEXT,
+trade_license_number TEXT,
+establishment_number TEXT,
+is_mohre_registered BOOLEAN DEFAULT false,
+uses_nafis BOOLEAN DEFAULT false,
+
+-- Workforce Size
+total_employees INTEGER DEFAULT 0,
+skilled_employees INTEGER DEFAULT 0,
+unskilled_employees INTEGER DEFAULT 0,
+current_emiratis INTEGER DEFAULT 0,
+emiratis_in_skilled INTEGER DEFAULT 0,
+new_emiratis_this_year INTEGER DEFAULT 0,
+resigned_emiratis_this_year INTEGER DEFAULT 0,
+
+-- Timestamps
+created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 2. AUDIT LOG TABLE
+-- Every change to emiratisation data is tracked
+CREATE TABLE IF NOT EXISTS public.emiratisation_audit_log (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
+    company_id UUID REFERENCES public.companies (id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES public.profiles (id) ON DELETE SET NULL,
+    field_name TEXT NOT NULL,
+    old_value TEXT,
+    new_value TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 3. INDEXES
+CREATE INDEX IF NOT EXISTS idx_emiratisation_profiles_company ON public.emiratisation_profiles (company_id);
+
+CREATE INDEX IF NOT EXISTS idx_emiratisation_audit_company ON public.emiratisation_audit_log (company_id);
+
+CREATE INDEX IF NOT EXISTS idx_emiratisation_audit_created ON public.emiratisation_audit_log (created_at DESC);
+
+-- 4. RLS
+ALTER TABLE public.emiratisation_profiles ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.emiratisation_audit_log ENABLE ROW LEVEL SECURITY;
+
+-- Emiratisation Profiles: Owner or team member can read/write
+CREATE POLICY "Company owner can manage emiratisation profile" ON public.emiratisation_profiles FOR ALL USING (
+    company_id IN (
+        SELECT id
+        FROM public.companies
+        WHERE
+            owner_id = auth.uid ()
+    )
+);
+
+CREATE POLICY "Team members can read emiratisation profile" ON public.emiratisation_profiles FOR
+SELECT USING (
+        company_id IN (
+            SELECT company_id
+            FROM public.company_members
+            WHERE
+                user_id = auth.uid ()
+                AND status = 'active'
+        )
+    );
+
+-- Audit Log: Owner or team member can read
+CREATE POLICY "Company owner can manage audit log" ON public.emiratisation_audit_log FOR ALL USING (
+    company_id IN (
+        SELECT id
+        FROM public.companies
+        WHERE
+            owner_id = auth.uid ()
+    )
+);
+
+CREATE POLICY "Team members can read audit log" ON public.emiratisation_audit_log FOR
+SELECT USING (
+        company_id IN (
+            SELECT company_id
+            FROM public.company_members
+            WHERE
+                user_id = auth.uid ()
+                AND status = 'active'
+        )
+    );
+
+-- 5. Auto-update trigger for emiratisation_profiles
+CREATE TRIGGER update_emiratisation_profiles_modtime
+    BEFORE UPDATE ON public.emiratisation_profiles
+    FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+
+-- ============================================
+-- GrowthNexus: Contract Tracking System
+-- Run this in Supabase SQL Editor
+-- ============================================
+
+-- 1. CONTRACTS TABLE
+-- Tracks generated contracts linked to applications
+CREATE TABLE IF NOT EXISTS public.contracts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE NOT NULL,
+    application_id UUID REFERENCES public.applications(id) ON DELETE CASCADE NOT NULL,
+    template_id UUID REFERENCES public.contract_templates(id) ON DELETE SET NULL,
+
+-- Contract Data
+rendered_html TEXT NOT NULL,
+salary NUMERIC(12, 2) NOT NULL,
+currency TEXT DEFAULT 'AED',
+start_date DATE NOT NULL,
+benefits TEXT,
+
+-- Status Machine: draft → sent → viewed → signed → declined → expired
+status TEXT DEFAULT 'draft' CHECK (
+    status IN (
+        'draft',
+        'sent',
+        'viewed',
+        'signed',
+        'declined',
+        'expired'
+    )
+),
+
+-- Tracking
+sent_at TIMESTAMPTZ,
+viewed_at TIMESTAMPTZ,
+signed_at TIMESTAMPTZ,
+declined_at TIMESTAMPTZ,
+expires_at TIMESTAMPTZ,
+decline_reason TEXT,
+
+-- Metadata
+created_by UUID REFERENCES auth.users(id),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 2. RLS POLICIES
+ALTER TABLE public.contracts ENABLE ROW LEVEL SECURITY;
+
+-- Employers can view contracts for their company
+CREATE POLICY "Employers can view company contracts" ON public.contracts FOR
+SELECT USING (
+        company_id IN (
+            SELECT id
+            FROM public.companies
+            WHERE
+                owner_id = auth.uid ()
+        )
+        OR company_id IN (
+            SELECT company_id
+            FROM public.company_members
+            WHERE
+                user_id = auth.uid ()
+                AND status = 'active'
+        )
+    );
+
+-- Employers can create contracts
+CREATE POLICY "Employers can create contracts" ON public.contracts FOR
+INSERT
+WITH
+    CHECK (
+        company_id IN (
+            SELECT id
+            FROM public.companies
+            WHERE
+                owner_id = auth.uid ()
+        )
+        OR company_id IN (
+            SELECT company_id
+            FROM public.company_members
+            WHERE
+                user_id = auth.uid ()
+                AND status = 'active'
+                AND role IN ('owner', 'admin')
+        )
+    );
+
+-- Employers can update contract status
+CREATE POLICY "Employers can update contracts" ON public.contracts FOR
+UPDATE USING (
+    company_id IN (
+        SELECT id
+        FROM public.companies
+        WHERE
+            owner_id = auth.uid ()
+    )
+    OR company_id IN (
+        SELECT company_id
+        FROM public.company_members
+        WHERE
+            user_id = auth.uid ()
+            AND status = 'active'
+            AND role IN ('owner', 'admin')
+    )
+);
+
+-- 3. INDEXES
+CREATE INDEX IF NOT EXISTS idx_contracts_company ON public.contracts (company_id);
+
+CREATE INDEX IF NOT EXISTS idx_contracts_application ON public.contracts (application_id);
+
+CREATE INDEX IF NOT EXISTS idx_contracts_status ON public.contracts (status);
+
+-- 4. TRIGGER: Auto-update updated_at
+CREATE OR REPLACE FUNCTION update_contracts_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_contracts_updated_at ON public.contracts;
+
+CREATE TRIGGER trigger_contracts_updated_at
+BEFORE UPDATE ON public.contracts
+FOR EACH ROW
+EXECUTE FUNCTION update_contracts_updated_at();
+
+-- ============================================
+-- GrowthNexus: Emiratisation & Candidates Missing Schema Fixes
+-- Run this in Supabase SQL Editor
+-- ============================================
+
+-- 1. ADD MISSING COLUMNS TO CANDIDATES TABLE
+-- (These were supposed to be added in 001_uae_schema_fixes.sql)
+ALTER TABLE public.candidates
+ADD COLUMN IF NOT EXISTS candidate_type text DEFAULT 'resident',
+ADD COLUMN IF NOT EXISTS nafis_registered boolean DEFAULT false,
+ADD COLUMN IF NOT EXISTS emirates_id text,
+ADD COLUMN IF NOT EXISTS military_service_status text,
+ADD COLUMN IF NOT EXISTS visa_expiry date,
+ADD COLUMN IF NOT EXISTS notice_period text,
+ADD COLUMN IF NOT EXISTS need_sponsorship boolean DEFAULT false,
+ADD COLUMN IF NOT EXISTS residence_emirate text,
+ADD COLUMN IF NOT EXISTS family_book_emirate text,
+ADD COLUMN IF NOT EXISTS visa_status text,
+ADD COLUMN IF NOT EXISTS nationality text,
+ADD COLUMN IF NOT EXISTS profile_views_count int DEFAULT 0;
+
+-- 2. EMIRATISATION PROFILES TABLE
+CREATE TABLE IF NOT EXISTS public.emiratisation_profiles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
+    company_id UUID REFERENCES public.companies (id) ON DELETE CASCADE NOT NULL UNIQUE,
+    company_type TEXT DEFAULT 'private',
+    economic_sector TEXT,
+    emirate TEXT,
+    trade_license_number TEXT,
+    establishment_number TEXT,
+    is_mohre_registered BOOLEAN DEFAULT false,
+    uses_nafis BOOLEAN DEFAULT false,
+    total_employees INTEGER DEFAULT 0,
+    skilled_employees INTEGER DEFAULT 0,
+    unskilled_employees INTEGER DEFAULT 0,
+    current_emiratis INTEGER DEFAULT 0,
+    emiratis_in_skilled INTEGER DEFAULT 0,
+    new_emiratis_this_year INTEGER DEFAULT 0,
+    resigned_emiratis_this_year INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 3. EMIRATISATION AUDIT LOG TABLE
+CREATE TABLE IF NOT EXISTS public.emiratisation_audit_log (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
+    company_id UUID REFERENCES public.companies (id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES public.profiles (id) ON DELETE SET NULL,
+    field_name TEXT NOT NULL,
+    old_value TEXT,
+    new_value TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 4. CONTRACTS TABLE
+CREATE TABLE IF NOT EXISTS public.contracts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
+    company_id UUID REFERENCES public.companies (id) ON DELETE CASCADE NOT NULL,
+    application_id UUID REFERENCES public.applications (id) ON DELETE CASCADE NOT NULL,
+    template_id UUID REFERENCES public.contract_templates (id) ON DELETE SET NULL,
+    rendered_html TEXT NOT NULL,
+    salary NUMERIC(12, 2) NOT NULL,
+    currency TEXT DEFAULT 'AED',
+    start_date DATE NOT NULL,
+    benefits TEXT,
+    status TEXT DEFAULT 'draft' CHECK (
+        status IN (
+            'draft',
+            'sent',
+            'viewed',
+            'signed',
+            'declined',
+            'expired'
+        )
+    ),
+    sent_at TIMESTAMPTZ,
+    viewed_at TIMESTAMPTZ,
+    signed_at TIMESTAMPTZ,
+    declined_at TIMESTAMPTZ,
+    expires_at TIMESTAMPTZ,
+    decline_reason TEXT,
+    created_by UUID REFERENCES auth.users (id),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 5. CONTRACT TEMPLATES TABLE
+CREATE TABLE IF NOT EXISTS public.contract_templates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
+    company_id UUID REFERENCES public.companies (id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    content_html TEXT NOT NULL,
+    is_system BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 6. COMPANY MEMBERS TABLE
+CREATE TABLE IF NOT EXISTS public.company_members (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4 (),
+    company_id UUID REFERENCES public.companies (id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES auth.users (id) ON DELETE CASCADE NOT NULL,
+    role TEXT NOT NULL DEFAULT 'member',
+    invited_by UUID REFERENCES auth.users (id),
+    invited_email TEXT,
+    invited_at TIMESTAMPTZ DEFAULT now(),
+    accepted_at TIMESTAMPTZ,
+    status TEXT DEFAULT 'active',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE (company_id, user_id)
+);
+
+-- 7. ENABLE RLS
+ALTER TABLE public.emiratisation_profiles ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.emiratisation_audit_log ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.contracts ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.company_members ENABLE ROW LEVEL SECURITY;
+
+-- 8. CREATE SAFE POLICIES (Using EXISTS instead of IN to prevent complex subquery issues)
+
+-- Drop existing policies if they exist to prevent errors
+DROP POLICY IF EXISTS "Company owner can manage emiratisation profile" ON public.emiratisation_profiles;
+
+DROP POLICY IF EXISTS "Team members can read emiratisation profile" ON public.emiratisation_profiles;
+
+DROP POLICY IF EXISTS "Company owner can manage audit log" ON public.emiratisation_audit_log;
+
+DROP POLICY IF EXISTS "Team members can read audit log" ON public.emiratisation_audit_log;
+
+-- Emiratisation Profiles Policies
+CREATE POLICY "Manage emiratisation profile" ON public.emiratisation_profiles FOR ALL USING (
+    EXISTS (
+        SELECT 1
+        FROM public.companies
+        WHERE
+            id = company_id
+            AND owner_id = auth.uid ()
+    )
+    OR EXISTS (
+        SELECT 1
+        FROM public.company_members
+        WHERE
+            company_id = emiratisation_profiles.company_id
+            AND user_id = auth.uid ()
+            AND status = 'active'
+    )
+);
+
+-- Audit Log Policies
+CREATE POLICY "Manage audit log" ON public.emiratisation_audit_log FOR ALL USING (
+    EXISTS (
+        SELECT 1
+        FROM public.companies
+        WHERE
+            id = company_id
+            AND owner_id = auth.uid ()
+    )
+    OR EXISTS (
+        SELECT 1
+        FROM public.company_members
+        WHERE
+            company_id = emiratisation_audit_log.company_id
+            AND user_id = auth.uid ()
+            AND status = 'active'
+    )
+);
+
+-- Contracts Policies
+DROP POLICY IF EXISTS "Employers can view company contracts" ON public.contracts;
+
+DROP POLICY IF EXISTS "Employers can create contracts" ON public.contracts;
+
+DROP POLICY IF EXISTS "Employers can update contracts" ON public.contracts;
+
+CREATE POLICY "Manage company contracts" ON public.contracts FOR ALL USING (
+    EXISTS (
+        SELECT 1
+        FROM public.companies
+        WHERE
+            id = company_id
+            AND owner_id = auth.uid ()
+    )
+    OR EXISTS (
+        SELECT 1
+        FROM public.company_members
+        WHERE
+            company_id = contracts.company_id
+            AND user_id = auth.uid ()
+            AND status = 'active'
+    )
+);
+
+-- 9. ADD INDEXES
+CREATE INDEX IF NOT EXISTS idx_emiratisation_profiles_company ON public.emiratisation_profiles (company_id);
+
+CREATE INDEX IF NOT EXISTS idx_emiratisation_audit_company ON public.emiratisation_audit_log (company_id);
+
+CREATE INDEX IF NOT EXISTS idx_emiratisation_audit_created ON public.emiratisation_audit_log (created_at DESC);
+
+-- ============================================
+-- FIX: Infinite Recursion in company_members RLS
+-- Run this in Supabase SQL Editor
+-- ============================================
+-- Problem: company_members SELECT policy queries company_members itself,
+-- causing infinite recursion when any other table's policy references company_members.
+-- Fix: Use auth.uid() direct checks instead of self-referencing subqueries.
+
+-- ==========================================
+-- 1. DROP ALL EXISTING company_members POLICIES
+-- ==========================================
+DROP POLICY IF EXISTS "Members can view company members" ON public.company_members;
+
+DROP POLICY IF EXISTS "Owners and admins can invite members" ON public.company_members;
+
+DROP POLICY IF EXISTS "Owners and admins can update members" ON public.company_members;
+
+DROP POLICY IF EXISTS "Owners can remove members" ON public.company_members;
+
+-- ==========================================
+-- 2. RECREATE POLICIES WITHOUT SELF-REFERENCE
+-- ==========================================
+
+-- SELECT: Members can see their own rows + rows for companies they own
+CREATE POLICY "Members can view company members" ON public.company_members FOR
+SELECT USING (
+        user_id = auth.uid ()
+        OR company_id IN (
+            SELECT id
+            FROM public.companies
+            WHERE
+                owner_id = auth.uid ()
+        )
+    );
+
+-- INSERT: Only company owners can invite
+CREATE POLICY "Owners can invite members" ON public.company_members FOR
+INSERT
+WITH
+    CHECK (
+        company_id IN (
+            SELECT id
+            FROM public.companies
+            WHERE
+                owner_id = auth.uid ()
+        )
+    );
+
+-- UPDATE: Company owners or the member themselves (to accept invitation)
+CREATE POLICY "Owners and self can update members" ON public.company_members FOR
+UPDATE USING (
+    user_id = auth.uid ()
+    OR company_id IN (
+        SELECT id
+        FROM public.companies
+        WHERE
+            owner_id = auth.uid ()
+    )
+);
+
+-- DELETE: Only company owners
+CREATE POLICY "Owners can remove members" ON public.company_members FOR DELETE USING (
+    company_id IN (
+        SELECT id
+        FROM public.companies
+        WHERE
+            owner_id = auth.uid ()
+    )
+);
+
+-- ==========================================
+-- 3. FIX EMIRATISATION POLICIES TOO
+-- ==========================================
+-- These also reference company_members, but now that company_members
+-- policies are non-recursive, they should work. However, let's use
+-- the simpler pattern to be safe.
+
+DROP POLICY IF EXISTS "Company owner can manage emiratisation profile" ON public.emiratisation_profiles;
+
+DROP POLICY IF EXISTS "Team members can read emiratisation profile" ON public.emiratisation_profiles;
+
+DROP POLICY IF EXISTS "Manage emiratisation profile" ON public.emiratisation_profiles;
+
+CREATE POLICY "Manage emiratisation profile" ON public.emiratisation_profiles FOR ALL USING (
+    company_id IN (
+        SELECT id
+        FROM public.companies
+        WHERE
+            owner_id = auth.uid ()
+    )
+    OR company_id IN (
+        SELECT company_id
+        FROM public.company_members
+        WHERE
+            user_id = auth.uid ()
+            AND status = 'active'
+    )
+);
+
+DROP POLICY IF EXISTS "Company owner can manage audit log" ON public.emiratisation_audit_log;
+
+DROP POLICY IF EXISTS "Team members can read audit log" ON public.emiratisation_audit_log;
+
+DROP POLICY IF EXISTS "Manage audit log" ON public.emiratisation_audit_log;
+
+CREATE POLICY "Manage audit log" ON public.emiratisation_audit_log FOR ALL USING (
+    company_id IN (
+        SELECT id
+        FROM public.companies
+        WHERE
+            owner_id = auth.uid ()
+    )
+    OR company_id IN (
+        SELECT company_id
+        FROM public.company_members
+        WHERE
+            user_id = auth.uid ()
+            AND status = 'active'
+    )
+);
+
+-- ==========================================
+-- 4. RELOAD POSTGREST SCHEMA CACHE
+-- ==========================================
+NOTIFY pgrst, 'reload schema';

@@ -1,102 +1,155 @@
-import { createClient } from '@/utils/supabase/server'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Flag, Users, Target, TrendingUp, AlertTriangle } from 'lucide-react'
+'use client'
 
-export default async function EmiratisationPage() {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return <div className="text-cream">يرجى تسجيل الدخول</div>
+import { useState, useEffect } from 'react'
+import { Loader2, Settings, Calculator, ShieldCheck, UserCheck, Lightbulb, Rocket } from 'lucide-react'
+import { createClient } from '@/utils/supabase/client'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { type EmiratisationProfile } from '@/lib/emiratisation-engine'
 
-    let company: any = null
-    const { data: ownedCo } = await supabase.from('companies').select('id, name, size_range').eq('owner_id', user.id).single()
-    if (ownedCo) { company = ownedCo }
-    else {
-        const { data: m } = await supabase.from('company_members').select('company_id, companies(id, name, size_range)').eq('user_id', user.id).eq('status', 'active').single()
-        if (m?.companies) company = m.companies
+// Components
+import { AdvisoryBanner } from '@/components/employer/emiratisation/AdvisoryBanner'
+import { EmiratisationProfileForm } from '@/components/employer/emiratisation/EmiratisationProfileForm'
+import { ClassificationBanner } from '@/components/employer/emiratisation/ClassificationBanner'
+import { EmiratisationCalculator } from '@/components/employer/emiratisation/EmiratisationCalculator'
+import { ComplianceStatusCard } from '@/components/employer/emiratisation/ComplianceStatusCard'
+import { GapAnalysis } from '@/components/employer/emiratisation/GapAnalysis'
+import { AlertsPanel } from '@/components/employer/emiratisation/AlertsPanel'
+import { EmiratiCandidatesList } from '@/components/employer/emiratisation/EmiratiCandidatesList'
+import { OpportunityDetection } from '@/components/employer/emiratisation/OpportunityDetection'
+import { EmiratisationAnalytics } from '@/components/employer/emiratisation/EmiratisationAnalytics'
+import { NafisActionPlan } from '@/components/employer/emiratisation/NafisActionPlan'
+import { ExportReports } from '@/components/employer/emiratisation/ExportReports'
+import { AuditLogTable } from '@/components/employer/emiratisation/AuditLogTable'
+
+export default function EmiratisationPage() {
+    const [loading, setLoading] = useState(true)
+    const [profile, setProfile] = useState<EmiratisationProfile | null>(null)
+    const [companyId, setCompanyId] = useState<string | null>(null)
+    const [jobTitles, setJobTitles] = useState<string[]>([])
+
+    useEffect(() => {
+        loadData()
+    }, [])
+
+    const loadData = async () => {
+        try {
+            // Fetch profile from API
+            const profileRes = await fetch('/api/emiratisation/profile')
+            const profileData = await profileRes.json()
+            if (profileData.profile) setProfile(profileData.profile)
+            if (profileData.company_id) setCompanyId(profileData.company_id)
+
+            // Fetch active job titles for opportunity detection
+            if (profileData.company_id) {
+                const supabase = createClient()
+                const { data: jobs } = await supabase
+                    .from('jobs')
+                    .select('title')
+                    .eq('company_id', profileData.company_id)
+                    .eq('status', 'active')
+                setJobTitles((jobs || []).map(j => j.title))
+            }
+        } catch (err) {
+            console.error('Failed to load emiratisation data:', err)
+        }
+        setLoading(false)
     }
-    const { data: jobs } = await supabase.from('jobs').select('id').eq('company_id', company?.id || '')
-    const jobIds = (jobs || []).map(j => j.id)
 
-    let emiratiCount = 0
-    let totalHired = 0
-    if (jobIds.length > 0) {
-        const { data: apps } = await supabase
-            .from('applications')
-            .select('status, candidates!inner(candidate_type)')
-            .in('job_id', jobIds)
-            .eq('status', 'hired')
-        totalHired = (apps || []).length
-        emiratiCount = (apps || []).filter((a: any) => a.candidates?.candidate_type === 'emirati').length
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <Loader2 className="h-8 w-8 animate-spin text-gold" />
+            </div>
+        )
     }
 
-    const emiratiRatio = totalHired > 0 ? Math.round((emiratiCount / totalHired) * 100) : 0
-    const targetRatio = 10 // MOHRE target percentage
-    const isCompliant = emiratiRatio >= targetRatio
+    const hasProfile = profile && profile.total_employees > 0
 
     return (
         <div className="space-y-6" dir="rtl">
+            {/* Header */}
             <div>
-                <h1 className="text-3xl font-bold text-cream">التوطين (Emiratisation)</h1>
-                <p className="text-cream-dark/50 mt-1">تتبع نسبة التوطين والتزام MOHRE</p>
+                <h1 className="text-3xl font-bold text-cream">التوطين / نافس</h1>
+                <p className="text-cream-dark/50 mt-1">لوحة متابعة التزام التوطين وبرنامج نافس</p>
             </div>
 
-            {/* Main Gauge */}
-            <Card className="bg-navy-light border-gold/10">
-                <CardContent className="p-8 text-center">
-                    <div className="relative inline-flex items-center justify-center w-40 h-40 mb-6">
-                        <svg className="w-40 h-40 -rotate-90" viewBox="0 0 120 120">
-                            <circle cx="60" cy="60" r="52" fill="none" stroke="currentColor" strokeWidth="8" className="text-navy-lighter" />
-                            <circle cx="60" cy="60" r="52" fill="none" stroke="currentColor" strokeWidth="8"
-                                strokeDasharray={`${(emiratiRatio / 100) * 327} 327`}
-                                className={isCompliant ? 'text-success' : 'text-red-400'} strokeLinecap="round" />
-                        </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className={`text-3xl font-bold ${isCompliant ? 'text-success' : 'text-red-400'}`}>{emiratiRatio}%</span>
-                            <span className="text-xs text-cream-dark/40">نسبة التوطين</span>
-                        </div>
-                    </div>
-                    <Badge className={isCompliant ? 'bg-success/15 text-success' : 'bg-red-500/15 text-red-400'}>
-                        {isCompliant ? 'ملتزم بالمتطلبات' : 'أقل من المستهدف'}
-                    </Badge>
-                </CardContent>
-            </Card>
+            {/* Advisory Banner */}
+            <AdvisoryBanner />
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="bg-navy-light border-gold/10"><CardContent className="p-5">
-                    <Flag className="h-5 w-5 text-success mb-2" />
-                    <p className="text-2xl font-bold text-cream">{emiratiCount}</p>
-                    <p className="text-sm text-cream-dark/50">مواطنون إماراتيون</p>
-                </CardContent></Card>
-                <Card className="bg-navy-light border-gold/10"><CardContent className="p-5">
-                    <Users className="h-5 w-5 text-blue-400 mb-2" />
-                    <p className="text-2xl font-bold text-cream">{totalHired}</p>
-                    <p className="text-sm text-cream-dark/50">إجمالي المعينين</p>
-                </CardContent></Card>
-                <Card className="bg-navy-light border-gold/10"><CardContent className="p-5">
-                    <Target className="h-5 w-5 text-gold mb-2" />
-                    <p className="text-2xl font-bold text-cream">{targetRatio}%</p>
-                    <p className="text-sm text-cream-dark/50">المستهدف (MOHRE)</p>
-                </CardContent></Card>
-                <Card className="bg-navy-light border-gold/10"><CardContent className="p-5">
-                    <TrendingUp className="h-5 w-5 text-purple-400 mb-2" />
-                    <p className="text-2xl font-bold text-cream">{Math.max(0, targetRatio - emiratiRatio)}%</p>
-                    <p className="text-sm text-cream-dark/50">الفجوة المتبقية</p>
-                </CardContent></Card>
-            </div>
+            {/* Tabs */}
+            <Tabs defaultValue={hasProfile ? 'calculator' : 'settings'} className="w-full">
+                <TabsList className="bg-navy-light border border-gold/10 w-full flex flex-wrap h-auto p-1 gap-1">
+                    <TabsTrigger value="settings" className="flex-1 min-w-[120px] text-xs data-[state=active]:bg-gold/10 data-[state=active]:text-gold text-cream-dark/50">
+                        <Settings className="h-3.5 w-3.5 me-1.5" />إعدادات التوطين
+                    </TabsTrigger>
+                    <TabsTrigger value="calculator" className="flex-1 min-w-[120px] text-xs data-[state=active]:bg-gold/10 data-[state=active]:text-gold text-cream-dark/50" disabled={!hasProfile}>
+                        <Calculator className="h-3.5 w-3.5 me-1.5" />الحاسبة والفجوة
+                    </TabsTrigger>
+                    <TabsTrigger value="compliance" className="flex-1 min-w-[120px] text-xs data-[state=active]:bg-gold/10 data-[state=active]:text-gold text-cream-dark/50" disabled={!hasProfile}>
+                        <ShieldCheck className="h-3.5 w-3.5 me-1.5" />حالة الالتزام
+                    </TabsTrigger>
+                    <TabsTrigger value="candidates" className="flex-1 min-w-[120px] text-xs data-[state=active]:bg-gold/10 data-[state=active]:text-gold text-cream-dark/50">
+                        <UserCheck className="h-3.5 w-3.5 me-1.5" />المرشحون المواطنون
+                    </TabsTrigger>
+                    <TabsTrigger value="opportunities" className="flex-1 min-w-[120px] text-xs data-[state=active]:bg-gold/10 data-[state=active]:text-gold text-cream-dark/50" disabled={!hasProfile}>
+                        <Lightbulb className="h-3.5 w-3.5 me-1.5" />فرص التوطين
+                    </TabsTrigger>
+                    <TabsTrigger value="action" className="flex-1 min-w-[120px] text-xs data-[state=active]:bg-gold/10 data-[state=active]:text-gold text-cream-dark/50" disabled={!hasProfile}>
+                        <Rocket className="h-3.5 w-3.5 me-1.5" />خطة العمل
+                    </TabsTrigger>
+                </TabsList>
 
-            {!isCompliant && (
-                <Card className="bg-red-500/5 border-red-500/20">
-                    <CardContent className="p-6 flex items-start gap-4">
-                        <AlertTriangle className="h-6 w-6 text-red-400 mt-1 flex-shrink-0" />
-                        <div>
-                            <h3 className="text-cream font-semibold mb-1">تنبيه: نسبة التوطين أقل من المستهدف</h3>
-                            <p className="text-cream-dark/50 text-sm">تحتاج إلى توظيف {Math.ceil((targetRatio / 100) * totalHired) - emiratiCount} مواطنين إماراتيين إضافيين للوصول إلى نسبة {targetRatio}% المطلوبة من MOHRE.</p>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
+                {/* Tab 1: Settings & Audit */}
+                <TabsContent value="settings" className="mt-6 space-y-6">
+                    <EmiratisationProfileForm
+                        profile={profile}
+                        companyId={companyId || ''}
+                        onSaved={(saved) => { setProfile(saved); }}
+                    />
+                    {companyId && <AuditLogTable companyId={companyId} />}
+                </TabsContent>
+
+                {/* Tab 2: Calculator & Gap */}
+                <TabsContent value="calculator" className="mt-6 space-y-6">
+                    {profile && (
+                        <>
+                            <ClassificationBanner
+                                totalEmployees={profile.total_employees}
+                                sector={profile.economic_sector}
+                            />
+                            <EmiratisationCalculator profile={profile} />
+                            <GapAnalysis profile={profile} />
+                        </>
+                    )}
+                </TabsContent>
+
+                {/* Tab 3: Compliance & Alerts */}
+                <TabsContent value="compliance" className="mt-6 space-y-6">
+                    {profile && (
+                        <>
+                            <ComplianceStatusCard profile={profile} />
+                            <AlertsPanel profile={profile} />
+                        </>
+                    )}
+                </TabsContent>
+
+                {/* Tab 4: Emirati Candidates */}
+                <TabsContent value="candidates" className="mt-6">
+                    <EmiratiCandidatesList />
+                </TabsContent>
+
+                {/* Tab 5: Opportunities & Analytics */}
+                <TabsContent value="opportunities" className="mt-6 space-y-6">
+                    <OpportunityDetection jobTitles={jobTitles} />
+                    {profile && <EmiratisationAnalytics profile={profile} />}
+                </TabsContent>
+
+                {/* Tab 6: Action Plan & Export */}
+                <TabsContent value="action" className="mt-6 space-y-6">
+                    {profile && <NafisActionPlan profile={profile} />}
+                    <ExportReports />
+                </TabsContent>
+            </Tabs>
         </div>
     )
 }
