@@ -1,0 +1,119 @@
+{
+  "name": "GN-Contract-Notify",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gn-contract-notify",
+        "options": {}
+      },
+      "id": "webhook-entry",
+      "name": "Contract Event Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate webhook secret\nconst secret = $input.first().headers['x-webhook-secret'];\nconst expected = $env.N8N_WEBHOOK_SECRET || 'your-webhook-secret';\n\nif (secret !== expected) {\n  throw new Error('Invalid webhook secret');\n}\n\nconst body = $input.first().json;\nreturn [{\n  json: {\n    event_type: body.event_type,\n    contract_id: body.contract_id,\n    candidate_name: body.candidate_name,\n    candidate_email: body.candidate_email || '',\n    company_name: body.company_name,\n    employer_email: body.employer_email || '',\n    job_title: body.job_title,\n    salary: body.salary,\n    currency: body.currency || 'AED',\n    start_date: body.start_date,\n    decline_reason: body.decline_reason || '',\n    contract_url: body.contract_url || ''\n  }\n}];"
+      },
+      "id": "validate-secret",
+      "name": "Validate & Parse",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "rules": [
+            { "output": 0, "conditions": { "conditions": [{ "leftValue": "={{ $json.event_type }}", "rightValue": "contract_created", "operator": { "type": "string", "operation": "equals" } }] } },
+            { "output": 1, "conditions": { "conditions": [{ "leftValue": "={{ $json.event_type }}", "rightValue": "contract_sent", "operator": { "type": "string", "operation": "equals" } }] } },
+            { "output": 2, "conditions": { "conditions": [{ "leftValue": "={{ $json.event_type }}", "rightValue": "contract_signed", "operator": { "type": "string", "operation": "equals" } }] } },
+            { "output": 3, "conditions": { "conditions": [{ "leftValue": "={{ $json.event_type }}", "rightValue": "contract_declined", "operator": { "type": "string", "operation": "equals" } }] } }
+          ]
+        }
+      },
+      "id": "event-switch",
+      "name": "Event Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [690, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@growthnexus.ae",
+        "toEmail": "={{ $json.candidate_email }}",
+        "subject": "عرض وظيفي جديد من {{ $json.company_name }} — {{ $json.job_title }}",
+        "html": "<div dir='rtl' style='font-family: Segoe UI, Tahoma, sans-serif; max-width: 600px; margin: 0 auto;'><div style='background: linear-gradient(135deg, #c4a035, #d4b13f); padding: 30px; text-align: center; border-radius: 12px 12px 0 0;'><h1 style='color: #0c1222; margin: 0; font-size: 24px;'>عرض وظيفي جديد! 🎉</h1></div><div style='background: #fff; padding: 30px; border: 1px solid #eee; border-radius: 0 0 12px 12px;'><p style='font-size: 16px; color: #333;'>مرحباً <strong>{{ $json.candidate_name }}</strong>,</p><p style='color: #555;'>لقد تلقيت عرضاً وظيفياً جديداً:</p><table style='width: 100%; border-collapse: collapse; margin: 20px 0;'><tr><td style='padding: 10px; border-bottom: 1px solid #eee; color: #888;'>الشركة</td><td style='padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{{ $json.company_name }}</td></tr><tr><td style='padding: 10px; border-bottom: 1px solid #eee; color: #888;'>المسمى الوظيفي</td><td style='padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{{ $json.job_title }}</td></tr><tr><td style='padding: 10px; border-bottom: 1px solid #eee; color: #888;'>الراتب</td><td style='padding: 10px; border-bottom: 1px solid #eee; font-weight: bold; color: #c4a035;'>{{ $json.salary }} {{ $json.currency }}</td></tr><tr><td style='padding: 10px; color: #888;'>تاريخ المباشرة</td><td style='padding: 10px; font-weight: bold;'>{{ $json.start_date }}</td></tr></table><a href='{{ $json.contract_url }}' style='display: inline-block; background: #c4a035; color: #0c1222; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;'>عرض العقد</a></div></div>",
+        "options": {}
+      },
+      "id": "email-created",
+      "name": "Email: Contract Created",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [950, 100]
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@growthnexus.ae",
+        "toEmail": "={{ $json.candidate_email }}",
+        "subject": "عقدك جاهز للمراجعة — {{ $json.company_name }}",
+        "html": "<div dir='rtl' style='font-family: Segoe UI, Tahoma, sans-serif; max-width: 600px; margin: 0 auto;'><div style='background: #3b82f6; padding: 25px; text-align: center; border-radius: 12px 12px 0 0;'><h1 style='color: #fff; margin: 0;'>📋 عقدك جاهز للمراجعة</h1></div><div style='background: #fff; padding: 30px; border: 1px solid #eee; border-radius: 0 0 12px 12px;'><p>مرحباً <strong>{{ $json.candidate_name }}</strong>,</p><p>عقد العمل الخاص بك لوظيفة <strong>{{ $json.job_title }}</strong> في <strong>{{ $json.company_name }}</strong> جاهز للمراجعة والتوقيع.</p><a href='{{ $json.contract_url }}' style='display: inline-block; background: #3b82f6; color: #fff; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: bold;'>مراجعة وتوقيع العقد</a></div></div>",
+        "options": {}
+      },
+      "id": "email-sent",
+      "name": "Email: Contract Sent",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [950, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@growthnexus.ae",
+        "toEmail": "={{ $json.employer_email }}",
+        "subject": "🎉 {{ $json.candidate_name }} وقّع على العقد — {{ $json.job_title }}",
+        "html": "<div dir='rtl' style='font-family: Segoe UI, Tahoma, sans-serif; max-width: 600px; margin: 0 auto;'><div style='background: #22c55e; padding: 25px; text-align: center; border-radius: 12px 12px 0 0;'><h1 style='color: #fff; margin: 0;'>✅ تم التوقيع بنجاح!</h1></div><div style='background: #fff; padding: 30px; border: 1px solid #eee; border-radius: 0 0 12px 12px;'><p>أخبار سارة!</p><p>المرشح <strong>{{ $json.candidate_name }}</strong> وقّع على عقد العمل لوظيفة <strong>{{ $json.job_title }}</strong>.</p><p>تاريخ المباشرة: <strong>{{ $json.start_date }}</strong></p><p style='color: #888; font-size: 13px;'>تم تحديث حالة الطلب تلقائياً إلى \"تم التوظيف\".</p></div></div>",
+        "options": {}
+      },
+      "id": "email-signed",
+      "name": "Email: Contract Signed",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [950, 500]
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@growthnexus.ae",
+        "toEmail": "={{ $json.employer_email }}",
+        "subject": "❌ {{ $json.candidate_name }} رفض العقد — {{ $json.job_title }}",
+        "html": "<div dir='rtl' style='font-family: Segoe UI, Tahoma, sans-serif; max-width: 600px; margin: 0 auto;'><div style='background: #ef4444; padding: 25px; text-align: center; border-radius: 12px 12px 0 0;'><h1 style='color: #fff; margin: 0;'>تم رفض العقد</h1></div><div style='background: #fff; padding: 30px; border: 1px solid #eee; border-radius: 0 0 12px 12px;'><p>المرشح <strong>{{ $json.candidate_name }}</strong> رفض عقد العمل لوظيفة <strong>{{ $json.job_title }}</strong>.</p><div style='background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 15px; margin: 15px 0;'><p style='margin: 0; color: #991b1b;'><strong>سبب الرفض:</strong></p><p style='margin: 5px 0 0; color: #b91c1c;'>{{ $json.decline_reason }}</p></div></div></div>",
+        "options": {}
+      },
+      "id": "email-declined",
+      "name": "Email: Contract Declined",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [950, 700]
+    }
+  ],
+  "connections": {
+    "Contract Event Webhook": {
+      "main": [[{ "node": "Validate & Parse", "type": "main", "index": 0 }]]
+    },
+    "Validate & Parse": {
+      "main": [[{ "node": "Event Router", "type": "main", "index": 0 }]]
+    },
+    "Event Router": {
+      "main": [
+        [{ "node": "Email: Contract Created", "type": "main", "index": 0 }],
+        [{ "node": "Email: Contract Sent", "type": "main", "index": 0 }],
+        [{ "node": "Email: Contract Signed", "type": "main", "index": 0 }],
+        [{ "node": "Email: Contract Declined", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -9,7 +9,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 import {
     FileSignature, Loader2, Eye, Send, Check, X,
-    Clock, FileText, AlertTriangle, ArrowRight
+    Clock, FileText, AlertTriangle, ArrowRight, Download
 } from 'lucide-react'
 
 interface Contract {
@@ -165,6 +165,23 @@ export default function ContractsTrackPage() {
                                                 <Button variant="ghost" size="sm" onClick={() => setPreviewContract(contract)}
                                                     className="text-cream-dark/40 hover:text-cream h-8 w-8 p-0">
                                                     <Eye className="h-4 w-4" />
+                                                </Button>
+
+                                                <Button variant="ghost" size="sm"
+                                                    onClick={async () => {
+                                                        const res = await fetch(`/api/contracts/pdf/${contract.id}`)
+                                                        if (res.ok) {
+                                                            const blob = await res.blob()
+                                                            const url = URL.createObjectURL(blob)
+                                                            const a = document.createElement('a')
+                                                            a.href = url
+                                                            a.download = `contract-${contract.candidate_name}.html`
+                                                            a.click()
+                                                            URL.revokeObjectURL(url)
+                                                        }
+                                                    }}
+                                                    className="text-cream-dark/40 hover:text-cream h-8 w-8 p-0">
+                                                    <Download className="h-4 w-4" />
                                                 </Button>
 
                                                 {contract.status === 'draft' && (

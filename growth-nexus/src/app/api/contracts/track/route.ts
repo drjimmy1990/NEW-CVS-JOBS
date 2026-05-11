@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
+import { notifyContractEvent } from '@/lib/contract-notify'
 
 // GET: List all contracts for a company
 export async function GET(req: Request) {
@@ -167,6 +168,45 @@ export async function PATCH(req: Request) {
         }
 
         if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+        // Fire n8n notification for relevant status changes
+        if (contract && ['sent', 'signed', 'declined'].includes(status)) {
+            // Fetch context for the notification
+            const { data: contractCtx } = await supabase
+                .from('contracts')
+                .select('salary, currency, start_date, applications ( candidate_id, jobs ( title, companies ( name ) ) )')
+                .eq('id', id)
+                .single()
+
+            if (contractCtx) {
+                const ctx = contractCtx as any
+                const candidateId = ctx.applications?.candidate_id
+                const { data: candidateProfile } = await supabase
+                    .from('profiles')
+                    .select('full_name')
+                    .eq('id', candidateId)
+                    .single()
+
+                const eventMap: Record<string, 'contract_sent' | 'contract_signed' | 'contract_declined'> = {
+                    sent: 'contract_sent',
+                    signed: 'contract_signed',
+                    declined: 'contract_declined',
+                }
+
+                notifyContractEvent({
+                    event_type: eventMap[status],
+                    contract_id: id,
+                    candidate_name: candidateProfile?.full_name || 'مرشح',
+                    company_name: ctx.applications?.jobs?.companies?.name || '',
+                    job_title: ctx.applications?.jobs?.title || '',
+                    salary: Number(ctx.salary),
+                    currency: ctx.currency || 'AED',
+                    start_date: ctx.start_date,
+                    decline_reason: decline_reason || null,
+                })
+            }
+        }
+
         return NextResponse.json({ contract })
     } catch {
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })

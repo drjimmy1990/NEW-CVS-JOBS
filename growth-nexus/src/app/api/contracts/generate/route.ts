@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { notifyContractEvent } from '@/lib/contract-notify';
 
 export async function POST(req: Request) {
     try {
@@ -28,14 +29,14 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        // 1. Fetch Application & Candidate Details
+        // 1. Fetch Application & Candidate Details (include company ID)
         const { data: application, error: appError } = await supabase
             .from('applications')
             .select(`
                 id,
                 job_id,
                 candidate_id,
-                jobs ( title, companies ( name ) )
+                jobs ( title, companies ( id, name ) )
             `)
             .eq('id', applicationId)
             .single();
@@ -43,6 +44,17 @@ export async function POST(req: Request) {
         if (appError || !application) {
             return NextResponse.json({ error: 'Application not found' }, { status: 404 });
         }
+
+        const appData = application as any;
+        const companyName = Array.isArray(appData.jobs)
+            ? appData.jobs[0]?.companies?.name
+            : appData.jobs?.companies?.name;
+        const companyId = Array.isArray(appData.jobs)
+            ? appData.jobs[0]?.companies?.id
+            : appData.jobs?.companies?.id;
+        const jobTitle = Array.isArray(appData.jobs)
+            ? appData.jobs[0]?.title
+            : appData.jobs?.title;
 
         const { data: candidateProfile } = await supabase
             .from('profiles')
@@ -61,59 +73,62 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Template not found' }, { status: 404 });
         }
 
-        // 3. Send payload to N8N Webhook (Workflow 11)
-        const webhookUrl = process.env.N8N_CONTRACT_GEN_WEBHOOK;
-        const webhookSecret = process.env.N8N_WEBHOOK_SECRET;
+        // 3. Render HTML by replacing placeholders with real data
+        const candidateName = candidateProfile?.full_name || 'مرشح';
+        const renderedHtml = template.html_content
+            .replace(/\{\{company_name\}\}/g, companyName || '')
+            .replace(/\{\{candidate_name\}\}/g, candidateName)
+            .replace(/\{\{position\}\}/g, jobTitle || '')
+            .replace(/\{\{salary\}\}/g, Number(salary).toLocaleString())
+            .replace(/\{\{start_date\}\}/g, startDate)
+            .replace(/\{\{benefits\}\}/g, benefits || '');
 
-        if (!webhookUrl || !webhookSecret) {
-            // Fallback for local testing if N8N isn't fully configured
-            console.warn('[Contract Gen] Missing N8N credentials, using mock response.');
-            return NextResponse.json({
-                success: true,
-                contract_url: '#mock-contract',
-                offer_letter_url: '#mock-offer'
-            });
+        // 4. INSERT contract row into the contracts table (the critical missing step)
+        const { data: contract, error: insertError } = await supabase
+            .from('contracts')
+            .insert({
+                company_id: companyId,
+                application_id: applicationId,
+                template_id: templateId,
+                rendered_html: renderedHtml,
+                salary: Number(salary),
+                currency: 'AED',
+                start_date: startDate,
+                benefits: benefits || '',
+                created_by: user.id,
+                status: 'draft',
+                expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            })
+            .select()
+            .single();
+
+        if (insertError) {
+            console.error('[Contract Gen] DB Insert Error:', insertError.message);
+            return NextResponse.json({ error: insertError.message }, { status: 500 });
         }
 
-        const appData = application as any;
-        const payload = {
-            application_id: applicationId,
-            company_name: Array.isArray(appData.jobs) ? appData.jobs[0]?.companies?.name : appData.jobs?.companies?.name,
-            candidate_name: candidateProfile?.full_name || 'Candidate',
-            position: Array.isArray(appData.jobs) ? appData.jobs[0]?.title : appData.jobs?.title,
-            salary,
-            currency: 'AED',
-            start_date: startDate,
-            benefits: benefits || [],
-            html_template: template.html_content
-        };
-
-        const n8nResponse = await fetch(webhookUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-webhook-secret': webhookSecret
-            },
-            body: JSON.stringify(payload)
-        });
-
-        if (!n8nResponse.ok) {
-            console.error('[Contract Gen] N8N Error:', await n8nResponse.text());
-            return NextResponse.json({ error: 'Failed to generate contract via N8N' }, { status: 500 });
-        }
-
-        const n8nData = await n8nResponse.json();
-
-        // Optionally update application status to 'offer' in DB if not already done
+        // 5. Update application status to 'offer'
         await supabase
             .from('applications')
             .update({ status: 'offer' })
             .eq('id', applicationId);
 
+        // 6. Fire n8n notification event (non-blocking)
+        notifyContractEvent({
+            event_type: 'contract_created',
+            contract_id: contract.id,
+            candidate_name: candidateName,
+            company_name: companyName || '',
+            job_title: jobTitle || '',
+            salary: Number(salary),
+            currency: 'AED',
+            start_date: startDate,
+        });
+
         return NextResponse.json({
             success: true,
-            contract_url: n8nData.contract_url,
-            offer_letter_url: n8nData.offer_letter_url
+            contract_id: contract.id,
+            status: contract.status,
         });
 
     } catch (error: any) {
