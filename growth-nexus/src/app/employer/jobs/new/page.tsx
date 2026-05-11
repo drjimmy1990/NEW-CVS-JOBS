@@ -12,10 +12,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, ArrowRight, ArrowLeft, Check, Briefcase, FileText, Eye, X, Sparkles, Plus } from 'lucide-react'
+import { Loader2, ArrowRight, ArrowLeft, Check, Briefcase, FileText, Eye, X, Sparkles, Plus, Shield, Lock } from 'lucide-react'
 import { toast } from 'sonner'
 import { UAE_CITIES, NATIONALITY_OPTIONS } from '@/lib/types'
 import type { JobType } from '@/lib/types'
+import { useVerification } from '@/contexts/VerificationContext'
+import { VerificationLock } from '@/components/employer/VerificationLock'
 
 const jobTypes: { value: JobType; label: string }[] = [
     { value: 'full_time', label: 'دوام كامل' },
@@ -66,11 +68,17 @@ const initialFormData: JobFormData = {
 
 export default function NewJobPage() {
     const router = useRouter()
+    const { permissions, verificationStatus } = useVerification()
     const [step, setStep] = useState(1)
     const [loading, setLoading] = useState(false)
     const [aiLoading, setAiLoading] = useState(false)
     const [formData, setFormData] = useState<JobFormData>(initialFormData)
     const [skillInput, setSkillInput] = useState('')
+
+    // Full page block for rejected/suspended employers
+    if (!permissions.canSaveDrafts) {
+        return <VerificationLock featureName="نشر وظيفة جديدة" />
+    }
 
     const updateField = (field: keyof JobFormData, value: any) => {
         setFormData((prev) => ({ ...prev, [field]: value }))
@@ -138,6 +146,12 @@ export default function NewJobPage() {
     const canProceedStep2 = formData.description && formData.requirements
 
     const handleSubmit = async (publish: boolean = false) => {
+        // Client-side guard: prevent publish if not verified
+        if (publish && !permissions.canPublishJobs) {
+            toast.error('يجب توثيق حساب الشركة أولاً لنشر الوظائف')
+            return
+        }
+
         setLoading(true)
         const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
@@ -158,14 +172,9 @@ export default function NewJobPage() {
         }
 
         if (!company) {
-            // Auto-create company for owner
-            const fullName = user.user_metadata?.full_name || 'My'
-            const companySlug = fullName.toLowerCase().replace(/\s+/g, '-') + '-company-' + Date.now()
-            const { data: newCompany, error: companyError } = await supabase
-                .from('companies').insert({ owner_id: user.id, name: fullName + "'s Company", slug: companySlug })
-                .select('id, job_credits').single()
-            if (companyError) { toast.error('فشل إنشاء الشركة: ' + companyError.message); setLoading(false); return }
-            company = newCompany
+            toast.error('لم يتم العثور على شركتك. يرجى التسجيل أولاً.')
+            setLoading(false)
+            return
         }
 
         const slug = formData.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-\u0600-\u06FF]/g, '') + '-' + Date.now()
@@ -399,9 +408,16 @@ export default function NewJobPage() {
                 ) : (
                     <div className="flex gap-3">
                         <Button variant="outline" onClick={() => handleSubmit(false)} disabled={loading} className="border-gold/20 text-cream-dark hover:bg-navy-lighter">حفظ كمسودة</Button>
-                        <Button onClick={() => handleSubmit(true)} disabled={loading} className="bg-gradient-to-r from-gold to-gold-light hover:from-gold-dark hover:to-gold text-navy font-bold">
-                            {loading ? <><Loader2 className="me-2 h-4 w-4 animate-spin" />جاري النشر...</> : <><Check className="me-2 h-4 w-4" />نشر الوظيفة</>}
-                        </Button>
+                        {permissions.canPublishJobs ? (
+                            <Button onClick={() => handleSubmit(true)} disabled={loading} className="bg-gradient-to-r from-gold to-gold-light hover:from-gold-dark hover:to-gold text-navy font-bold">
+                                {loading ? <><Loader2 className="me-2 h-4 w-4 animate-spin" />جاري النشر...</> : <><Check className="me-2 h-4 w-4" />نشر الوظيفة</>}
+                            </Button>
+                        ) : (
+                            <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gold/5 border border-gold/15 text-sm text-gold">
+                                <Lock className="h-4 w-4" />
+                                <span>التوثيق مطلوب للنشر</span>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

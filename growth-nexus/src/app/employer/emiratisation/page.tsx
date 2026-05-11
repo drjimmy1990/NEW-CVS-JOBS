@@ -25,6 +25,7 @@ export default function EmiratisationPage() {
     const [loading, setLoading] = useState(true)
     const [profile, setProfile] = useState<EmiratisationProfile | null>(null)
     const [companyId, setCompanyId] = useState<string | null>(null)
+    const [companyDefaults, setCompanyDefaults] = useState<Record<string, any> | null>(null)
     const [jobTitles, setJobTitles] = useState<string[]>([])
 
     useEffect(() => {
@@ -38,6 +39,7 @@ export default function EmiratisationPage() {
             const profileData = await profileRes.json()
             if (profileData.profile) setProfile(profileData.profile)
             if (profileData.company_id) setCompanyId(profileData.company_id)
+            if (profileData.defaults) setCompanyDefaults(profileData.defaults)
 
             // Fetch active job titles for opportunity detection
             if (profileData.company_id) {
@@ -104,6 +106,7 @@ export default function EmiratisationPage() {
                     <EmiratisationProfileForm
                         profile={profile}
                         companyId={companyId || ''}
+                        companyDefaults={companyDefaults}
                         onSaved={(saved) => { setProfile(saved); }}
                     />
                     {companyId && <AuditLogTable companyId={companyId} />}

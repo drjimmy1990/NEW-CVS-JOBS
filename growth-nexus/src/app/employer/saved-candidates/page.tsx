@@ -10,6 +10,8 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { useVerification } from '@/contexts/VerificationContext'
+import { VerificationLock } from '@/components/employer/VerificationLock'
 
 type SavedCandidate = {
     id: string
@@ -28,8 +30,14 @@ type SavedCandidate = {
 }
 
 export default function SavedCandidatesPage() {
+    const { permissions } = useVerification()
     const [savedCandidates, setSavedCandidates] = useState<SavedCandidate[]>([])
     const [loading, setLoading] = useState(true)
+
+    // Full page block for unverified employers
+    if (!permissions.canViewCVs) {
+        return <VerificationLock featureName="المرشحون المحفوظون" />
+    }
 
     useEffect(() => {
         loadSavedCandidates()

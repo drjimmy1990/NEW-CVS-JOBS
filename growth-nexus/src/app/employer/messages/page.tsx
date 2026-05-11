@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge'
 import {
     MessageSquare, Send, Loader2, Search, ArrowLeft
 } from 'lucide-react'
+import { useVerification } from '@/contexts/VerificationContext'
+import { VerificationLock } from '@/components/employer/VerificationLock'
 
 type Conversation = {
     id: string
@@ -30,8 +32,14 @@ type Message = {
 }
 
 export default function EmployerMessagesPage() {
+    const { permissions } = useVerification()
     const searchParams = useSearchParams()
     const chatId = searchParams.get('chat')
+
+    // Full page block for unverified employers
+    if (!permissions.canMessageCandidates) {
+        return <VerificationLock featureName="الرسائل" />
+    }
 
     const [conversations, setConversations] = useState<Conversation[]>([])
     const [activeConvo, setActiveConvo] = useState<Conversation | null>(null)

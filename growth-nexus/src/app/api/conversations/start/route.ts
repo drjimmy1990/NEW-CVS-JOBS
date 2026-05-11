@@ -9,6 +9,44 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Server-side verification gate: block unverified employers from messaging
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+
+    if (profile?.role === 'employer') {
+        // Check company verification status (owner or member)
+        let companyStatus: string | null = null
+        const { data: ownedCo } = await supabase
+            .from('companies')
+            .select('verification_status')
+            .eq('owner_id', user.id)
+            .single()
+
+        if (ownedCo) {
+            companyStatus = ownedCo.verification_status
+        } else {
+            const { data: membership } = await supabase
+                .from('company_members')
+                .select('companies(verification_status)')
+                .eq('user_id', user.id)
+                .eq('status', 'active')
+                .single()
+            if (membership?.companies) {
+                companyStatus = (membership.companies as any).verification_status
+            }
+        }
+
+        if (companyStatus && !['verified', 'trusted'].includes(companyStatus)) {
+            return NextResponse.json(
+                { error: 'يجب توثيق حساب الشركة أولاً لبدء محادثات مع المرشحين' },
+                { status: 403 }
+            )
+        }
+    }
+
     const { otherUserId } = await request.json()
 
     if (!otherUserId) {

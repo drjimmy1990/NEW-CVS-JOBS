@@ -20,7 +20,90 @@ export async function GET() {
         .eq('company_id', companyId)
         .single()
 
-    return NextResponse.json({ profile: profile || null, company_id: companyId })
+    // If no profile exists yet, pre-fill defaults from company registration data
+    if (!profile) {
+        const { data: company } = await supabase
+            .from('companies')
+            .select('entity_type, emirate, trade_license_number, employee_count_range, industry')
+            .eq('id', companyId)
+            .single()
+
+        // Map registration entity_type to emiratisation company_type
+        const typeMap: Record<string, string> = {
+            'government': 'government',
+            'semi_government': 'semi_government',
+            'private': 'private',
+            'recruitment_agency': 'private',
+        }
+
+        // Map sub-cities to parent emirate (UAE_CITIES → UAE_EMIRATES)
+        const cityToEmirate: Record<string, string> = {
+            'أبوظبي': 'أبوظبي',
+            'دبي': 'دبي',
+            'الشارقة': 'الشارقة',
+            'عجمان': 'عجمان',
+            'أم القيوين': 'أم القيوين',
+            'رأس الخيمة': 'رأس الخيمة',
+            'الفجيرة': 'الفجيرة',
+            // Sub-cities mapping
+            'العين': 'أبوظبي',
+            'الظفرة': 'أبوظبي',
+            'الرويس': 'أبوظبي',
+            'كلباء': 'الشارقة',
+            'حتا': 'دبي',
+        }
+
+        // Map registration industry (English key) → emiratisation economic_sector (Arabic)
+        const industryToSector: Record<string, string> = {
+            'banking': 'المصارف والخدمات المالية',
+            'insurance': 'التأمين',
+            'technology': 'المعلومات والاتصالات',
+            'real_estate': 'العقارات',
+            'hospitality': 'السياحة والضيافة',
+            'food_beverage': 'السياحة والضيافة',
+            'retail': 'التجزئة',
+            'logistics': 'النقل والخدمات اللوجستية',
+            'aviation_travel': 'النقل والخدمات اللوجستية',
+            'healthcare': 'الصحة',
+            'education': 'التعليم',
+            'universities': 'التعليم',
+            'schools': 'التعليم',
+            'construction': 'المقاولات والبناء',
+            'engineering': 'المقاولات والبناء',
+            'investment': 'المصارف والخدمات المالية',
+            'oil_gas_energy': 'الطاقة والمرافق',
+            'media_marketing': 'الإعلام والترفيه',
+            'hr_consulting': 'خدمات الأعمال',
+            'government_services': 'خدمات أخرى',
+            'other': 'خدمات أخرى',
+        }
+
+        // Parse employee_count_range to a rough total_employees number
+        const parseEmployeeCount = (range: string | null): number => {
+            if (!range) return 0
+            // Use midpoint of range for pre-fill
+            if (range.includes('1000+') || range.includes('+1000')) return 1000
+            if (range.includes('501-1000')) return 750
+            if (range.includes('201-500')) return 350
+            if (range.includes('51-200')) return 125
+            if (range.includes('11-50')) return 30
+            if (range.includes('1-10')) return 5
+            const match = range.match(/(\d+)/)
+            return match ? parseInt(match[1]) : 0
+        }
+
+        const defaults = {
+            company_type: typeMap[company?.entity_type || ''] || 'private',
+            emirate: cityToEmirate[company?.emirate || ''] || company?.emirate || '',
+            trade_license_number: company?.trade_license_number || '',
+            total_employees: parseEmployeeCount(company?.employee_count_range),
+            economic_sector: industryToSector[company?.industry || ''] || '',
+        }
+
+        return NextResponse.json({ profile: null, company_id: companyId, defaults })
+    }
+
+    return NextResponse.json({ profile, company_id: companyId })
 }
 
 /**

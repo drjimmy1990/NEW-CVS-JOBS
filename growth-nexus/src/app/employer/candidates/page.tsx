@@ -8,6 +8,8 @@ import {
     Briefcase, Heart, Eye
 } from 'lucide-react'
 import Link from 'next/link'
+import { getVerificationPermissions } from '@/lib/verification-engine'
+import { VerificationLockServer } from '@/components/employer/VerificationLockServer'
 
 export default async function CandidateSearchPage({
     searchParams,
@@ -17,6 +19,31 @@ export default async function CandidateSearchPage({
     const params = await searchParams
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
+
+    // Verification gate — block unverified employers from candidate search
+    if (user) {
+        let companyId = null
+        const { data: ownedCo } = await supabase
+            .from('companies').select('id, verification_status').eq('owner_id', user.id).single()
+        let verificationStatus = 'pending_verification'
+        if (ownedCo) {
+            companyId = ownedCo.id
+            verificationStatus = ownedCo.verification_status || 'pending_verification'
+        } else {
+            const { data: membership } = await supabase
+                .from('company_members')
+                .select('company_id, companies(verification_status)')
+                .eq('user_id', user.id).eq('status', 'active').single()
+            if (membership) {
+                companyId = membership.company_id
+                verificationStatus = (membership.companies as any)?.verification_status || 'pending_verification'
+            }
+        }
+        const permissions = getVerificationPermissions(verificationStatus)
+        if (!permissions.canViewCVs) {
+            return <VerificationLockServer featureName="البحث عن مرشحين" verificationStatus={verificationStatus} />
+        }
+    }
 
     // Check if employer has CV database access (subscription)
     const hasAccess = false // TODO: Phase 6: wire to subscription check

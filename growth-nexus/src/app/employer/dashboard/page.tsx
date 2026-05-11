@@ -7,8 +7,9 @@ import {
     Briefcase, Users, Eye, TrendingUp, 
     CheckCircle, Calendar, CreditCard, 
     Sparkles, Zap, ArrowUpRight, Star,
-    BarChart3, UserCheck, ChevronLeft
+    BarChart3, UserCheck, ChevronLeft, Lock
 } from 'lucide-react'
+import { getVerificationPermissions } from '@/lib/verification-engine'
 
 export default async function EmployerDashboard() {
     const supabase = await createClient()
@@ -32,10 +33,22 @@ export default async function EmployerDashboard() {
         if (membership) companyId = membership.company_id
     }
 
+    // Fetch verification status for gating
+    let verificationStatus = 'pending_verification'
+    if (companyId) {
+        const { data: companyRow } = await supabase
+            .from('companies')
+            .select('verification_status')
+            .eq('id', companyId)
+            .single()
+        if (companyRow) verificationStatus = companyRow.verification_status || 'pending_verification'
+    }
+    const permissions = getVerificationPermissions(verificationStatus)
+
     const { data: jobs } = companyId ? await supabase
         .from('jobs')
         .select(`
-            id, title, slug, status, views_count, applicants_count, is_featured, created_at,
+            id, title, slug, status, views_count, applicants_count, is_featured, created_at, skills_required,
             companies!inner (
                 id,
                 owner_id,
@@ -78,6 +91,52 @@ export default async function EmployerDashboard() {
             .in('job_id', jobIds)
             .eq('status', 'interview')
         : { count: 0 }
+
+    // --- SMART CANDIDATE SUGGESTIONS (real DB query) ---
+    let suggestedCandidates: { id: string; name: string; headline: string | null; skills: string[]; matchPercent: number }[] = []
+
+    if (companyId && jobs && jobs.length > 0) {
+        // 1. Collect all unique skills from company's jobs
+        const allJobSkills = new Set<string>()
+        for (const job of jobs) {
+            const jr = (job as any).skills_required as string[] | null
+            if (jr) jr.forEach(s => allJobSkills.add(s.toLowerCase().trim()))
+        }
+
+        if (allJobSkills.size > 0) {
+            // 2. Query public candidates who have skills
+            const { data: candidates } = await supabase
+                .from('candidates')
+                .select(`id, headline, skills, residence_emirate, profiles:id ( full_name )`)
+                .eq('is_public', true)
+                .not('skills', 'is', null)
+                .limit(50)
+
+            if (candidates && candidates.length > 0) {
+                // 3. Score each candidate by skill overlap (Jaccard-like)
+                const scored = candidates.map(c => {
+                    const cSkills = (c.skills || []).map((s: string) => s.toLowerCase().trim())
+                    const matched = cSkills.filter((s: string) => allJobSkills.has(s)).length
+                    const union = new Set([...allJobSkills, ...cSkills]).size
+                    const matchPercent = union > 0 ? Math.round((matched / union) * 100) : 0
+                    const profileData = c.profiles as any
+                    return {
+                        id: c.id,
+                        name: profileData?.full_name || 'مرشح',
+                        headline: c.headline,
+                        skills: c.skills?.slice(0, 4) || [],
+                        matchPercent,
+                    }
+                })
+
+                // 4. Sort by match % descending, take top 5
+                suggestedCandidates = scored
+                    .filter(c => c.matchPercent > 0)
+                    .sort((a, b) => b.matchPercent - a.matchPercent)
+                    .slice(0, 5)
+            }
+        }
+    }
 
     const stats = [
         {
@@ -143,12 +202,19 @@ export default async function EmployerDashboard() {
                     </p>
                 </div>
                 <div className="flex gap-3">
-                    <Link href="/employer/jobs/new">
-                        <Button className="bg-gradient-to-r from-gold to-gold-light hover:from-gold-dark hover:to-gold text-navy font-bold">
-                            <Briefcase className="me-2 h-4 w-4" />
-                            أنشر وظيفة
-                        </Button>
-                    </Link>
+                    {permissions.canPublishJobs ? (
+                        <Link href="/employer/jobs/new">
+                            <Button className="bg-gradient-to-r from-gold to-gold-light hover:from-gold-dark hover:to-gold text-navy font-bold">
+                                <Briefcase className="me-2 h-4 w-4" />
+                                أنشر وظيفة
+                            </Button>
+                        </Link>
+                    ) : (
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gold/5 border border-gold/15 text-sm text-gold">
+                            <Lock className="h-4 w-4" />
+                            <span>التوثيق مطلوب للنشر</span>
+                        </div>
+                    )}
                     <Link href="/pricing">
                         <Button variant="outline" className="border-gold/20 text-cream-dark/60 hover:bg-gold/10 hover:text-gold">
                             <CreditCard className="me-2 h-4 w-4" />
@@ -270,11 +336,19 @@ export default async function EmployerDashboard() {
                                 <div className="text-center py-12">
                                     <Briefcase className="h-12 w-12 text-cream-dark/20 mx-auto mb-3" />
                                     <p className="text-cream-dark/50 mb-2">لم تُنشر وظائف بعد</p>
-                                    <Link href="/employer/jobs/new">
-                                        <Button className="bg-gold hover:bg-gold-dark text-navy mt-2 font-bold">
-                                            أنشر أول وظيفة
-                                        </Button>
-                                    </Link>
+                                    {permissions.canPublishJobs ? (
+                                        <Link href="/employer/jobs/new">
+                                            <Button className="bg-gold hover:bg-gold-dark text-navy mt-2 font-bold">
+                                                أنشر أول وظيفة
+                                            </Button>
+                                        </Link>
+                                    ) : (
+                                        <Link href="/employer/jobs/new">
+                                            <Button variant="outline" className="border-gold/20 text-cream-dark/60 hover:bg-gold/10 mt-2">
+                                                حفظ مسودة وظيفة
+                                            </Button>
+                                        </Link>
+                                    )}
                                 </div>
                             )}
                         </CardContent>
@@ -292,42 +366,32 @@ export default async function EmployerDashboard() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {/* Mock Candidates */}
-                            <div className="p-3 rounded-xl border border-gold/10 bg-navy/50 hover:border-gold/20 transition-colors group">
-                                <div className="flex items-start justify-between mb-2">
-                                    <div>
-                                        <p className="text-cream font-medium text-sm">سارة ك.</p>
-                                        <p className="text-xs text-cream-dark/40">مطورة React أولى • دبي</p>
+                            {suggestedCandidates.length > 0 ? (
+                                suggestedCandidates.map(candidate => (
+                                    <div key={candidate.id} className="p-3 rounded-xl border border-gold/10 bg-navy/50 hover:border-gold/20 transition-colors group">
+                                        <div className="flex items-start justify-between mb-2">
+                                            <div>
+                                                <p className="text-cream font-medium text-sm">{candidate.name}</p>
+                                                <p className="text-xs text-cream-dark/40">{candidate.headline || 'باحث عن عمل'}</p>
+                                            </div>
+                                            <Badge className="bg-success/10 text-success border-success/20 text-xs">{candidate.matchPercent}% مطابقة</Badge>
+                                        </div>
+                                        <div className="flex gap-1.5 mt-2 flex-wrap">
+                                            {candidate.skills.map(skill => (
+                                                <Badge key={skill} variant="outline" className="text-[10px] border-gold/20 text-gold py-0">{skill}</Badge>
+                                            ))}
+                                        </div>
+                                        <Button variant="outline" size="sm" className="w-full mt-3 border-gold/20 text-gold hover:bg-gold/10 text-xs h-8">
+                                            دعوة للتقديم
+                                        </Button>
                                     </div>
-                                    <Badge className="bg-success/10 text-success border-success/20 text-xs">92% مطابقة</Badge>
+                                ))
+                            ) : (
+                                <div className="text-center py-6 text-cream-dark/40">
+                                    <Sparkles className="h-8 w-8 mx-auto mb-2 text-gold/30" />
+                                    <p className="text-sm">أنشر وظائف لاقتراح مرشحين مطابقين</p>
                                 </div>
-                                <div className="flex gap-1.5 mt-2 flex-wrap">
-                                    <Badge variant="outline" className="text-[10px] border-gold/20 text-gold py-0">React</Badge>
-                                    <Badge variant="outline" className="text-[10px] border-gold/20 text-gold py-0">Next.js</Badge>
-                                    <Badge variant="outline" className="text-[10px] border-gold/20 text-gold py-0">TypeScript</Badge>
-                                </div>
-                                <Button variant="outline" size="sm" className="w-full mt-3 border-gold/20 text-gold hover:bg-gold/10 text-xs h-8">
-                                    دعوة للتقديم
-                                </Button>
-                            </div>
-
-                            <div className="p-3 rounded-xl border border-gold/10 bg-navy/50 hover:border-gold/20 transition-colors group">
-                                <div className="flex items-start justify-between mb-2">
-                                    <div>
-                                        <p className="text-cream font-medium text-sm">محمد أ.</p>
-                                        <p className="text-xs text-cream-dark/40">مهندس Full Stack • أبوظبي</p>
-                                    </div>
-                                    <Badge className="bg-success/10 text-success border-success/20 text-xs">87% مطابقة</Badge>
-                                </div>
-                                <div className="flex gap-1.5 mt-2 flex-wrap">
-                                    <Badge variant="outline" className="text-[10px] border-gold/20 text-gold py-0">Node.js</Badge>
-                                    <Badge variant="outline" className="text-[10px] border-gold/20 text-gold py-0">Python</Badge>
-                                    <Badge variant="outline" className="text-[10px] border-gold/20 text-gold py-0">AWS</Badge>
-                                </div>
-                                <Button variant="outline" size="sm" className="w-full mt-3 border-gold/20 text-gold hover:bg-gold/10 text-xs h-8">
-                                    دعوة للتقديم
-                                </Button>
-                            </div>
+                            )}
 
                             <Link href="/employer/candidates" className="block">
                                 <Button variant="ghost" className="w-full text-cream-dark/50 hover:text-cream text-sm">

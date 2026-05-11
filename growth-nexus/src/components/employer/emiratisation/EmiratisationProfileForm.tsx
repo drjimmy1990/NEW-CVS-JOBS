@@ -14,20 +14,23 @@ import { UAE_ECONOMIC_SECTORS, UAE_EMIRATES, type EmiratisationProfile } from '@
 interface Props {
     profile: Partial<EmiratisationProfile> | null
     companyId: string
+    companyDefaults?: Record<string, any> | null
     onSaved: (profile: EmiratisationProfile) => void
 }
 
-export function EmiratisationProfileForm({ profile, companyId, onSaved }: Props) {
+export function EmiratisationProfileForm({ profile, companyId, companyDefaults, onSaved }: Props) {
     const [saving, setSaving] = useState(false)
+    // Pre-fill from saved profile first, then company registration defaults, then empty
+    const d = companyDefaults || {}
     const [form, setForm] = useState({
-        company_type: profile?.company_type || 'private',
-        economic_sector: profile?.economic_sector || '',
-        emirate: profile?.emirate || '',
-        trade_license_number: profile?.trade_license_number || '',
+        company_type: profile?.company_type || d.company_type || 'private',
+        economic_sector: profile?.economic_sector || d.economic_sector || '',
+        emirate: profile?.emirate || d.emirate || '',
+        trade_license_number: profile?.trade_license_number || d.trade_license_number || '',
         establishment_number: profile?.establishment_number || '',
         is_mohre_registered: profile?.is_mohre_registered || false,
         uses_nafis: profile?.uses_nafis || false,
-        total_employees: profile?.total_employees || 0,
+        total_employees: profile?.total_employees || d.total_employees || 0,
         skilled_employees: profile?.skilled_employees || 0,
         unskilled_employees: profile?.unskilled_employees || 0,
         current_emiratis: profile?.current_emiratis || 0,

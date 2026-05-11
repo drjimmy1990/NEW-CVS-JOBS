@@ -1,8 +1,10 @@
 # 🔄 GrowthNexus — User Flow Testing Guide
 
-> **Last Updated:** 11 May 2026
+> **Last Updated:** 12 May 2026 — 02:18 AM
+> **Source of Truth:** GitNexus (2065 symbols, 111 flows) + `full.sql` (23 tables, 12 RPCs)
 > **Instructions:** Test each flow in order. Mark ✅ for working, ❌ for broken.
 > Items marked 🔗 use **n8n webhooks** — they work with mock data if n8n is offline.
+> Items marked 🔒 require **company verification** — only verified employers can access.
 
 ---
 
@@ -12,10 +14,19 @@
 |---|------|-------|----------|--------|
 | 1 | Click "Create Account" | `/register` | Registration form appears | |
 | 2 | Fill: name, email, password, select "Employer" | | Form accepts data | |
-| 3 | Submit registration | | Redirect to `/employer/dashboard` | |
-| 4 | Go to company settings | `/employer/settings` | Company form loads | |
-| 5 | Fill: company name, industry, description, size | | Fields save | |
-| 6 | Upload company logo | | Logo displays | |
+| 3 | Submit registration | | Redirect to `/register/employer` (7-Step Wizard) | |
+| 4 | Step 1: Account Data | | Name & Job Title | |
+| 5 | Step 2: Entity Type | | Gov, Semi-gov, Private, Recruitment Agency | |
+| 6 | Step 3: Industry | | Main sector and sub-sector | |
+| 7 | Step 4: Company Data | | License, Employee count, City, Contact info | |
+| 8 | Step 5: Email Verification | | Domain match check (or skipped if generic) | |
+| 9 | Step 6: Document Upload | | Upload Trade License (stored in `company_documents`) | |
+| 10 | Step 7: Pending Approval | | Redirect to dashboard with `VerificationBanner` | |
+| 11 | Dashboard limited access | `/employer/dashboard` | Cannot publish jobs or see candidates until verified | |
+| 12 | 🔒 Post Job button shows lock icon | `/employer/dashboard` | "التوثيق مطلوب للنشر" instead of CTA | |
+| 13 | 🔒 Candidates page blocked | `/employer/candidates` | `VerificationLockServer` full-page block | |
+| 14 | 🔒 Messages page blocked | `/employer/messages` | `VerificationLock` full-page block | |
+| 15 | 🔒 Saved candidates blocked | `/employer/saved-candidates` | `VerificationLock` full-page block | |
 
 ---
 
@@ -25,14 +36,16 @@
 |---|------|-------|----------|--------|
 | 1 | Click "Post New Job" | `/employer/jobs/new` | 3-step wizard | |
 | 2 | Enter title: "Frontend Developer" | | Field fills | |
-| 3 | Select type: "Full-time" | | Selection set | |
-| 4 | Select location: "Dubai" from dropdown | | UAE city selected | |
+| 3 | Select type: "Full-time" | | Selection set (from `job_type` enum) | |
+| 4 | Select location: "Dubai" from dropdown | | UAE city selected (12 cities from `system_config`) | |
 | 5 | 🔗 Click "✨ AI Assistant" | | Description + requirements auto-filled | |
-| 6 | Add skills: type "React" + Enter | | Tag appears | |
-| 7 | Select nationality: "All Nationalities" | | Button selected | |
+| 6 | Add skills: type "React" + Enter | | Tag appears (stored in `skills_required` array) | |
+| 7 | Select nationality: "All Nationalities" | | Button selected (from `system_config`) | |
 | 8 | Enter salary: 15,000 – 25,000 AED | | Currency shows AED | |
-| 9 | Next → Review → Publish | | Redirect to job list | |
+| 9 | 🔒 Next → Review → Publish | | **Blocked if unverified** — can only save draft | |
+| 9a| ✅ Next → Review → Publish (verified) | | Redirect to job list | |
 | 10 | Verify job shows as "Active" | `/employer/jobs` | Job card visible ✅ | |
+| 11 | Verify `search_vector` populated | | Full-text search works | |
 
 ---
 
@@ -40,12 +53,13 @@
 
 | # | Step | Expected | Result |
 |---|------|----------|--------|
-| 1 | ⏸ Pause a job | Status → "Paused" | |
-| 2 | ▶ Resume job | Status → "Active" | |
+| 1 | ⏸ Pause a job | Status → "paused" (from `job_status` enum) | |
+| 2 | ▶ Resume job | Status → "active" | |
 | 3 | 📋 Duplicate job | New draft job created | |
 | 4 | 🔗 Share job | "Link copied" message | |
 | 5 | Use tab filters: All / Active / Paused / Draft / Closed | List filters | |
 | 6 | Use sort: Newest / Oldest / Most Applicants | Order changes | |
+| 7 | Job views counter increments on visit | `increment_job_views` RPC called | |
 
 ---
 
@@ -56,9 +70,10 @@
 | 1 | Register as candidate | `/register` | Select "Job Seeker" | |
 | 2 | Go to profile | `/candidate/profile` | Profile form | |
 | 3 | Fill: name, phone, location, skills | | Fields save | |
-| 4 | Upload CV (PDF) | `/candidate/cv` | File uploads | |
-| 5 | 🔗 AI auto-parses CV | | Skills + experience extracted | |
-| 6 | Check dashboard | `/candidate/dashboard` | Stats cards display | |
+| 4 | Fill UAE fields: candidate_type, nationality, emirate | | UAE-specific fields save | |
+| 5 | Upload CV (PDF) | `/candidate/cv` | File uploads to `resumes` bucket | |
+| 6 | 🔗 AI auto-parses CV | | Skills + experience extracted to `resume_parsed_data` | |
+| 7 | Check dashboard | `/candidate/dashboard` | Stats cards display | |
 
 ---
 
@@ -67,13 +82,16 @@
 | # | Step | Route | Expected | Result |
 |---|------|-------|----------|--------|
 | 1 | Browse jobs | `/jobs` | Job list with search + filters | |
-| 2 | Click a job | `/jobs/[slug]` | Full detail page | |
-| 3 | Refresh page | | View count +1 | |
-| 4 | Click "Apply Now" | | Apply modal opens | |
-| 5 | Confirm application | | "Applied successfully" message | |
-| 6 | 🔗 Application notification sent | | Employer gets notified | |
-| 7 | 🔗 Match score calculated | | Score badge appears | |
-| 8 | Check my applications | `/candidate/applications` | Job listed | |
+| 2 | Confidential jobs show entity type | | "جهة حكومية" / "جهة خاصة" (not company name) | |
+| 3 | Click a job | `/jobs/[slug]` | Full detail page | |
+| 4 | View count increments | | `views_count` +1 via RPC | |
+| 5 | Click "Apply Now" | | Apply modal opens | |
+| 6 | Confirm application | | "Applied successfully" message | |
+| 7 | `resume_snapshot_url` saved | | CV URL frozen at time of application | |
+| 8 | 🔗 Application notification sent | | Employer gets in-app notification | |
+| 9 | 🔗 Match score calculated | | Score badge appears (via `calculate_match_score` or AI) | |
+| 10 | Check my applications | `/candidate/applications` | Job listed | |
+| 11 | Duplicate application blocked | | `unique(job_id, candidate_id)` constraint | |
 
 ---
 
@@ -89,8 +107,9 @@
 | 4 | Click "Next" for each question | | Progress bar fills | |
 | 5 | Submit all 5 answers | | Loading... | |
 | 6 | 🔗 AI evaluates answers | | Score + per-question feedback | |
-| 7 | View results page | | Percentage + recommendation | |
-| 8 | Return to same URL | | Saved results (no re-take) | |
+| 7 | Results saved via `save_interview_result` RPC | | `interview_score` + `interview_report` on application | |
+| 8 | View results page | | Percentage + recommendation | |
+| 9 | Return to same URL | | Saved results (no re-take) | |
 
 ---
 
@@ -100,12 +119,14 @@
 |---|------|-------|----------|--------|
 | 1 | Go to job applicants | `/employer/jobs/[id]/applicants` | Pipeline columns | |
 | 2 | View candidate cards | | Cards in "Applied" column | |
-| 3 | If interviewed, see score badge | | Score number on card | |
-| 4 | Move to "Reviewing" | | Card moves | |
-| 5 | Move to "Shortlisted" | | Card moves | |
-| 6 | Move to "Rejected" | | **Confirmation popup** | |
-| 7 | Select rejection reason + confirm | | Card moves, reason saved | |
-| 8 | Move to "Offer" | | Card moves to offer column | |
+| 3 | `applicants_count` auto-calculated | | Trigger updates job count | |
+| 4 | If interviewed, see score badge | | Score number on card | |
+| 5 | Move to "Reviewing" | | Card moves, status updated | |
+| 6 | Move to "Shortlisted" | | Card moves | |
+| 7 | Move to "Rejected" | | **Confirmation popup** | |
+| 8 | Select rejection reason + confirm | | Card moves, `rejection_reason` saved (7 options) | |
+| 9 | Move to "Offer" | | Card moves to offer column | |
+| 10 | Move to "Hired" | | Final status | |
 
 ---
 
@@ -122,9 +143,10 @@
 | | - Cultural Fit | | Number updates | |
 | | - Overall Rating | | Number updates | |
 | 4 | Add notes (optional) | | Text accepted | |
-| 5 | Submit evaluation | | "Evaluation saved" | |
-| 6 | Login as 2nd evaluator, rate same person | | 2nd evaluation saves | |
-| 7 | 🔗 Committee summary auto-generated | | Average + recommendation | |
+| 5 | Submit evaluation | | "Evaluation saved" — `committee_evaluations` row created | |
+| 6 | Verify `unique(application_id, evaluator_id)` | | Can't submit twice | |
+| 7 | Login as 2nd evaluator, rate same person | | 2nd evaluation saves | |
+| 8 | 🔗 Committee summary auto-generated | | Average + recommendation → `committee_summary` on application | |
 
 ---
 
@@ -133,29 +155,30 @@
 | # | Step | Route | Expected | Result |
 |---|------|-------|----------|--------|
 | 1 | Move applicant to "Offer" status | | Contract generate button appears | |
-| 2 | Generate contract | | Contract created in DB | |
-| 3 | 🔗 `contract_created` n8n event fires | | Notification sent | |
-| 4 | Go to contract tracking | `/employer/contracts/track` | Contract list loads | |
-| 5 | Send contract to candidate | | Status → "sent" | |
-| 6 | 🔗 `contract_sent` n8n event fires | | Email notification | |
-| 7 | Download contract PDF | | PDF file downloads | |
+| 2 | Select template (MOHRE or custom) | | Template from `contract_templates` | |
+| 3 | Generate contract | | Contract created in `contracts` table | |
+| 4 | 🔗 `contract_created` n8n event fires | | ⚠️ Requires n8n workflow published | |
+| 5 | Go to contract tracking | `/employer/contracts/track` | Contract list loads | |
+| 6 | Send contract to candidate | | Status → "sent", `sent_at` timestamp | |
+| 7 | 🔗 `contract_sent` n8n event fires | | ⚠️ Requires n8n workflow published | |
+| 8 | Download contract PDF | | PDF file downloads (Arabic fonts) | |
 
 ---
 
-## Flow 10: Candidate Contract Portal ⭐ NEW
+## Flow 10: Candidate Contract Portal
 
 | # | Step | Route | Expected | Result |
 |---|------|-------|----------|--------|
 | 1 | Login as candidate with pending contract | | | |
 | 2 | Click "العقود" in sidebar | `/candidate/contracts` | Contract list | |
-| 3 | Click on a contract | `/candidate/contracts/[id]` | Contract details | |
-| 4 | Download PDF | | PDF downloads | |
+| 3 | Click on a contract | `/candidate/contracts/[id]` | Contract details + rendered HTML | |
+| 4 | Download PDF | | PDF downloads via `/api/contracts/pdf/[id]` | |
 | 5 | Click "Accept & Sign" | | Confirmation modal | |
-| 6 | Confirm signature | | Status → "signed" | |
-| 7 | 🔗 `contract_signed` n8n event fires | | Email notification | |
+| 6 | Confirm signature | | Status → "signed", `signed_at` set | |
+| 7 | 🔗 `contract_signed` n8n event fires | | ⚠️ Requires n8n workflow published | |
 | 8 | **OR** Click "Decline" | | Reason modal | |
-| 9 | Enter reason + confirm | | Status → "declined" | |
-| 10 | 🔗 `contract_declined` n8n event fires | | Email notification | |
+| 9 | Enter reason + confirm | | Status → "declined", `decline_reason` saved | |
+| 10 | 🔗 `contract_declined` n8n event fires | | ⚠️ Requires n8n workflow published | |
 
 ---
 
@@ -165,10 +188,13 @@
 |---|------|-------|----------|--------|
 | 1 | Go to analytics | `/employer/analytics` | KPI cards load | |
 | 2 | View: total applications, interviews, offers, hire rate | | Numbers from DB | |
-| 3 | View rejection reasons analysis | | Chart or list | |
-| 4 | Go to emiratisation | `/employer/emiratisation` | Gauge + statistics | |
-| 5 | View: total employees, nationals, ratio, target | | Numbers + MOHRE alert | |
-| 6 | Fill emiratisation profile form | | Data saves | |
+| 3 | View rejection reasons analysis | | Chart or list (7 predefined reasons) | |
+| 4 | Go to forecasting widget | | 7 live metrics from DB | |
+| 5 | Go to emiratisation | `/employer/emiratisation` | 6-tab dashboard | |
+| 6 | View: total employees, nationals, ratio, target | | Numbers + MOHRE gauge | |
+| 7 | Fill emiratisation profile form | | Data saves to `emiratisation_profiles` | |
+| 8 | Change tracked in audit log | | `emiratisation_audit_log` row created | |
+| 9 | Export PDF report | | PDF generates (needs seeded data) | |
 
 ---
 
@@ -181,7 +207,7 @@
 | 3 | Click "Choose Plan" on Pro | | Redirect to Stripe Checkout | |
 | 4 | Use test card: `4242 4242 4242 4242` | | Payment succeeds | |
 | 5 | Redirect to `/payment/success` | | Success page with buttons | |
-| 6 | Check DB: `subscription_tier` updated | | In `companies` table | |
+| 6 | Check DB: `subscription_tier` + `stripe_customer_id` updated | | In `companies` table | |
 | 7 | Settings → Billing Portal | | Stripe Portal opens | |
 
 ---
@@ -195,9 +221,10 @@
 | 1 | Login as admin | `/login` | Redirect to `/admin/dashboard` | |
 | 2 | Dashboard | `/admin/dashboard` | KPI: users, companies, jobs, apps | |
 | 3 | Users management | `/admin/users` | Search + role filter + inline change | |
-| 4 | Companies management | `/admin/companies` | Verify/reject companies | |
+| 4 | Companies verification | `/admin/companies` | Update `verification_status` and `risk_score` | |
+| 4a| Check Audit Log | | API records changes in `company_verification_log` | |
 | 5 | Jobs moderation | `/admin/jobs` | Feature/close jobs | |
-| 6 | System config | `/admin/config` | Inline edit settings | |
+| 6 | System config | `/admin/config` | Inline edit settings (grouped) | |
 | 7 | Transactions | `/admin/transactions` | Payment history + revenue | |
 
 ---
@@ -206,11 +233,14 @@
 
 | # | Step | Route | Expected | Result |
 |---|------|-------|----------|--------|
-| 1 | As employer, go to messages | `/employer/messages` | Conversation list | |
+| 1 | 🔒 As unverified employer, go to messages | `/employer/messages` | `VerificationLock` blocks page | |
+| 1a| As verified employer, go to messages | `/employer/messages` | Conversation list | |
 | 2 | Start conversation with candidate | | Message field appears | |
 | 3 | Send message | | Message shows in chat | |
-| 4 | As candidate, check messages | `/candidate/messages` | Employer message visible | |
-| 5 | Reply | | Conversation updates | |
+| 4 | Unread count updates automatically | | `update_unread_counts` trigger fires | |
+| 5 | As candidate, check messages | `/candidate/messages` | Employer message visible | |
+| 6 | Reply | | Conversation updates | |
+| 7 | 🔒 API: `POST /api/conversations/start` (unverified) | | Returns 403 with verification message | |
 
 ---
 
@@ -219,8 +249,38 @@
 | # | Step | Route | Expected | Result |
 |---|------|-------|----------|--------|
 | 1 | Go to landing pages | `/employer/landing-pages` | Page list | |
-| 2 | Create new page | `/employer/landing-pages/new` | Builder wizard | |
+| 2 | Create new page | `/employer/landing-pages/new` | Builder form | |
 | 3 | View public page via shared link | `/apply/[token]` | Landing page works | |
+| 4 | Candidate applies via landing page | | Application with `source = 'landing_page_token'` | |
+| 5 | `views_count` increments | | `increment_landing_page_views` RPC | |
+| 6 | Hidden job created for tracking | | `get_or_create_private_job` RPC | |
+
+---
+
+## Flow 16: Team Management
+
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|--------|
+| 1 | Go to team page | `/employer/team` | Team member list | |
+| 2 | Invite member by email | | `company_members` row with status=pending | |
+| 3 | Invited user logs in | | Auto-accepted, status → active | |
+| 4 | Change member role | | Role updated (owner/admin/member/viewer) | |
+| 5 | Remove member | | Row deleted (only owner can) | |
+| 6 | Cannot remove self (owner) | | Error message | |
+| 7 | Viewer can only read | | Write operations blocked | |
+
+---
+
+## Flow 17: Notifications
+
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|--------|
+| 1 | NotificationBell visible in navbar | | Bell icon with unread count | |
+| 2 | New application triggers notification | | `create_notification` RPC fires | |
+| 3 | Click bell → dropdown | | Recent notifications listed | |
+| 4 | Click notification → mark as read | | `is_read = true` via PATCH | |
+| 5 | API: `GET /api/notifications` | | Returns unread notifications | |
+| 6 | API: `PATCH /api/notifications` | | Marks notifications as read | |
 
 ---
 
@@ -229,8 +289,9 @@
 | # | Step | Expected | Result |
 |---|------|----------|--------|
 | 1 | Cron runs daily at 06:00 UTC | `/api/cron/contract-expiry` | |
-| 2 | Contracts older than 7 days with status "sent" | | Status → "expired" | |
+| 2 | Contracts with status "sent" + `expires_at` passed | | Status → "expired" | |
 | 3 | Bearer token `CRON_SECRET` required | | Unauthorized without token | |
+| 4 | ⚠️ Set `CRON_SECRET` in Vercel dashboard | | Currently unset | |
 
 ---
 
@@ -255,19 +316,135 @@ UPDATE profiles SET role = 'admin' WHERE email = 'your@email.com';
 
 ## N8N Webhook Summary
 
-| # | Webhook | Path | Used In |
-|---|---------|------|---------|
-| 1 | CV Parser | `/webhook/gn-cv-parser` | CV upload |
-| 2 | AI Job Description | `/webhook/gn-ai-job-description` | Job wizard |
-| 3 | Match Score | `/webhook/gn-match-score` | Application submission |
-| 4 | Interview Questions | `/webhook/gn-interview-questions` | AI interview |
-| 5 | Interview Evaluation | `/webhook/gn-interview-eval` | Answer scoring |
-| 6 | App Notification | `/webhook/gn-application-notify` | New application |
-| 7 | Smart Matching | `/webhook/gn-smart-match` | Candidate search |
-| 8 | Message Notification | `/webhook/gn-message-notify` | Chat messages |
-| 9 | Payment Verification | `/webhook/gn-payment-verify` | Payment fulfillment |
-| 10 | Company Verification | `/webhook/gn-company-verify` | Trade license OCR |
-| 11 | Committee Summary | `/webhook/gn-committee-summary` | Panel evaluation |
-| 12 | Contract Notifications | (direct fetch) | Contract lifecycle |
+| # | Webhook | Path | Used In | Status |
+|---|---------|------|---------|--------|
+| 1 | CV Parser | `/webhook/gn-cv-parser` | CV upload | ✅ |
+| 2 | AI Job Description | `/webhook/gn-ai-job-description` | Job wizard | ✅ |
+| 3 | Match Score | `/webhook/gn-match-score` | Application submission | ✅ |
+| 4 | Interview Questions | `/webhook/gn-interview-questions` | AI interview | ✅ |
+| 5 | Interview Evaluation | `/webhook/gn-interview-eval` | Answer scoring | ✅ |
+| 6 | App Notification | `/webhook/gn-application-notify` | New application | ⚠️ Partial |
+| 7 | Smart Matching | `/webhook/gn-smart-match` | Candidate search | ❌ |
+| 8 | Message Notification | `/webhook/gn-message-notify` | Chat messages | ❌ |
+| 9 | Payment Verification | `/webhook/gn-payment-verify` | Payment fulfillment | ❌ |
+| 10 | Company Verification | `/webhook/gn-company-verify` | Trade license OCR | ✅ |
+| 11 | Committee Summary | `/webhook/gn-committee-summary` | Panel evaluation | ✅ |
+| 12 | Contract Notifications | (direct fetch) | Contract lifecycle | ⚠️ Not on n8n |
 
 > **Note:** All webhooks work with mock/fallback data when n8n is offline.
+> **⚠️ Contract notifications:** Blueprint ready but **not published on n8n yet**.
+
+---
+
+## Flow 18: Verification Enforcement Gate Testing 🔒
+
+> **Added:** 12 May 2026 — Tests the enforcement gating system
+
+### 18.1 Unverified Employer (status: `under_review` or `pending_verification`)
+
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|--------|
+| 1 | Register new employer | `/register/employer` | Company created with `under_review` status | |
+| 2 | Dashboard header CTA | `/employer/dashboard` | Lock icon + "التوثيق مطلوب للنشر" (no Post Job button) | |
+| 3 | Empty state CTA | `/employer/dashboard` | "حفظ مسودة وظيفة" (outline button, no Publish) | |
+| 4 | Navigate to New Job | `/employer/jobs/new` | Form loads, Publish button hidden | |
+| 5 | Fill job form + save | `/employer/jobs/new` | Draft saved (status: `draft`) | |
+| 6 | Navigate to candidates | `/employer/candidates` | `VerificationLockServer` — full page blocked | |
+| 7 | Navigate to saved candidates | `/employer/saved-candidates` | `VerificationLock` — full page blocked | |
+| 8 | Navigate to messages | `/employer/messages` | `VerificationLock` — full page blocked | |
+| 9 | API: `POST /api/conversations/start` | | 403 response: verification required | |
+| 10 | Direct URL to `/employer/candidates` | | Still blocked (server-side check) | |
+
+### 18.2 Rejected Employer (status: `rejected`)
+
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|--------|
+| 1 | Set company `verification_status` = `rejected` | DB | | |
+| 2 | Navigate to New Job | `/employer/jobs/new` | Full page lock — cannot even save draft | |
+| 3 | All gated pages blocked | All | Same as unverified but with rejection message | |
+
+### 18.3 Verified Employer (status: `verified` or `trusted`)
+
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|--------|
+| 1 | Set company `verification_status` = `verified` via admin | DB | | |
+| 2 | Dashboard header CTA | `/employer/dashboard` | Full "أنشر وظيفة" button visible | |
+| 3 | Navigate to New Job + Publish | `/employer/jobs/new` | Publish button active, job goes live | |
+| 4 | Navigate to candidates | `/employer/candidates` | Candidate search loads normally | |
+| 5 | Navigate to messages | `/employer/messages` | Chat interface loads | |
+| 6 | Navigate to saved candidates | `/employer/saved-candidates` | Saved list loads | |
+| 7 | API: `POST /api/conversations/start` | | Conversation created successfully | |
+
+---
+
+## Flow 19: Smart Candidate Suggestions (AI Match Engine) ✨
+
+> **Added:** 12 May 2026 — Documents how suggested candidates on employer dashboard are sourced
+
+### Data Pipeline
+
+```
+Candidate signs up → Fills profile (headline, skills[], city) → is_public = true
+                                          ↓
+Employer posts jobs → skills_required[] set on each job
+                                          ↓
+Dashboard server query:
+  1. Collect all skills_required from company's jobs
+  2. Query candidates WHERE is_public = true AND skills IS NOT NULL (limit 50)
+  3. Calculate Jaccard similarity: matched_skills ÷ union_of_skills × 100
+  4. Sort by match % descending → return top 5
+```
+
+### Test Steps
+
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|--------|
+| 1 | Register as candidate | `/register` | Select "Job Seeker" | |
+| 2 | Fill profile: name, headline, skills | `/candidate/profile` | Skills saved to `candidates.skills[]` | |
+| 3 | Set `is_public = true` (default) | | Candidate discoverable | |
+| 4 | Login as employer (verified) | `/employer/dashboard` | Dashboard loads | |
+| 5 | Post job with `skills_required` | `/employer/jobs/new` | e.g., ["React", "TypeScript"] | |
+| 6 | Return to dashboard | `/employer/dashboard` | "مرشحون مقترحون" section | |
+| 7 | Matching candidates appear | | Real names from DB, match % calculated | |
+| 8 | No jobs = empty state | | "أنشر وظائف لاقتراح مرشحين مطابقين" shown | |
+| 9 | No matching skills = empty state | | Same empty state message | |
+| 10 | Candidate sets `is_public = false` | | Candidate hidden from suggestions | |
+
+### Key Details
+
+- **Source:** Real users from `candidates` table joined with `profiles` for names
+- **NOT mock data** — previously was hardcoded (سارة ك., محمد أ.), replaced 12 May 2026
+- **Scoring:** Jaccard similarity (intersection ÷ union of skill sets)
+- **Limit:** Top 5 candidates, max 50 queried per request
+- **Privacy:** Only `is_public = true` candidates shown
+- **Skills displayed:** Up to 4 skills per candidate card
+
+---
+
+## Database Tables Reference (from full.sql)
+
+| Table | Rows Policy | Key Columns |
+|-------|-------------|-------------|
+| `profiles` | User = own | email, role, credits_balance, stripe_customer_id |
+| `companies` | Public read | name, slug, company_type, stripe_*, subscription_* |
+| `candidates` | Public if is_public | skills[], candidate_type, UAE fields (12 cols) |
+| `jobs` | Public if active | search_vector, skills_required[], nationality_requirements[] |
+| `applications` | Candidate own + employer | status (7 values), interview_score, committee_summary |
+| `saved_jobs` | Candidate own | job_id, candidate_id |
+| `saved_candidates` | Employer own | employer_id, candidate_id |
+| `conversations` | Participants only | unread_count_1/2, last_message |
+| `messages` | Conversation participants | sender_id, is_read |
+| `landing_pages` | Owner + public read | token (unique URL), views_count |
+| `transactions` | User own | amount, currency (AED), provider_id |
+| `system_config` | Non-secret = public | key-value pairs (pricing, cities, nationalities, rejections) |
+| `committee_evaluations` | Evaluator own + employer | scores (JSONB), total_score |
+| `contract_templates` | System + own | html_content, MOHRE default |
+| `contracts` | Company members | status (6 states), salary, sent/signed/declined timestamps |
+| `emiratisation_profiles` | Company owner/members | 7 workforce fields, MOHRE registration |
+| `emiratisation_audit_log` | Company owner/members | field_name, old_value, new_value |
+| `company_members` | Own rows + owner | role (4 values), status, invited_email |
+| `notifications` | User own | type, title, body, data (JSONB) |
+| `cv_unlocks` | Employer own | employer_id, candidate_id |
+| `company_documents` | Employer own + admin | trade licenses, status |
+| `company_verification_log`| Employer read + admin | tracking admin approvals and status changes |
+| `company_blacklist` | Admin only | blocked domains and licenses |

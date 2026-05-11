@@ -17,13 +17,17 @@ import {
     UserCheck,
     MessageSquare,
     BarChart3,
-    Flag
+    Flag,
+    Lock as LockIcon
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { NotificationBell } from '@/components/employer/NotificationBell'
+import { VerificationBanner } from '@/components/employer/VerificationBanner'
+import { getVerificationPermissions } from '@/lib/verification-engine'
+import { VerificationProvider } from '@/contexts/VerificationContext'
 
 const sidebarLinks = [
     { href: '/employer/dashboard', label: 'لوحة التحكم', icon: LayoutDashboard },
@@ -112,6 +116,24 @@ export default async function EmployerLayout({
         redirect('/login')
     }
 
+    // Determine verification status and permissions
+    const verificationStatus = company?.verification_status || 'pending_verification'
+    const permissions = getVerificationPermissions(verificationStatus)
+    const isRecruitmentAgency = company?.entity_type === 'recruitment_agency'
+
+    // Mark which links need verification (but show ALL links)
+    const lockedHrefs = new Set<string>()
+    if (!permissions.canPublishJobs) {
+        lockedHrefs.add('/employer/jobs/new')
+    }
+    if (!permissions.canViewCVs) {
+        lockedHrefs.add('/employer/candidates')
+        lockedHrefs.add('/employer/saved-candidates')
+    }
+    if (!permissions.canMessageCandidates) {
+        lockedHrefs.add('/employer/messages')
+    }
+
     return (
         <div className="min-h-screen bg-navy flex">
             {/* Sidebar */}
@@ -148,26 +170,41 @@ export default async function EmployerLayout({
 
                 {/* Navigation */}
                 <nav className="flex-1 p-4 space-y-1">
-                    {sidebarLinks.map((link) => (
-                        <Link
-                            key={link.href}
-                            href={link.href}
-                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group ${
-                                (link as any).highlight 
-                                ? 'text-navy bg-gold/15 border border-gold/30 hover:bg-gold/25 font-medium' 
-                                : 'text-cream-dark/60 hover:text-cream hover:bg-navy-lighter'
-                            }`}
-                        >
-                            <link.icon className={`h-5 w-5 ${(link as any).highlight ? 'text-gold' : ''}`} />
-                            <span className="flex-1">{link.label}</span>
-                            {link.label === 'الرسائل' && totalUnread > 0 && (
-                                <Badge variant="secondary" className="bg-gold text-navy text-xs h-5 min-w-5 flex items-center justify-center">
-                                    {totalUnread}
-                                </Badge>
-                            )}
-                            <ChevronLeft className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </Link>
-                    ))}
+                    {sidebarLinks.map((link) => {
+                        const isLocked = lockedHrefs.has(link.href)
+                        return (
+                            <Link
+                                key={link.href}
+                                href={link.href}
+                                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group relative ${
+                                    (link as any).highlight && !isLocked
+                                    ? 'text-navy bg-gold/15 border border-gold/30 hover:bg-gold/25 font-medium' 
+                                    : isLocked
+                                    ? 'text-cream-dark/30 hover:text-cream-dark/40 hover:bg-navy-lighter/50 cursor-default'
+                                    : 'text-cream-dark/60 hover:text-cream hover:bg-navy-lighter'
+                                }`}
+                                title={isLocked ? 'يتطلب توثيق الشركة' : undefined}
+                            >
+                                <link.icon className={`h-5 w-5 ${
+                                    (link as any).highlight && !isLocked ? 'text-gold' 
+                                    : isLocked ? 'text-cream-dark/20' 
+                                    : ''
+                                }`} />
+                                <span className={`flex-1 ${isLocked ? 'opacity-50' : ''}`}>{link.label}</span>
+                                {isLocked && (
+                                    <LockIcon className="h-3.5 w-3.5 text-gold/40" />
+                                )}
+                                {link.label === 'الرسائل' && totalUnread > 0 && !isLocked && (
+                                    <Badge variant="secondary" className="bg-gold text-navy text-xs h-5 min-w-5 flex items-center justify-center">
+                                        {totalUnread}
+                                    </Badge>
+                                )}
+                                {!isLocked && (
+                                    <ChevronLeft className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                )}
+                            </Link>
+                        )
+                    })}
 
                     <Separator className="my-4 bg-gold/10" />
 
@@ -220,8 +257,22 @@ export default async function EmployerLayout({
                         {profile?.full_name}
                     </div>
                 </div>
+                
+                {/* Verification Gating Banner */}
+                <VerificationBanner 
+                    status={verificationStatus} 
+                    notes={company?.verification_notes}
+                    isRecruitmentAgency={isRecruitmentAgency}
+                />
+
                 <div className="p-8">
-                    {children}
+                    <VerificationProvider
+                        permissions={permissions}
+                        verificationStatus={verificationStatus}
+                        company={company}
+                    >
+                        {children}
+                    </VerificationProvider>
                 </div>
             </main>
         </div>

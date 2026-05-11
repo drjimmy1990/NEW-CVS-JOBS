@@ -1,5 +1,4 @@
 {
-  "name": "new cv website",
   "nodes": [
     {
       "parameters": {
@@ -730,28 +729,6 @@
     },
     {
       "parameters": {
-        "html": "=<div dir=\"rtl\" style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0f1729; color: #f5f0e8; padding: 30px; border-radius: 12px;\">\n    \n    <div style=\"text-align: center; padding: 20px 0; border-bottom: 1px solid rgba(212, 175, 55, 0.2);\">\n        <h1 style=\"color: #D4AF37; font-size: 24px; margin: 0;\">GrowthNexus</h1>\n        <p style=\"color: #999; font-size: 12px; margin-top: 5px;\">منصة التوظيف الذكية</p>\n    </div>\n\n    <div style=\"padding: 30px 0;\">\n        <h2 style=\"color: #D4AF37; font-size: 20px;\">📋 طلب توظيف جديد!</h2>\n        \n        <p style=\"font-size: 16px; line-height: 1.8;\">\n            مرحباً <strong>{{ $json.full_name }}</strong>،\n        </p>\n        \n        <p style=\"font-size: 15px; line-height: 1.8; color: #ccc;\">\n            تقدم مرشح جديد لإحدى وظائفكم:\n        </p>\n\n        <div style=\"background: #1a2332; border: 1px solid rgba(212, 175, 55, 0.15); border-radius: 8px; padding: 20px; margin: 20px 0;\">\n            <table style=\"width: 100%; border-collapse: collapse;\">\n                <tr>\n                    <td style=\"padding: 8px 0; color: #999; width: 120px;\">المرشح:</td>\n                    <td style=\"padding: 8px 0; color: #f5f0e8; font-weight: bold;\">{{ $('Webhook6').item.json.body.candidate_name }}</td>\n                </tr>\n                <tr>\n                    <td style=\"padding: 8px 0; color: #999;\">الوظيفة:</td>\n                    <td style=\"padding: 8px 0; color: #D4AF37; font-weight: bold;\">{{ $('Webhook6').item.json.body.job_title }}</td>\n                </tr>\n                <tr>\n                    <td style=\"padding: 8px 0; color: #999;\">التاريخ:</td>\n                    <td style=\"padding: 8px 0; color: #f5f0e8;\">{{ $('Webhook6').item.json.body.timestamp }}</td>\n                </tr>\n            </table>\n        </div>\n\n        <a href=\"https://your-domain.com/employer/jobs/{{ $('Webhook6').item.json.body.job_id }}/applicants\" \n           style=\"display: inline-block; background: linear-gradient(135deg, #D4AF37, #C5A028); color: #0f1729; font-weight: bold; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-size: 14px; margin-top: 10px;\">\n            عرض المتقدمين ←\n        </a>\n    </div>\n\n    <div style=\"border-top: 1px solid rgba(212, 175, 55, 0.1); padding-top: 15px; text-align: center;\">\n        <p style=\"color: #666; font-size: 11px;\">هذا الإيميل مرسل تلقائياً من منصة GrowthNexus</p>\n    </div>\n</div>",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
-      "position": [
-        2624,
-        5344
-      ],
-      "id": "317a99fb-ffcd-4e68-ac71-55ce695160ae",
-      "name": "Send email",
-      "webhookId": "eb2e808d-e10e-48a4-98d3-fbb34f117296",
-      "credentials": {
-        "smtp": {
-          "id": "UJq7VA6EGQgVwRUd",
-          "name": "SMTP account"
-        }
-      },
-      "disabled": true
-    },
-    {
-      "parameters": {
         "respondWith": "json",
         "responseBody": "={\n    \"success\": true,\n    \"message\": \"Notification sent\",\n    \"email_sent_to\": \"{{ $json.email }}\"\n} ",
         "options": {}
@@ -764,269 +741,262 @@
       ],
       "id": "4630dc54-e697-4e02-bb06-a4b1aa34b3d5",
       "name": "Respond to Webhook6"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gn-company-verify",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        1728,
+        4576
+      ],
+      "id": "ae6ec419-c8f5-4113-add3-6619a6130186",
+      "name": "Webhook7",
+      "webhookId": "9ab84465-c2bd-4cac-8280-5dcdadc41579"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Get the parsed JSON from Gemini\nconst aiResultText = $input.item.json.text || $input.first().json.content.parts[0].text;\n// Clean up markdown formatting if Gemini wraps it\nconst cleanJson = aiResultText.replace(/```json/g, '').replace(/```/g, '').trim();\nconst aiResult = JSON.parse(cleanJson);\n\n// 2. Get the original Supabase Webhook data\nconst dbRecord = $node['Webhook7'].json.body.record;\n\n// 3. Logic for Risk Score & Status\nlet riskScore = 80;\nlet verificationStatus = 'trusted';\nlet riskLevel = 'low';\nlet notes = [];\n\n// Check if we found a trade license number\nif (!aiResult.trade_license_number || aiResult.trade_license_number === '') {\n  riskScore -= 40;\n  verificationStatus = 'limited';\n  riskLevel = 'high';\n  notes.push('Could not detect Trade License Number via OCR.');\n}\n\n// Check expiry date\nif (aiResult.expiry_date) {\n  const expiry = new Date(aiResult.expiry_date);\n  if (expiry < new Date()) {\n    riskScore -= 30;\n    verificationStatus = 'under_review';\n    riskLevel = 'medium';\n    notes.push('Trade License appears to be expired.');\n  }\n}\n\n// 4. Return the calculated payload\nreturn {\n  company_id: dbRecord.company_id,\n  document_id: dbRecord.id,\n  ai_data: aiResult,\n  risk_score: riskScore,\n  verification_status: verificationStatus,\n  risk_level: riskLevel,\n  notes: notes.length > 0 ? notes.join(' | ') : 'Verification passed automatically.'\n};\n"
+      },
+      "name": "Decision Engine",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3008,
+        4672
+      ],
+      "id": "7ea9158c-bc1a-4065-9052-6bd79ac7d3ce"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "companies",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "verification_status",
+              "fieldValue": "={{ $json.verification_status }}"
+            },
+            {
+              "fieldId": "risk_score",
+              "fieldValue": "={{ $json.risk_score }}"
+            },
+            {
+              "fieldId": "risk_level",
+              "fieldValue": "={{ $json.risk_level }}"
+            }
+          ]
+        }
+      },
+      "name": "Update Company",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        3824,
+        4144
+      ],
+      "id": "f456e2f5-dcda-4c99-a609-d373bb4f930a",
+      "credentials": {
+        "supabaseApi": {
+          "id": "l3pwTkC8nAXVlJg7",
+          "name": "cv new website"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  id: $json.company_id,\n  verification_status: $json.verification_status,\n  risk_score: $json.risk_score,\n  risk_level: $json.risk_level,\n  verification_notes: $json.notes\n};"
+      },
+      "name": "Prep Company Update",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3600,
+        4144
+      ],
+      "id": "8309421a-8b81-4c99-9e78-2d3ae09a0d37"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "company_documents",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "ocr_status",
+              "fieldValue": "={{ $json.ocr_status }}"
+            },
+            {
+              "fieldId": "ocr_data",
+              "fieldValue": "={{ $json.ocr_data.toJsonString() }}"
+            }
+          ]
+        }
+      },
+      "name": "Update Document",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        3824,
+        4336
+      ],
+      "id": "3a042053-7849-4825-8362-97d248864e4a",
+      "credentials": {
+        "supabaseApi": {
+          "id": "l3pwTkC8nAXVlJg7",
+          "name": "cv new website"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  id: $json.document_id,\n  ocr_status: 'completed',\n  ocr_data: $json.ai_data\n};"
+      },
+      "name": "Prep Doc Update",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3600,
+        4336
+      ],
+      "id": "0ebc2c71-fcf8-457f-81f9-d94d96825253"
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  company_id: $json.company_id,\n  action: $json.verification_status === 'trusted' ? 'approved' : 'limited',\n  notes: 'Automated verification via Gemini OCR.',\n  metadata: {\n    ocr_extracted: $json.ai_data,\n    risk_score_assigned: $json.risk_score\n  }\n};"
+      },
+      "name": "Prep Audit Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3600,
+        4528
+      ],
+      "id": "0d1111ca-6748-48b9-89c9-ff241ba35869"
+    },
+    {
+      "parameters": {
+        "url": "=https://cqahtitdamlunqjxeyeo.supabase.co/storage/v1/object/authenticated/company_documents/{{ $json.body.record.file_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxYWh0aXRkYW1sdW5xanhleWVvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MjI5NTM4NywiZXhwIjoyMDc3ODcxMzg3fQ.Kms0sHMJp44oX_I0vnJPs3AfSovU0UYT2t6ySVOaVso"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "name": "Download Document1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2080,
+        4624
+      ],
+      "id": "ebd18a87-fed6-4a67-964b-b820c6a602f0"
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-flash-latest",
+          "mode": "list",
+          "cachedResultName": "models/gemini-flash-latest"
+        },
+        "text": " You are a legal document analyzer. Analyze the attached Trade License (which may be in Arabic or English).\n    Extract the following information and return ONLY a valid JSON object with NO markdown formatting:\n    {\n      \"official_name\": \"...\",\n      \"trade_license_number\": \"...\",\n      \"expiry_date\": \"YYYY-MM-DD\"\n    }",
+        "inputType": "binary",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        2640,
+        4672
+      ],
+      "id": "db4c1a9d-a1db-4154-ac18-295040ee0116",
+      "name": "Analyze document",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "KFjbrLT6jbTkz70r",
+          "name": "rockdash2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "company_verification_log",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "company_id",
+              "fieldValue": "={{ $json.company_id }}"
+            },
+            {
+              "fieldId": "action",
+              "fieldValue": "={{ $json.action }}"
+            },
+            {
+              "fieldId": "notes",
+              "fieldValue": "={{ $json.notes }}"
+            },
+            {
+              "fieldId": "metadata",
+              "fieldValue": "=\"ocr_extracted\": {{ $json.metadata.ocr_extracted.toJsonString() }}, \"risk_score\": {{ $json.metadata.risk_score_assigned }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        3808,
+        4528
+      ],
+      "id": "74c24dfb-5a6c-47a9-98bd-5d8eb927dbcb",
+      "name": "Create a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "l3pwTkC8nAXVlJg7",
+          "name": "cv new website"
+        }
+      }
     }
   ],
-  "pinData": {
-    "Webhook": [
-      {
-        "json": {
-          "headers": {
-            "host": "n8n.asra3.com",
-            "x-real-ip": "162.158.23.153",
-            "x-forwarded-for": "41.235.175.50,41.235.175.50, 162.158.23.153",
-            "x-forwarded-proto": "https",
-            "connection": "Upgrade",
-            "content-length": "229",
-            "priority": "u=1, i",
-            "sec-ch-ua-platform": "\"Windows\"",
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
-            "sec-ch-ua": "\"Google Chrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
-            "content-type": "application/json",
-            "sec-ch-ua-mobile": "?0",
-            "accept": "*/*",
-            "origin": "http://localhost:3001",
-            "sec-fetch-site": "cross-site",
-            "sec-fetch-mode": "cors",
-            "sec-fetch-dest": "empty",
-            "referer": "http://localhost:3001/",
-            "accept-encoding": "gzip, br",
-            "accept-language": "en-US,en;q=0.9",
-            "cf-ray": "9f39aa154f241296-MRS",
-            "cdn-loop": "cloudflare; loops=1",
-            "cf-connecting-ip": "41.235.175.50",
-            "cf-ipcountry": "EG",
-            "cf-visitor": "{\"scheme\":\"https\"}"
-          },
-          "params": {},
-          "query": {},
-          "body": {
-            "file_url": "https://cqahtitdamlunqjxeyeo.supabase.co/storage/v1/object/public/resumes/b8299103-4d02-413f-8699-320cfa2740cd/1777417029262-4b577f42-d543-4708-ad06-b47256c7f438.pdf",
-            "user_id": "b8299103-4d02-413f-8699-320cfa2740cd"
-          },
-          "webhookUrl": "https://n8n.asra3.com/webhook/gn-cv-parser",
-          "executionMode": "production"
-        },
-        "pairedItem": {
-          "item": 0
-        }
-      }
-    ],
-    "Webhook1": [
-      {
-        "json": {
-          "headers": {
-            "host": "n8n.asra3.com",
-            "x-real-ip": "172.68.234.123",
-            "x-forwarded-for": "41.235.175.50,41.235.175.50, 172.68.234.123",
-            "x-forwarded-proto": "https",
-            "connection": "Upgrade",
-            "content-length": "135",
-            "accept": "*/*",
-            "accept-language": "*",
-            "accept-encoding": "gzip, br",
-            "user-agent": "node",
-            "cf-ray": "9f39dec37b12e1d1-MRS",
-            "cf-visitor": "{\"scheme\":\"https\"}",
-            "sec-fetch-mode": "cors",
-            "content-type": "application/json",
-            "x-webhook-secret": "change-me-to-a-strong-secret",
-            "cdn-loop": "cloudflare; loops=1",
-            "cf-connecting-ip": "41.235.175.50",
-            "cf-ipcountry": "EG"
-          },
-          "params": {},
-          "query": {},
-          "body": {
-            "title": "مطور sql",
-            "job_type": "full_time",
-            "location": "رأس الخيمة",
-            "experience_level": "قيادي / مدير",
-            "skills": []
-          },
-          "webhookUrl": "https://n8n.asra3.com/webhook/gn-ai-job-description",
-          "executionMode": "production"
-        },
-        "pairedItem": {
-          "item": 0
-        }
-      }
-    ],
-    "Webhook4": [
-      {
-        "json": {
-          "headers": {
-            "host": "n8n.asra3.com",
-            "x-real-ip": "162.158.23.154",
-            "x-forwarded-for": "41.235.175.50,41.235.175.50, 162.158.23.154",
-            "x-forwarded-proto": "https",
-            "connection": "Upgrade",
-            "content-length": "1399",
-            "accept": "*/*",
-            "accept-language": "*",
-            "accept-encoding": "gzip, br",
-            "user-agent": "node",
-            "cf-ray": "9f3a5802acf61858-MRS",
-            "cf-visitor": "{\"scheme\":\"https\"}",
-            "sec-fetch-mode": "cors",
-            "content-type": "application/json",
-            "x-webhook-secret": "change-me-to-a-strong-secret",
-            "cdn-loop": "cloudflare; loops=1",
-            "cf-connecting-ip": "41.235.175.50",
-            "cf-ipcountry": "EG"
-          },
-          "params": {},
-          "query": {},
-          "body": {
-            "application_id": "9b784f95-8052-4b83-ba00-62a399d7f00f",
-            "job_id": "2deb6950-654d-4ed5-a5df-dbfd1a957b89",
-            "job_title": "مبرمج",
-            "questions": [
-              "حدثنا عن لغات البرمجة والتقنيات التي تتقنها، وكيف قمت بتطبيقها في مشاريع سابقة لتقديم حلول فعالة؟",
-              "صف لنا موقفًا واجهت فيه مشكلة برمجية معقدة. كيف قمت بتحليلها، وما هي الخطوات التي اتخذتها لحلها، وماذا كانت النتيجة؟",
-              "كيف تضمن جودة الكود الذي تكتبه وقابليته للصيانة والتوسع؟ وما هو دورك في مراجعة كود الزملاء (Code Review)؟",
-              "اذكر مشروعًا برمجيًا كنت فخورًا به بشكل خاص. ما هو التحدي الرئيسي الذي واجهته فيه، وكيف تغلبت عليه، وماذا تعلمت من تلك التجربة؟",
-              "عالم البرمجة يتطور باستمرار. كيف تواكب أحدث التقنيات وأفضل الممارسات في مجال عملك؟ وهل لديك شغف بمجال معين أو تقنية ترغب في استكشافها أكثر؟"
-            ],
-            "answers": [
-              "dkygsdofudsgfsdkjhfbgdskjhfgsdkj",
-              "sdljkkfbhsdoifhosdfbhsdlfjbhdsoifsd",
-              "sdliufghdsljfhdsljfsdblfkshfs",
-              "sldufhsdpiufhdspdiufhsdpiufhds",
-              "sdpiufhsdpifhspdiufhsdpiufhsdp"
-            ]
-          },
-          "webhookUrl": "https://n8n.asra3.com/webhook/gn-interview-eval",
-          "executionMode": "production"
-        },
-        "pairedItem": {
-          "item": 0
-        }
-      }
-    ],
-    "Webhook2": [
-      {
-        "json": {
-          "headers": {
-            "host": "n8n.asra3.com",
-            "x-real-ip": "162.158.23.153",
-            "x-forwarded-for": "41.235.175.50,41.235.175.50, 162.158.23.153",
-            "x-forwarded-proto": "https",
-            "connection": "Upgrade",
-            "content-length": "3940",
-            "accept": "*/*",
-            "accept-language": "*",
-            "accept-encoding": "gzip, br",
-            "user-agent": "node",
-            "cf-ray": "9f3ac9bc3df63d27-MRS",
-            "cf-visitor": "{\"scheme\":\"https\"}",
-            "sec-fetch-mode": "cors",
-            "content-type": "application/json",
-            "x-webhook-secret": "change-me-to-a-strong-secret",
-            "cdn-loop": "cloudflare; loops=1",
-            "cf-connecting-ip": "41.235.175.50",
-            "cf-ipcountry": "EG"
-          },
-          "params": {},
-          "query": {},
-          "body": {
-            "application_id": "d0dbba6a-e880-4d59-a1ef-e44103cf6320",
-            "candidate_skills": [
-              "Python",
-              "Java",
-              "JavaScript",
-              "AWS",
-              "Docker",
-              "Kubernetes",
-              "SQL",
-              "NoSQL",
-              "منهجيات Agile",
-              "تطوير البرمجيات",
-              "إدارة المشاريع",
-              "قيادة الفريق",
-              "تطوير خدمات خلفية قابلة للتطوير"
-            ],
-            "candidate_experience": "7 سنة",
-            "candidate_summary": "محترف متحمس وموجه نحو النتائج، يتمتع بخبرة 7 سنوات في تطوير البرمجيات وإدارة المشاريع وقيادة الفرق.\nيمتلك قدرة مثبتة على تسليم المشاريع المعقدة في الوقت المحدد وضمن الميزانية، والتميز في البيئات التعاونية سريعة الوتيرة.",
-            "candidate_education": [
-              "ماجستير في علوم الحاسوب - جامعة التكنولوجيا",
-              "بكالوريوس في هندسة الحاسوب - جامعة الولاية"
-            ],
-            "cover_letter": "cover letter test",
-            "job_description": "نبحث عن مبرمج خبير وموهوب للانضمام إلى فريقنا الديناميكي في دبي. إذا كنت تمتلك شغفًا ببناء حلول برمجية مبتكرة وعالية الأداء، ولديك سجل حافل في قيادة المشاريع المعقدة وتوجيه الفرق، فإننا ندعوك لتكون جزءًا من رحلتنا. ستلعب دورًا محوريًا في تصميم وتطوير وتنفيذ أنظمة برمجية متطورة، وتحسين البنية التحتية الحالية، وتقديم التوجيه التقني للمطورين الآخرين. هذه فرصة فريدة للمساهمة في بيئة عمل محفزة ومليئة بالتحديات، حيث يمكنك إحداث تأثير حقيقي على منتجاتنا وتقنياتنا، والمساهمة في دفع الابتكار داخل سوق العمل الإماراتي والخليجي.\n\nالمتطلبات:\nشهادة بكالوريوس في علوم الحاسوب، هندسة البرمجيات، أو مجال ذي صلة.,خبرة عملية لا تقل عن 5 سنوات في تطوير البرمجيات، مع سجل مثبت في بناء وإطلاق تطبيقات ناجحة ومعقدة.,إتقان عميق لعدة لغات برمجة وأطر عمل رائدة (مثل Python، Java، C#، Node.js، Go، أو غيرها).,فهم قوي لمبادئ التصميم المعماري للأنظمة، وهياكل البيانات، والخوارزميات، وأنماط التصميم.,خبرة واسعة في العمل مع قواعد البيانات العلائقية (مثل PostgreSQL, MySQL) وغير العلائقية (مثل MongoDB, Redis).,تجربة في تصميم وتطوير واجهات برمجة التطبيقات (APIs RESTful/gRPC) الآمنة والقابلة للتطوير.,معرفة وخبرة في بيئات الحوسبة السحابية (مثل AWS, Azure, GCP).,فهم قوي لممارسات DevOps وأدوات التكامل المستمر والتسليم المستمر (CI/CD) ونظام التحكم في الإصدار (Git).,القدرة على تحليل المتطلبات المعقدة وتحويلها إلى حلول برمجية عملية وفعالة.,مهارات قيادية وتوجيهية قوية، مع القدرة على إرشاد المطورين المبتدئين والمتوسطين.,مهارات ممتازة في حل المشكلات والتفكير النقدي، والاهتمام بالتفاصيل.,إتقان اللغة العربية والإنجليزية (كتابة ومحادثة).,القدرة على العمل بشكل فعال ضمن فريق وفي بيئة سريعة التغير في دبي.,الالتزام بالتحسين المستمر للتعليم واكتساب التقنيات الجديدة.",
-            "job_skills_required": []
-          },
-          "webhookUrl": "https://n8n.asra3.com/webhook/gn-match-score",
-          "executionMode": "production"
-        },
-        "pairedItem": {
-          "item": 0
-        }
-      }
-    ],
-    "Webhook6": [
-      {
-        "json": {
-          "headers": {
-            "host": "n8n.asra3.com",
-            "x-real-ip": "162.158.23.153",
-            "x-forwarded-for": "41.235.175.50,41.235.175.50, 162.158.23.153",
-            "x-forwarded-proto": "https",
-            "connection": "Upgrade",
-            "content-length": "398",
-            "accept": "*/*",
-            "accept-language": "*",
-            "accept-encoding": "gzip, br",
-            "user-agent": "node",
-            "cf-ray": "9f3ac9fcbc843d27-MRS",
-            "cf-visitor": "{\"scheme\":\"https\"}",
-            "sec-fetch-mode": "cors",
-            "content-type": "application/json",
-            "x-webhook-secret": "change-me-to-a-strong-secret",
-            "cdn-loop": "cloudflare; loops=1",
-            "cf-connecting-ip": "41.235.175.50",
-            "cf-ipcountry": "EG"
-          },
-          "params": {},
-          "query": {},
-          "body": {
-            "application_id": "d0dbba6a-e880-4d59-a1ef-e44103cf6320",
-            "job_id": "ac54049f-7ca1-4a04-9eca-f035e176d211",
-            "job_title": "مبرمج",
-            "candidate_name": "mohamed gamal",
-            "company_name": "mohamed's Company",
-            "company_id": "1071a264-2fb3-4939-8ad8-25a25dc0a4ee",
-            "owner_id": "fcbed745-664b-491b-bc5d-bea6031af82f",
-            "team_member_ids": [
-              "fcbed745-664b-491b-bc5d-bea6031af82f"
-            ],
-            "timestamp": "2026-04-29T02:13:42.731Z"
-          },
-          "webhookUrl": "https://n8n.asra3.com/webhook/gn-application-notify",
-          "executionMode": "production"
-        },
-        "pairedItem": {
-          "item": 0
-        }
-      }
-    ]
-  },
   "connections": {
     "Webhook": {
       "main": [
         [
           {
             "node": "HTTP Request",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "HTTP Request": {
-      "main": [
-        [
-          {
-            "node": "Extract from File2",
             "type": "main",
             "index": 0
           }
@@ -1044,12 +1014,12 @@
         ]
       ]
     },
-    "Google Gemini Chat Model": {
-      "ai_languageModel": [
+    "HTTP Request": {
+      "main": [
         [
           {
-            "node": "Basic LLM Chain",
-            "type": "ai_languageModel",
+            "node": "Extract from File2",
+            "type": "main",
             "index": 0
           }
         ]
@@ -1061,6 +1031,17 @@
           {
             "node": "Code in JavaScript",
             "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
             "index": 0
           }
         ]
@@ -1088,17 +1069,6 @@
         ]
       ]
     },
-    "Google Gemini Chat Model1": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Basic LLM Chain1",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Webhook1": {
       "main": [
         [
@@ -1116,6 +1086,17 @@
           {
             "node": "Code in JavaScript1",
             "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "ai_languageModel",
             "index": 0
           }
         ]
@@ -1143,17 +1124,6 @@
         ]
       ]
     },
-    "Google Gemini Chat Model2": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Basic LLM Chain2",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Get a row": {
       "main": [
         []
@@ -1165,6 +1135,17 @@
           {
             "node": "Code in JavaScript2",
             "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain2",
+            "type": "ai_languageModel",
             "index": 0
           }
         ]
@@ -1192,17 +1173,6 @@
         ]
       ]
     },
-    "Google Gemini Chat Model3": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Basic LLM Chain3",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Webhook3": {
       "main": [
         [
@@ -1225,23 +1195,23 @@
         ]
       ]
     },
+    "Google Gemini Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain3",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Code in JavaScript3": {
       "main": [
         [
           {
             "node": "Respond to Webhook3",
             "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Google Gemini Chat Model4": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Basic LLM Chain4",
-            "type": "ai_languageModel",
             "index": 0
           }
         ]
@@ -1269,23 +1239,23 @@
         ]
       ]
     },
+    "Google Gemini Chat Model4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain4",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Code in JavaScript4": {
       "main": [
         [
           {
             "node": "Respond to Webhook4",
             "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Google Gemini Chat Model5": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Basic LLM Chain5",
-            "type": "ai_languageModel",
             "index": 0
           }
         ]
@@ -1308,6 +1278,17 @@
           {
             "node": "Code in JavaScript5",
             "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model5": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain5",
+            "type": "ai_languageModel",
             "index": 0
           }
         ]
@@ -1345,17 +1326,360 @@
           }
         ]
       ]
+    },
+    "Webhook7": {
+      "main": [
+        [
+          {
+            "node": "Download Document1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decision Engine": {
+      "main": [
+        [
+          {
+            "node": "Prep Company Update",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prep Doc Update",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prep Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Company Update": {
+      "main": [
+        [
+          {
+            "node": "Update Company",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Doc Update": {
+      "main": [
+        [
+          {
+            "node": "Update Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Audit Log": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Document1": {
+      "main": [
+        [
+          {
+            "node": "Analyze document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze document": {
+      "main": [
+        [
+          {
+            "node": "Decision Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": true,
-  "settings": {
-    "executionOrder": "v1"
+  "pinData": {
+    "Webhook": [
+      {
+        "headers": {
+          "host": "n8n.asra3.com",
+          "x-real-ip": "162.158.23.153",
+          "x-forwarded-for": "41.235.175.50,41.235.175.50, 162.158.23.153",
+          "x-forwarded-proto": "https",
+          "connection": "Upgrade",
+          "content-length": "229",
+          "priority": "u=1, i",
+          "sec-ch-ua-platform": "\"Windows\"",
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+          "sec-ch-ua": "\"Google Chrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+          "content-type": "application/json",
+          "sec-ch-ua-mobile": "?0",
+          "accept": "*/*",
+          "origin": "http://localhost:3001",
+          "sec-fetch-site": "cross-site",
+          "sec-fetch-mode": "cors",
+          "sec-fetch-dest": "empty",
+          "referer": "http://localhost:3001/",
+          "accept-encoding": "gzip, br",
+          "accept-language": "en-US,en;q=0.9",
+          "cf-ray": "9f39aa154f241296-MRS",
+          "cdn-loop": "cloudflare; loops=1",
+          "cf-connecting-ip": "41.235.175.50",
+          "cf-ipcountry": "EG",
+          "cf-visitor": "{\"scheme\":\"https\"}"
+        },
+        "params": {},
+        "query": {},
+        "body": {
+          "file_url": "https://cqahtitdamlunqjxeyeo.supabase.co/storage/v1/object/public/resumes/b8299103-4d02-413f-8699-320cfa2740cd/1777417029262-4b577f42-d543-4708-ad06-b47256c7f438.pdf",
+          "user_id": "b8299103-4d02-413f-8699-320cfa2740cd"
+        },
+        "webhookUrl": "https://n8n.asra3.com/webhook/gn-cv-parser",
+        "executionMode": "production"
+      }
+    ],
+    "Webhook1": [
+      {
+        "headers": {
+          "host": "n8n.asra3.com",
+          "x-real-ip": "172.68.234.123",
+          "x-forwarded-for": "41.235.175.50,41.235.175.50, 172.68.234.123",
+          "x-forwarded-proto": "https",
+          "connection": "Upgrade",
+          "content-length": "135",
+          "accept": "*/*",
+          "accept-language": "*",
+          "accept-encoding": "gzip, br",
+          "user-agent": "node",
+          "cf-ray": "9f39dec37b12e1d1-MRS",
+          "cf-visitor": "{\"scheme\":\"https\"}",
+          "sec-fetch-mode": "cors",
+          "content-type": "application/json",
+          "x-webhook-secret": "change-me-to-a-strong-secret",
+          "cdn-loop": "cloudflare; loops=1",
+          "cf-connecting-ip": "41.235.175.50",
+          "cf-ipcountry": "EG"
+        },
+        "params": {},
+        "query": {},
+        "body": {
+          "title": "مطور sql",
+          "job_type": "full_time",
+          "location": "رأس الخيمة",
+          "experience_level": "قيادي / مدير",
+          "skills": []
+        },
+        "webhookUrl": "https://n8n.asra3.com/webhook/gn-ai-job-description",
+        "executionMode": "production"
+      }
+    ],
+    "Webhook2": [
+      {
+        "headers": {
+          "host": "n8n.asra3.com",
+          "x-real-ip": "162.158.23.153",
+          "x-forwarded-for": "41.235.175.50,41.235.175.50, 162.158.23.153",
+          "x-forwarded-proto": "https",
+          "connection": "Upgrade",
+          "content-length": "3940",
+          "accept": "*/*",
+          "accept-language": "*",
+          "accept-encoding": "gzip, br",
+          "user-agent": "node",
+          "cf-ray": "9f3ac9bc3df63d27-MRS",
+          "cf-visitor": "{\"scheme\":\"https\"}",
+          "sec-fetch-mode": "cors",
+          "content-type": "application/json",
+          "x-webhook-secret": "change-me-to-a-strong-secret",
+          "cdn-loop": "cloudflare; loops=1",
+          "cf-connecting-ip": "41.235.175.50",
+          "cf-ipcountry": "EG"
+        },
+        "params": {},
+        "query": {},
+        "body": {
+          "application_id": "d0dbba6a-e880-4d59-a1ef-e44103cf6320",
+          "candidate_skills": [
+            "Python",
+            "Java",
+            "JavaScript",
+            "AWS",
+            "Docker",
+            "Kubernetes",
+            "SQL",
+            "NoSQL",
+            "منهجيات Agile",
+            "تطوير البرمجيات",
+            "إدارة المشاريع",
+            "قيادة الفريق",
+            "تطوير خدمات خلفية قابلة للتطوير"
+          ],
+          "candidate_experience": "7 سنة",
+          "candidate_summary": "محترف متحمس وموجه نحو النتائج، يتمتع بخبرة 7 سنوات في تطوير البرمجيات وإدارة المشاريع وقيادة الفرق.\nيمتلك قدرة مثبتة على تسليم المشاريع المعقدة في الوقت المحدد وضمن الميزانية، والتميز في البيئات التعاونية سريعة الوتيرة.",
+          "candidate_education": [
+            "ماجستير في علوم الحاسوب - جامعة التكنولوجيا",
+            "بكالوريوس في هندسة الحاسوب - جامعة الولاية"
+          ],
+          "cover_letter": "cover letter test",
+          "job_description": "نبحث عن مبرمج خبير وموهوب للانضمام إلى فريقنا الديناميكي في دبي. إذا كنت تمتلك شغفًا ببناء حلول برمجية مبتكرة وعالية الأداء، ولديك سجل حافل في قيادة المشاريع المعقدة وتوجيه الفرق، فإننا ندعوك لتكون جزءًا من رحلتنا. ستلعب دورًا محوريًا في تصميم وتطوير وتنفيذ أنظمة برمجية متطورة، وتحسين البنية التحتية الحالية، وتقديم التوجيه التقني للمطورين الآخرين. هذه فرصة فريدة للمساهمة في بيئة عمل محفزة ومليئة بالتحديات، حيث يمكنك إحداث تأثير حقيقي على منتجاتنا وتقنياتنا، والمساهمة في دفع الابتكار داخل سوق العمل الإماراتي والخليجي.\n\nالمتطلبات:\nشهادة بكالوريوس في علوم الحاسوب، هندسة البرمجيات، أو مجال ذي صلة.,خبرة عملية لا تقل عن 5 سنوات في تطوير البرمجيات، مع سجل مثبت في بناء وإطلاق تطبيقات ناجحة ومعقدة.,إتقان عميق لعدة لغات برمجة وأطر عمل رائدة (مثل Python، Java، C#، Node.js، Go، أو غيرها).,فهم قوي لمبادئ التصميم المعماري للأنظمة، وهياكل البيانات، والخوارزميات، وأنماط التصميم.,خبرة واسعة في العمل مع قواعد البيانات العلائقية (مثل PostgreSQL, MySQL) وغير العلائقية (مثل MongoDB, Redis).,تجربة في تصميم وتطوير واجهات برمجة التطبيقات (APIs RESTful/gRPC) الآمنة والقابلة للتطوير.,معرفة وخبرة في بيئات الحوسبة السحابية (مثل AWS, Azure, GCP).,فهم قوي لممارسات DevOps وأدوات التكامل المستمر والتسليم المستمر (CI/CD) ونظام التحكم في الإصدار (Git).,القدرة على تحليل المتطلبات المعقدة وتحويلها إلى حلول برمجية عملية وفعالة.,مهارات قيادية وتوجيهية قوية، مع القدرة على إرشاد المطورين المبتدئين والمتوسطين.,مهارات ممتازة في حل المشكلات والتفكير النقدي، والاهتمام بالتفاصيل.,إتقان اللغة العربية والإنجليزية (كتابة ومحادثة).,القدرة على العمل بشكل فعال ضمن فريق وفي بيئة سريعة التغير في دبي.,الالتزام بالتحسين المستمر للتعليم واكتساب التقنيات الجديدة.",
+          "job_skills_required": []
+        },
+        "webhookUrl": "https://n8n.asra3.com/webhook/gn-match-score",
+        "executionMode": "production"
+      }
+    ],
+    "Webhook4": [
+      {
+        "headers": {
+          "host": "n8n.asra3.com",
+          "x-real-ip": "162.158.23.154",
+          "x-forwarded-for": "41.235.175.50,41.235.175.50, 162.158.23.154",
+          "x-forwarded-proto": "https",
+          "connection": "Upgrade",
+          "content-length": "1399",
+          "accept": "*/*",
+          "accept-language": "*",
+          "accept-encoding": "gzip, br",
+          "user-agent": "node",
+          "cf-ray": "9f3a5802acf61858-MRS",
+          "cf-visitor": "{\"scheme\":\"https\"}",
+          "sec-fetch-mode": "cors",
+          "content-type": "application/json",
+          "x-webhook-secret": "change-me-to-a-strong-secret",
+          "cdn-loop": "cloudflare; loops=1",
+          "cf-connecting-ip": "41.235.175.50",
+          "cf-ipcountry": "EG"
+        },
+        "params": {},
+        "query": {},
+        "body": {
+          "application_id": "9b784f95-8052-4b83-ba00-62a399d7f00f",
+          "job_id": "2deb6950-654d-4ed5-a5df-dbfd1a957b89",
+          "job_title": "مبرمج",
+          "questions": [
+            "حدثنا عن لغات البرمجة والتقنيات التي تتقنها، وكيف قمت بتطبيقها في مشاريع سابقة لتقديم حلول فعالة؟",
+            "صف لنا موقفًا واجهت فيه مشكلة برمجية معقدة. كيف قمت بتحليلها، وما هي الخطوات التي اتخذتها لحلها، وماذا كانت النتيجة؟",
+            "كيف تضمن جودة الكود الذي تكتبه وقابليته للصيانة والتوسع؟ وما هو دورك في مراجعة كود الزملاء (Code Review)؟",
+            "اذكر مشروعًا برمجيًا كنت فخورًا به بشكل خاص. ما هو التحدي الرئيسي الذي واجهته فيه، وكيف تغلبت عليه، وماذا تعلمت من تلك التجربة؟",
+            "عالم البرمجة يتطور باستمرار. كيف تواكب أحدث التقنيات وأفضل الممارسات في مجال عملك؟ وهل لديك شغف بمجال معين أو تقنية ترغب في استكشافها أكثر؟"
+          ],
+          "answers": [
+            "dkygsdofudsgfsdkjhfbgdskjhfgsdkj",
+            "sdljkkfbhsdoifhosdfbhsdlfjbhdsoifsd",
+            "sdliufghdsljfhdsljfsdblfkshfs",
+            "sldufhsdpiufhdspdiufhsdpiufhds",
+            "sdpiufhsdpifhspdiufhsdpiufhsdp"
+          ]
+        },
+        "webhookUrl": "https://n8n.asra3.com/webhook/gn-interview-eval",
+        "executionMode": "production"
+      }
+    ],
+    "Webhook6": [
+      {
+        "headers": {
+          "host": "n8n.asra3.com",
+          "x-real-ip": "162.158.23.153",
+          "x-forwarded-for": "41.235.175.50,41.235.175.50, 162.158.23.153",
+          "x-forwarded-proto": "https",
+          "connection": "Upgrade",
+          "content-length": "398",
+          "accept": "*/*",
+          "accept-language": "*",
+          "accept-encoding": "gzip, br",
+          "user-agent": "node",
+          "cf-ray": "9f3ac9fcbc843d27-MRS",
+          "cf-visitor": "{\"scheme\":\"https\"}",
+          "sec-fetch-mode": "cors",
+          "content-type": "application/json",
+          "x-webhook-secret": "change-me-to-a-strong-secret",
+          "cdn-loop": "cloudflare; loops=1",
+          "cf-connecting-ip": "41.235.175.50",
+          "cf-ipcountry": "EG"
+        },
+        "params": {},
+        "query": {},
+        "body": {
+          "application_id": "d0dbba6a-e880-4d59-a1ef-e44103cf6320",
+          "job_id": "ac54049f-7ca1-4a04-9eca-f035e176d211",
+          "job_title": "مبرمج",
+          "candidate_name": "mohamed gamal",
+          "company_name": "mohamed's Company",
+          "company_id": "1071a264-2fb3-4939-8ad8-25a25dc0a4ee",
+          "owner_id": "fcbed745-664b-491b-bc5d-bea6031af82f",
+          "team_member_ids": [
+            "fcbed745-664b-491b-bc5d-bea6031af82f"
+          ],
+          "timestamp": "2026-04-29T02:13:42.731Z"
+        },
+        "webhookUrl": "https://n8n.asra3.com/webhook/gn-application-notify",
+        "executionMode": "production"
+      }
+    ],
+    "Webhook7": [
+      {
+        "headers": {
+          "host": "n8n.asra3.com",
+          "x-real-ip": "162.158.49.222",
+          "x-forwarded-for": "2a05:d018:135e:16ae:dcd4:af06:f273:941c, 162.158.49.222",
+          "x-forwarded-proto": "https",
+          "connection": "Upgrade",
+          "content-length": "502",
+          "accept": "*/*",
+          "user-agent": "pg_net/0.19.5",
+          "content-type": "application/json",
+          "cf-ray": "9fa4ca40ef5d2199-DUB",
+          "cdn-loop": "cloudflare; loops=1",
+          "cf-connecting-ip": "2a05:d018:135e:16ae:dcd4:af06:f273:941c",
+          "cf-ipcountry": "IE",
+          "cf-visitor": "{\"scheme\":\"https\"}",
+          "accept-encoding": "gzip, br"
+        },
+        "params": {},
+        "query": {},
+        "body": {
+          "type": "INSERT",
+          "table": "company_documents",
+          "record": {
+            "id": "c0899016-a013-4334-b6ff-3aaf0eb37559",
+            "file_url": "e1147d69-483f-4b98-bce2-d63907d9e56b/trade_license-1778540322471.pdf",
+            "ocr_data": null,
+            "file_name": "gap-report.pdf",
+            "file_size": 6952,
+            "mime_type": null,
+            "company_id": "cb23e742-2c7e-4a1a-aa04-1a4be6f7fd6e",
+            "ocr_status": "pending",
+            "uploaded_at": "2026-05-11T22:58:43.739585+00:00",
+            "uploaded_by": null,
+            "document_type": "trade_license"
+          },
+          "schema": "public",
+          "old_record": null
+        },
+        "webhookUrl": "https://n8n.asra3.com/webhook/gn-company-verify",
+        "executionMode": "production"
+      }
+    ]
   },
-  "versionId": "1fb62eec-68ad-4263-b3f2-8d9a269f6d58",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "c522d6cf09b0723c95e34292cfbafc5cdf9b6368e7bfb1a7b64562f91c23ca99"
-  },
-  "id": "Ks1oGZo16tmecB2p",
-  "tags": []
+  }
 }

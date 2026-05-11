@@ -47,21 +47,6 @@ export default function RegisterPage() {
         if (authData.user) {
             await new Promise(resolve => setTimeout(resolve, 500))
 
-            if (role === 'employer') {
-                const companySlug = fullName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now()
-                const { error: companyError } = await supabase
-                    .from('companies')
-                    .insert({
-                        owner_id: authData.user.id,
-                        name: fullName + "'s Company",
-                        slug: companySlug,
-                    })
-
-                if (companyError) {
-                    console.log('Company creation error:', companyError.message)
-                }
-            }
-
             if (role === 'candidate') {
                 const { error: candidateError } = await supabase
                     .from('candidates')
@@ -74,11 +59,7 @@ export default function RegisterPage() {
                 }
             }
 
-            if (role === 'employer') {
-                router.push('/employer/dashboard')
-            } else {
-                router.push('/candidate/dashboard')
-            }
+            router.push('/candidate/dashboard')
             router.refresh()
         }
     }
@@ -102,11 +83,8 @@ export default function RegisterPage() {
                     </button>
                     <button
                         type="button"
-                        onClick={() => setRole('employer')}
-                        className={`p-4 rounded-lg border-2 transition-all flex flex-col items-center gap-2 ${role === 'employer'
-                            ? 'border-success bg-success/10 text-success'
-                            : 'border-gold/15 bg-navy text-cream-dark/50 hover:border-gold/30'
-                            }`}
+                        onClick={() => router.push('/register/employer')}
+                        className={`p-4 rounded-lg border-2 transition-all flex flex-col items-center gap-2 border-gold/15 bg-navy text-cream-dark/50 hover:border-gold/30 hover:bg-gold/5`}
                     >
                         <Building2 className="h-6 w-6" />
                         <span className="text-sm font-medium">صاحب عمل</span>
