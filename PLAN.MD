@@ -1,206 +1,198 @@
-This is the **Detailed Development Steps Plan** for the GrowthNexus Recruitment Platform. It is divided into **7 Phases**. We will follow this strictly to ensure the architecture is robust and nothing from the SOP is missed.
+# 📋 GrowthNexus — Master Plan
+
+> **Last Updated:** 11 May 2026
+> **Current Phase: 10 (Verification, i18n & Launch)**
+> **Completed: 9 of 10 phases**
 
 ---
 
-### 🚀 Phase 0: Environment & Foundation Setup [✅ COMPLETED]
-**Goal:** Initialize the tech stack and prepare the development environment.
+## Platform Vision
 
-*   **0.1. Initialize Next.js Project**
-    *   Create project: `npx create-next-app@latest growth-nexus --typescript --tailwind --eslint`
-    *   Install Core UI: `npx shadcn-ui@latest init` (Default settings).
-    *   Install Components: `npx shadcn-ui@latest add button card input label select badge dialog dropdown-menu avatar separator sheet`.
-    *   Install Libraries: `npm install @supabase/supabase-js @supabase/ssr lucide-react clsx tailwind-merge next-intl`.
+GrowthNexus is an **AI Recruitment Operating System** for the UAE market, serving both:
+- **B2B (Employers):** SaaS subscription for recruitment operations — screening, interviews, contracts, compliance, analytics
+- **B2C (Candidates):** AI-powered career tools — CV analysis, interview prep, job matching
 
-*   **0.2. Supabase Initialization**
-    *   Create a new Supabase Project.
-    *   Go to **Project Settings > API**. Copy `URL` and `ANON_KEY` to your local `.env.local` file.
-    *   Go to **Authentication > Providers**. Enable Email/Password. Disable "Confirm Email" for faster dev (re-enable for prod).
-
-*   **0.3. n8n Setup**
-    *   Ensure your n8n instance is running.
-    *   Create 3 placeholder workflows (empty for now):
-        1.  `gn-cv-parser`
-        2.  `gn-payment-init`
-        3.  `gn-payment-callback`
+### 6-Module Architecture
+1. **Recruitment Core** — Jobs, Applicants, Screening, Pipelines
+2. **Interview AI** — Question generation, scoring, panel evaluation
+3. **Offer & Contract Automation** — Templates, tracking, e-sign, candidate portal, PDF
+4. **Analytics & KPIs** — Dashboards, reports, hiring metrics
+5. **Forecasting Engine** — Time-to-fill, offer acceptance, hiring difficulty predictions
+6. **Emiratisation Engine** — Localization ratio, target tracking, compliance alerts
 
 ---
 
-### 🗄️ Phase 1: Database Schema & Authentication [✅ COMPLETED]
-**Goal:** Build the backend structure and user role management.
+## ✅ Completed Phases (1–9)
 
-*   **1.1. Execute Master SQL Script**
-    *   Run the full SQL script provided in the previous Blueprint in the Supabase SQL Editor.
-    *   *Verify:* Check that tables `profiles`, `companies`, `candidates`, `jobs`, `applications`, `system_config` exist.
+### Phase 1–4: Foundation
+- Auth (Supabase), RLS, Login/Register
+- Employer core: Dashboard, settings, job wizard
+- Public job board: Homepage, search, SEO, apply
+- Candidate: CV upload + AI parse, applications, profile
 
-*   **1.2. Row Level Security (RLS) Policies**
-    *   **Profiles:** `Users can read own profile`. `Users can update own profile`.
-    *   **Companies:** `Public can read`. `Employer can update own company`.
-    *   **Jobs:** `Public can read active jobs`. `Employer can insert/update own jobs`.
-    *   **Applications:** `Candidate can insert`. `Employer can read applications for their jobs`.
+### Phase 5: ATS Pipeline & UAE Enhancements
+- UAE cities dropdown, nationality multi-select, skills tags
+- Job management: pause/resume/duplicate/share, filters
+- Pipeline: offer → hired flow, rejection reasons, confirmation modals
+- Analytics dashboard + Emiratisation tracker
 
-*   **1.3. Authentication Logic (Next.js)**
-    *   Create `utils/supabase/server.ts` and `client.ts` (Standard Next.js Supabase setup).
-    *   Create `middleware.ts`: Implement logic to protect `/employer/*` and `/candidate/*` routes based on user role.
-    *   **Build Page:** `/login`: Simple form (Email/Pass).
-    *   **Build Page:** `/register`: Form with toggle **[I am a Candidate] / [I am an Employer]**.
-    *   *Logic:* On register, trigger Supabase Auth. Then, insert into `public.profiles` with the correct `role`.
+### Phase 6: Admin Panel
+- KPI dashboard, user/company/job management
+- System config CRUD, transactions viewer
 
----
+### Phase 7: n8n Guides & AI APIs
+- 11 workflow guides, webhook contracts
+- AI job description generator with mock fallback
 
-### 🏢 Phase 2: Employer Core (The Supply Side) [✅ COMPLETED]
-**Goal:** Allow companies to build profiles and post jobs.
+### Phase 8: Stripe + Interview AI + Committee
+- Stripe SaaS billing (checkout + portal + webhook)
+- Interview AI (5 questions + AI evaluation + score)
+- Committee evaluation (multi-evaluator + outlier detection)
 
-*   **2.1. Employer Dashboard Shell**
-    *   Route: `/employer/dashboard`.
-    *   Create `DashboardLayout` (Sidebar with links: Jobs, Candidates, Settings).
-
-*   **2.2. Company Profile Management**
-    *   Route: `/employer/settings`.
-    *   Form: Logo Upload (Supabase Storage), Name, Description, Website.
-    *   *Action:* `UPDATE companies SET ... WHERE owner_id = user.id`.
-
-*   **2.3. Job Posting Wizard (Crucial)**
-    *   Route: `/employer/jobs/new`.
-    *   **Step 1 (Details):** Inputs for Title, Description (Rich Text), Location, Salary.
-    *   **Step 2 (Settings):**
-        *   Checkbox: `is_confidential` (Hide my company name).
-        *   Checkbox: `is_featured` (Pin to top - costs extra).
-    *   **Step 3 (Logic):**
-        *   Check `companies.job_credits > 0`.
-        *   If yes: `INSERT into jobs`, `DECREMENT credits`.
-        *   If no: Show "Insufficient Credits" modal (link to Pricing).
-
-*   **2.4. My Jobs List**
-    *   Route: `/employer/jobs`.
-    *   Table displaying Active, Expired, and Draft jobs.
-    *   Action: "Close Job" (Update status to `closed`).
+### Phase 9: Contract & Compliance (Latest)
+- Contract generation with n8n notification events
+- Employer tracking dashboard + PDF download
+- **Candidate contract portal** (list + view/sign/decline)
+- **PDF generation API** (Arabic font support)
+- **Auto-expiry cron** via vercel.json (daily 06:00 UTC)
+- **N8N workflow blueprint** for 4-part email automation
+- Emiratisation module (profile form, dashboard, gauges, export)
 
 ---
 
-### 🌍 Phase 3: The Public Job Board (SEO) [✅ COMPLETED]
-**Goal:** Display jobs to the world securely.
+## 🔧 Phase 10: Verification, i18n & Launch (CURRENT)
 
-*   **3.1. Database Security View**
-    *   Ensure the `public_jobs_view` (SQL View) is working. This is what hides confidential data.
+### 10.1 Emiratisation Data Seeding ⚡ HIGH PRIORITY
+> **Blocker:** `emiratisation_profiles` table is empty → compliance export returns 404
 
-*   **3.2. Job Search Page**
-    *   Route: `/jobs` (and `/` Home).
-    *   **Server Component:** Fetch data from `public_jobs_view`.
-    *   **Filters Sidebar:** City, Job Type, Salary Range.
-    *   *Implementation:* Update URL params (`?city=Riyadh&type=remote`) to filter the SQL query.
+**Tasks:**
+- [ ] Integrate `EmiratisationProfileForm.tsx` into dashboard flow
+- [ ] Allow employers to enter workforce composition data
+- [ ] Verify PDF export generates correctly with profile data
+- [ ] Test compliance alerts and MOHRE target tracking
 
-*   **3.3. Job Details Page**
-    *   Route: `/jobs/[slug]`.
-    *   Display Title, Description.
-    *   **Confidential Logic:**
-        *   If `is_confidential === true`: Show generic icon, "Private Company". Disable link to company profile.
-        *   Else: Show Company Logo, Link to `/companies/[slug]`.
+### 10.2 Forecasting Engine
+> **Status:** Widget exists with mock data
 
-*   **3.4. Apply Logic**
-    *   "Apply Now" Button.
-    *   If Guest -> Redirect to Login.
-    *   If Candidate -> Open "Easy Apply" Modal (shows stored CV).
+**Tasks:**
+- [ ] Connect `ForecastingWidget.tsx` to live database metrics
+- [ ] Build AI predictions: time-to-fill, offer acceptance, hiring difficulty
+- [ ] Optional: n8n workflow for historical trend analysis
 
----
+### 10.3 Company Verification Flow (Trust Score)
+> **Status:** Not started — medium priority
 
-### 👤 Phase 4: Candidate Core & AI Integration [✅ COMPLETED]
-**Goal:** Job seekers profile and AI CV parsing.
+**Tasks:**
+- [ ] Trade license upload UI for employers with generic emails
+- [ ] Build `gn-company-verify` n8n workflow: OCR → registry matching → trust score
+- [ ] 5-layer verification: upload → OCR → registry check → classification → decision
+- [ ] UAE registry sources: NER, Invest in Dubai, TAMM, free zone registrars
 
-*   **4.1. Candidate Dashboard**
-    *   Route: `/candidate/dashboard`.
-    *   Stats: "Jobs Applied", "Profile Views".
+### 10.4 Remaining N8N Workflows
+| # | Workflow | Priority | Description |
+|---|---------|----------|-------------|
+| 7 | Smart Matching | 🟡 Medium | AI ranks best candidates from talent pool |
+| 6 | App Notification | 🟢 Low | Add email/Telegram node to existing workflow |
+| 8 | Message Notification | 🟢 Low | Chat message notifications |
+| 9 | Payment Verification | 🟡 Medium | Stripe webhook fulfillment |
 
-*   **4.2. CV Management (The AI Part)**
-    *   Route: `/candidate/cv`.
-    *   **Upload Component:** User uploads PDF.
-    *   **Process:**
-        1.  Upload file to Supabase Storage (`resumes` bucket).
-        2.  Trigger n8n Webhook (`gn-cv-parser`) with File URL + User ID.
-    *   **n8n Workflow Construction:**
-        *   Node 1: Download PDF.
-        *   Node 2: PDF Reader (Extract Text).
-        *   Node 3: Gemini API. *Prompt: "Extract skills, experience (years), and education as JSON."*
-        *   Node 4: Supabase Update. `UPDATE candidates SET parsed_data = $JSON WHERE id = $UserId`.
-    *   **Frontend:** Auto-refresh page to show "Extracted Skills" tags.
+### 10.5 Security Hardening
+- [ ] Change `N8N_WEBHOOK_SECRET` from default value
+- [ ] Verify all API routes have proper auth checks
+- [ ] Run 2 pending SQL migrations (team members + notifications)
+- [ ] Set `CRON_SECRET` for contract expiry endpoint
 
-*   **4.3. My Applications**
-    *   Route: `/candidate/applications`.
-    *   List of jobs applied to.
-    *   Badges: `Applied` (Gray), `Reviewing` (Blue), `Interview` (Yellow), `Rejected` (Red).
+### 10.6 i18n & SEO
+- [ ] Full RTL support and Arabic/English toggling
+- [ ] Dynamic meta tags, sitemaps, OG images
+- [ ] Structured data for job postings (Google for Jobs)
 
 ---
 
-### 🤝 Phase 5: The ATS System (Interaction) [🔄 IN PROGRESS]
-**Goal:** Connect candidates to employers.
+## Future Phases
 
-*   **5.1. Employer Candidate View (Completed)**
-    *   Route: `/employer/jobs/[id]/applicants`.
-    *   Displays all applications for a specific job with Candidate details and CV links.
+### Phase 11: B2C Candidate Services
+Based on the business strategy doc (منصة التوظيف), launch in order:
 
-*   **5.2. Interactive ATS Status Board (Next)**
-    *   Add functionality to `/employer/jobs/[id]/applicants` to change `applications.status`.
-    *   **UI Update:** Dropdown or drag-and-drop to move candidates between `Applied`, `Reviewing`, `Interview`, `Shortlisted`, `Rejected`, `Hired`.
-    *   **Action:** Server action to update Supabase array/table.
+**Phase 11.1 — Starter Pack:**
+- CV Analyzer (25 AED one-time)
+- CV Builder (39 AED one-time)
+- Interview AI for candidates (39 AED/month)
 
-*   **5.3. Candidate Details Modal**
-    *   When Employer clicks a candidate:
-    *   Show full parsed CV JSON data (from Phase 4).
-    *   Provide easy access to the Cover Letter and original CV PDF.
+**Phase 11.2 — Growth Pack:**
+- Rejection Analyzer (29 AED)
+- Career Path Generator (29 AED/month)
+- Skill Gap Analyzer (25 AED)
+- Smart Job Alert (19 AED/month)
 
-*   **5.4. Landing Pages (Private Collections)**
-    *   Route: `/employer/landing-pages`.
-    *   Button: "Create Collection Link".
-    *   Generates link: `growthnexus.com/apply/xyz-token`.
-    *   Build Public Page: `/apply/[token]`. Simple form (Name, Email, Upload CV).
-    *   *Logic:* Inserts into `candidates` (if new) and `applications` directly without requiring normal candidate registration.
+**Phase 11.3 — Pro Pack:**
+- Auto Apply (49–149 AED/month)
+- Voice Interview Analysis (in Pro tier)
+- Portfolio Builder (59 AED)
 
----
-
-### 💰 Phase 6: Monetization & Payments
-**Goal:** Handle EdfaPay and Credits.
-
-*   **6.1. Admin Configuration**
-    *   Route: `/admin/config`.
-    *   Table to edit `system_config`.
-    *   Keys: `price_basic_pack` (100 SAR), `credits_basic_pack` (5).
-
-*   **6.2. Pricing Page**
-    *   Route: `/pricing`.
-    *   Cards displaying packages.
-    *   Button: "Buy Now".
-
-*   **6.3. n8n Payment Workflow**
-    *   **Trigger:** Webhook from Pricing Page.
-    *   **Node:** Supabase Select (Get Price from Config).
-    *   **Node:** HTTP Request (EdfaPay Initiate).
-    *   **Response:** Return Redirect URL to frontend.
-
-*   **6.4. Payment Callback**
-    *   Create Page: `/payment/callback`.
-    *   **n8n Workflow:**
-        *   Validate Hash.
-        *   If Success: `UPDATE companies SET job_credits = job_credits + X`.
-        *   Insert row into `transactions`.
+### Phase 12: Enterprise Features
+- White-label career portal (setup: 3K–10K + 999–2,999/month)
+- API/ATS integration
+- Multi-department workflows
+- Custom approval chains
 
 ---
 
-### ✨ Phase 7: Polish & Launch
-**Goal:** Production readiness.
+## B2B Pricing Strategy (from business docs)
 
-*   **7.1. Localization (En/Ar)**
-    *   Wrap all text strings in `t('key')`.
-    *   Implement `next-intl` to toggle between English and Arabic.
-    *   Ensure `dir="rtl"` is applied when Arabic is selected.
+| Tier | Price (AED/month) | Jobs | CVs/month | Users |
+|------|-------------------|------|-----------|-------|
+| Starter | 349 | 3 | 300 | 2 |
+| Growth | 799 | 10 | 1,500 | 5 |
+| Pro | 1,499 | 25 | 5,000 | 15 |
+| Enterprise | 2,999+ | Unlimited | Custom | Custom |
 
-*   **7.2. SEO Configuration**
-    *   Dynamic Metadata for Job Pages (`generateMetadata` in Next.js).
-    *   Generate `sitemap.xml`.
-
-*   **7.3. Final Testing**
-    *   Create a clean "Employer" account. Buy credits. Post a job.
-    *   Create a "Candidate" account. Parse CV. Apply.
-    *   Check Employer ATS to see the application.
+**Add-ons:**
+- Contract & E-sign: 199–399/month
+- Forecasting: 249–499/month
+- Emiratisation: 299–699/month
+- Extra users: 39–79/user/month
 
 ---
 
-**Ready to start Phase 0?** I can generate the folder structure and `package.json` now.
+## Candidate Screening Criteria (from الفرز doc)
+
+AI screening ranks candidates by:
+1. **Nationality** (configurable per job)
+2. **Specialization** match
+3. **Qualification type** match
+4. **Years of experience** match
+5. **CV summary** relevance
+6. **Match score percentage** (AI-calculated)
+
+UI requirements noted:
+- Prices hidden until service selection or checkout
+- AI-suggested job titles and descriptions
+- Skills field in job posting
+- Job edit capability for employers
+- Company name display logic (hidden → show "Private/Government")
+- Application deadline clearly visible
+- Cities as dropdown list (12 UAE cities)
+- Nationality as multi-select
+- AED currency throughout
+- Job Boost/Promote feature
+- Pause/Resume job toggle
+- Share/Duplicate job buttons
+- Filter: Active/Closed/Draft + Sort options
+- Notification badge for new applicants
+- Offer/Hired status in pipeline
+- Rejection confirmation popup with reason
+
+---
+
+## Deployment
+
+| Component | Details |
+|-----------|---------|
+| **Hosting** | aaPanel VPS (178.18.254.38) |
+| **Domain** | `jobs-test.uae4jobs.ae` |
+| **Process** | PM2 (`growthnexus`) |
+| **SSL** | Let's Encrypt |
+| **CI/CD** | `deploy.sh` (git pull → build → restart) |
+| **Cron** | vercel.json: contract expiry daily 06:00 UTC |
+| **n8n** | `n8n.asra3.com` (Coolify-managed) |

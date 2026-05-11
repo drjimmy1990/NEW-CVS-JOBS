@@ -1,256 +1,273 @@
-# GrowthNexus — دليل اختبار تدفقات المستخدمين الكامل
+# 🔄 GrowthNexus — User Flow Testing Guide
 
-> **تعليمات:** اختبر كل تدفق بالترتيب. ضع ✅ بجوار ما يعمل و ❌ بجوار ما لا يعمل.
-> العناصر المُعلّمة بـ 🔗 تستخدم **n8n webhook** — ستعمل بنتائج وهمية (mock) إذا لم يتم تفعيل n8n.
-
----
-
-## التدفق 1: تسجيل صاحب عمل جديد
-
-| # | الخطوة | الرابط | المتوقع | النتيجة |
-|---|--------|--------|---------|---------|
-| 1 | اضغط "إنشاء حساب" | `/register` | نموذج التسجيل يظهر | |
-| 2 | أدخل: الاسم، البريد، كلمة المرور، اختر "صاحب عمل" | | النموذج يقبل البيانات | |
-| 3 | اضغط "تسجيل" | | توجيه تلقائي إلى `/employer/dashboard` | |
-| 4 | تحقق أن الشركة أُنشئت تلقائياً | | لوحة التحكم تظهر | |
+> **Last Updated:** 11 May 2026
+> **Instructions:** Test each flow in order. Mark ✅ for working, ❌ for broken.
+> Items marked 🔗 use **n8n webhooks** — they work with mock data if n8n is offline.
 
 ---
 
-## التدفق 2: إعدادات الشركة
+## Flow 1: Employer Registration & Setup
 
-| # | الخطوة | الرابط | المتوقع | النتيجة |
-|---|--------|--------|---------|---------|
-| 1 | اضغط "الإعدادات" في الشريط الجانبي | `/employer/settings` | نموذج بيانات الشركة | |
-| 2 | أدخل: اسم الشركة، الصناعة، الوصف، الحجم | | الحقول تُحفظ | |
-| 3 | ارفع شعار الشركة | | الشعار يظهر | |
-
----
-
-## التدفق 3: نشر وظيفة جديدة (مع مساعد AI)
-
-| # | الخطوة | الرابط | المتوقع | النتيجة |
-|---|--------|--------|---------|---------|
-| 1 | اضغط "نشر وظيفة جديدة" | `/employer/jobs/new` | معالج من 3 خطوات | |
-| 2 | أدخل عنوان الوظيفة: "مطور واجهات أمامية" | | الحقل يُملأ | |
-| 3 | اختر نوع الوظيفة: "دوام كامل" | | الاختيار يتحدد | |
-| 4 | اختر الموقع: "دبي" من القائمة المنسدلة | | مدينة إماراتية تُحدد | |
-| 5 | 🔗 **اضغط "✨ مساعد AI"** | | تحميل → الوصف والمتطلبات تُملأ تلقائياً | |
-| | ↳ Webhook: `gn-ai-job-description` | | يعمل بنتائج وهمية بدون n8n | |
-| 6 | أضف مهارات: اكتب "React" + Enter | | وسم يظهر | |
-| 7 | اختر الجنسيات: "جميع الجنسيات" | | الزر يُحدد | |
-| 8 | أدخل الراتب: 15,000 – 25,000 | | العملة تظهر "درهم" | |
-| 9 | اضغط "التالي" → مراجعة → "نشر الوظيفة" | | توجيه لقائمة الوظائف | |
-| 10 | تحقق أن الوظيفة تظهر بحالة "Active" | `/employer/jobs` | بطاقة الوظيفة تظهر ✅ | |
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|--------|
+| 1 | Click "Create Account" | `/register` | Registration form appears | |
+| 2 | Fill: name, email, password, select "Employer" | | Form accepts data | |
+| 3 | Submit registration | | Redirect to `/employer/dashboard` | |
+| 4 | Go to company settings | `/employer/settings` | Company form loads | |
+| 5 | Fill: company name, industry, description, size | | Fields save | |
+| 6 | Upload company logo | | Logo displays | |
 
 ---
 
-## التدفق 4: إدارة الوظائف
+## Flow 2: Post a Job (with AI Assistant)
 
-| # | الخطوة | المتوقع | النتيجة |
-|---|--------|---------|---------|
-| 1 | اضغط ⏸ **إيقاف مؤقت** على بطاقة وظيفة | الحالة تتغير إلى "Paused" | |
-| 2 | اضغط ▶ **استئناف** | الحالة ترجع "Active" | |
-| 3 | اضغط 📋 **نسخ** (Duplicate) | وظيفة مسودة جديدة تُنشأ | |
-| 4 | اضغط 🔗 **مشاركة** (Share) | رسالة "تم نسخ الرابط" | |
-| 5 | استخدم **فلاتر التبويب**: الكل / نشطة / متوقفة / مسودة / مغلقة | القائمة تُفلتر | |
-| 6 | استخدم **الترتيب**: الأحدث / الأقدم / الأكثر متقدمين | الترتيب يتغير | |
-
----
-
-## التدفق 5: تسجيل باحث عن عمل
-
-| # | الخطوة | الرابط | المتوقع | النتيجة |
-|---|--------|--------|---------|---------|
-| 1 | سجل كمرشح | `/register` | اختر "باحث عن عمل" | |
-| 2 | اذهب للملف الشخصي | `/candidate/profile` | نموذج الملف | |
-| 3 | أدخل: الاسم، الهاتف، الموقع، المهارات | | الحقول تُحفظ | |
-| 4 | ارفع سيرة ذاتية (PDF) | `/candidate/cv` | الملف يُرفع | |
-| 5 | 🔗 **تحليل السيرة الذاتية تلقائياً** | | البيانات تُستخرج | |
-| | ↳ Webhook: `gn-cv-parser` | | يعمل عند رفع CV | |
-| 6 | تحقق من لوحة التحكم | `/candidate/dashboard` | بطاقات الإحصائيات تظهر | |
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|--------|
+| 1 | Click "Post New Job" | `/employer/jobs/new` | 3-step wizard | |
+| 2 | Enter title: "Frontend Developer" | | Field fills | |
+| 3 | Select type: "Full-time" | | Selection set | |
+| 4 | Select location: "Dubai" from dropdown | | UAE city selected | |
+| 5 | 🔗 Click "✨ AI Assistant" | | Description + requirements auto-filled | |
+| 6 | Add skills: type "React" + Enter | | Tag appears | |
+| 7 | Select nationality: "All Nationalities" | | Button selected | |
+| 8 | Enter salary: 15,000 – 25,000 AED | | Currency shows AED | |
+| 9 | Next → Review → Publish | | Redirect to job list | |
+| 10 | Verify job shows as "Active" | `/employer/jobs` | Job card visible ✅ | |
 
 ---
 
-## التدفق 6: تصفح الوظائف والتقديم
+## Flow 3: Job Management
 
-| # | الخطوة | الرابط | المتوقع | النتيجة |
-|---|--------|--------|---------|---------|
-| 1 | اذهب لصفحة الوظائف | `/jobs` | قائمة الوظائف مع بحث وفلاتر | |
-| 2 | اضغط على وظيفة | `/jobs/[slug]` | صفحة تفاصيل كاملة | |
-| 3 | **أعد تحميل الصفحة** | | عدد المشاهدات يزيد بـ 1 | |
-| 4 | اضغط "Apply Now" | | نافذة التقديم | |
-| 5 | أكّد التقديم | | رسالة "تم التقديم بنجاح" | |
-| 6 | 🔗 **إشعار تقديم** | | إشعار لصاحب العمل | |
-| | ↳ Webhook: `gn-application-notify` | | بريد/إشعار لصاحب العمل | |
-| 7 | 🔗 **حساب نسبة المطابقة** | | نسبة مطابقة تظهر | |
-| | ↳ Webhook: `gn-match-score` | | يقارن CV بمتطلبات الوظيفة | |
-| 8 | تحقق من طلباتي | `/candidate/applications` | الوظيفة تظهر في القائمة | |
+| # | Step | Expected | Result |
+|---|------|----------|--------|
+| 1 | ⏸ Pause a job | Status → "Paused" | |
+| 2 | ▶ Resume job | Status → "Active" | |
+| 3 | 📋 Duplicate job | New draft job created | |
+| 4 | 🔗 Share job | "Link copied" message | |
+| 5 | Use tab filters: All / Active / Paused / Draft / Closed | List filters | |
+| 6 | Use sort: Newest / Oldest / Most Applicants | Order changes | |
 
 ---
 
-## التدفق 7: المقابلة الآلية (AI Interview)
+## Flow 4: Candidate Registration & CV Upload
 
-> **شرط مسبق:** الوظيفة يجب أن يكون `auto_interview = true`
-
-| # | الخطوة | الرابط | المتوقع | النتيجة |
-|---|--------|--------|---------|---------|
-| 1 | بعد التقديم، اضغط "إبدأ المقابلة الآلية" | `/candidate/interview/[applicationId]` | صفحة المقابلة تحمل | |
-| 2 | 🔗 **تحميل الأسئلة** | | 5 أسئلة مقابلة تظهر | |
-| | ↳ Webhook: `gn-interview-questions` | | أسئلة مخصصة للوظيفة | |
-| 3 | اقرأ السؤال 1 | | سؤال بالعربية | |
-| 4 | اكتب إجابة (20+ حرف) | | عداد الأحرف يظهر | |
-| 5 | اضغط "التالي" | | السؤال 2 يحمل | |
-| 6 | أجب على جميع الأسئلة الـ 5 | | شريط التقدم يمتلئ | |
-| 7 | اضغط "إرسال الإجابات" | | تحميل... | |
-| 8 | 🔗 **تقييم الإجابات بالذكاء الاصطناعي** | | النتيجة + تقييم لكل سؤال | |
-| | ↳ Webhook: `gn-interview-eval` | | AI يقيّم الإجابات ويعطي نسبة | |
-| 9 | شاهد صفحة النتيجة | | النسبة المئوية + التوصية | |
-| 10 | عُد لنفس الرابط | | النتيجة المحفوظة تظهر (لا إعادة) | |
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|--------|
+| 1 | Register as candidate | `/register` | Select "Job Seeker" | |
+| 2 | Go to profile | `/candidate/profile` | Profile form | |
+| 3 | Fill: name, phone, location, skills | | Fields save | |
+| 4 | Upload CV (PDF) | `/candidate/cv` | File uploads | |
+| 5 | 🔗 AI auto-parses CV | | Skills + experience extracted | |
+| 6 | Check dashboard | `/candidate/dashboard` | Stats cards display | |
 
 ---
 
-## التدفق 8: صاحب العمل يراجع الطلبات
+## Flow 5: Browse Jobs & Apply
 
-| # | الخطوة | الرابط | المتوقع | النتيجة |
-|---|--------|--------|---------|---------|
-| 1 | اذهب لمتقدمي وظيفة | `/employer/jobs/[id]/applicants` | أعمدة Pipeline تظهر | |
-| 2 | شاهد بطاقات المرشحين | | بطاقات في عمود "تقدّم" | |
-| 3 | إذا أُجريت مقابلة، شاهد **شارة النتيجة** | | رقم النتيجة على البطاقة | |
-| 4 | حرّك مرشح إلى "قيد المراجعة" | | البطاقة تنتقل | |
-| 5 | حرّك إلى "القائمة القصيرة" | | البطاقة تنتقل | |
-| 6 | حرّك إلى "مرفوض" | | **نافذة تأكيد** تظهر | |
-| 7 | اختر سبب الرفض + أكّد | | البطاقة تنتقل، السبب يُحفظ | |
-| 8 | تحقق من بطاقة المرفوض | | سبب الرفض يظهر | |
-
----
-
-## التدفق 9: لجنة التقييم (Committee Evaluation)
-
-| # | الخطوة | الرابط | المتوقع | النتيجة |
-|---|--------|--------|---------|---------|
-| 1 | اذهب لصفحة تقييم مرشح | `/employer/evaluate/[applicationId]` | بطاقة التقييم تحمل | |
-| 2 | شاهد اسم المرشح + الوظيفة | | معلومات صحيحة | |
-| 3 | عدّل 5 معايير بالمنزلقات: | | |
-| | - المهارات الفنية (1-10) | | الرقم يتغير | |
-| | - مهارات التواصل (1-10) | | الرقم يتغير | |
-| | - الخبرة العملية (1-10) | | الرقم يتغير | |
-| | - التوافق الثقافي (1-10) | | الرقم يتغير | |
-| | - التقييم العام (1-10) | | الرقم يتغير | |
-| 4 | أضف ملاحظات (اختياري) | | حقل النص يقبل الإدخال | |
-| 5 | اضغط "إرسال التقييم" | | رسالة "تم حفظ التقييم بنجاح" | |
-| 6 | **سجّل بمُقيّم ثانٍ**، قيّم نفس المرشح | | التقييم الثاني يُحفظ | |
-| 7 | 🔗 **ملخص اللجنة يُنشأ تلقائياً** (بعد مُقيّمين+) | | المتوسط + التوصية | |
-| | ↳ Webhook: `gn-committee-summary` | | يجمع التقييمات + يكشف الانحرافات | |
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|--------|
+| 1 | Browse jobs | `/jobs` | Job list with search + filters | |
+| 2 | Click a job | `/jobs/[slug]` | Full detail page | |
+| 3 | Refresh page | | View count +1 | |
+| 4 | Click "Apply Now" | | Apply modal opens | |
+| 5 | Confirm application | | "Applied successfully" message | |
+| 6 | 🔗 Application notification sent | | Employer gets notified | |
+| 7 | 🔗 Match score calculated | | Score badge appears | |
+| 8 | Check my applications | `/candidate/applications` | Job listed | |
 
 ---
 
-## التدفق 10: التحليلات والتوطين
+## Flow 6: AI Interview
 
-| # | الخطوة | الرابط | المتوقع | النتيجة |
-|---|--------|--------|---------|---------|
-| 1 | اذهب للتحليلات | `/employer/analytics` | بطاقات KPI تحمل | |
-| 2 | شاهد: إجمالي الطلبات، المقابلات، العروض، نسبة التوظيف | | أرقام من قاعدة البيانات | |
-| 3 | شاهد تحليل أسباب الرفض | | قائمة أو رسم بياني | |
-| 4 | اذهب للتوطين | `/employer/emiratisation` | مؤشر + إحصائيات | |
-| 5 | شاهد: إجمالي الموظفين، المواطنون، النسبة، الهدف | | أرقام + تنبيه MOHRE | |
+> **Prerequisite:** Job must have `auto_interview = true`
 
----
-
-## التدفق 11: الاشتراك عبر Stripe
-
-| # | الخطوة | الرابط | المتوقع | النتيجة |
-|---|--------|--------|---------|---------|
-| 1 | اذهب للخطط | `/pricing` | 3 خطط + خدمات المرشحين | |
-| 2 | **لاحظ: الأسعار غير ظاهرة** — فقط المميزات | | لا مبالغ بالدرهم مرئية | |
-| 3 | اضغط "اختر هذه الخطة" على خطة "احترافي" | | توجيه لـ Stripe Checkout | |
-| 4 | أكمل الدفع (بطاقة اختبار: `4242 4242 4242 4242`) | | الدفع ينجح | |
-| 5 | توجيه إلى `/payment/success` | | صفحة النجاح مع أزرار | |
-| 6 | تحقق أن `subscription_tier` تحدث في الـ DB | | في جدول `companies` | |
-| 7 | لإدارة الاشتراك → الإعدادات → بوابة الفوترة | | Stripe Portal يفتح | |
-| 8 | 🔗 **Stripe Webhook يحدّث الاشتراك** | | الحالة تتغير في DB | |
-| | ↳ Webhook: `/api/stripe/webhook` (Stripe → Next.js) | | يحدّث tier + status + expires | |
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|--------|
+| 1 | After applying, click "Start AI Interview" | `/candidate/interview/[appId]` | Interview page loads | |
+| 2 | 🔗 Questions load | | 5 AI-generated questions | |
+| 3 | Answer question 1 (20+ characters) | | Character counter shows | |
+| 4 | Click "Next" for each question | | Progress bar fills | |
+| 5 | Submit all 5 answers | | Loading... | |
+| 6 | 🔗 AI evaluates answers | | Score + per-question feedback | |
+| 7 | View results page | | Percentage + recommendation | |
+| 8 | Return to same URL | | Saved results (no re-take) | |
 
 ---
 
-## التدفق 12: لوحة الإدارة (Admin)
+## Flow 7: Employer Reviews Applicants
 
-> **شرط مسبق:** اضبط role في profiles: `UPDATE profiles SET role = 'admin' WHERE email = 'your@email.com';`
-
-| # | الخطوة | الرابط | المتوقع | النتيجة |
-|---|--------|--------|---------|---------|
-| 1 | سجّل دخول كأدمن | `/login` | توجيه تلقائي لـ `/admin/dashboard` | |
-| 2 | **لوحة التحكم** | `/admin/dashboard` | بطاقات KPI: مستخدمين، شركات، وظائف، طلبات | |
-| 3 | **المستخدمون** | `/admin/users` | قائمة كل المستخدمين، بحث، فلتر | |
-| 4 | غيّر دور مستخدم إلى "employer" | | الدور يتحدث، رسالة تأكيد | |
-| 5 | **الشركات** | `/admin/companies` | قائمة، تحقق/رفض | |
-| 6 | فعّل التحقق لشركة | | `is_verified` يتحدث | |
-| 7 | **الوظائف** | `/admin/jobs` | تصفح كل الوظائف، تمييز/إغلاق | |
-| 8 | ميّز وظيفة (Featured) | | `is_featured = true` | |
-| 9 | **إعدادات النظام** | `/admin/config` | إعدادات CRUD | |
-| 10 | عدّل قيمة إعداد | | التعديل المباشر يُحفظ | |
-| 11 | **المعاملات المالية** | `/admin/transactions` | كل المدفوعات + إجمالي الإيرادات | |
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|--------|
+| 1 | Go to job applicants | `/employer/jobs/[id]/applicants` | Pipeline columns | |
+| 2 | View candidate cards | | Cards in "Applied" column | |
+| 3 | If interviewed, see score badge | | Score number on card | |
+| 4 | Move to "Reviewing" | | Card moves | |
+| 5 | Move to "Shortlisted" | | Card moves | |
+| 6 | Move to "Rejected" | | **Confirmation popup** | |
+| 7 | Select rejection reason + confirm | | Card moves, reason saved | |
+| 8 | Move to "Offer" | | Card moves to offer column | |
 
 ---
 
-## التدفق 13: الرسائل
+## Flow 8: Committee Evaluation
 
-| # | الخطوة | الرابط | المتوقع | النتيجة |
-|---|--------|--------|---------|---------|
-| 1 | كصاحب عمل، اذهب للرسائل | `/employer/messages` | قائمة المحادثات | |
-| 2 | ابدأ محادثة مع مرشح | | حقل الرسالة يظهر | |
-| 3 | أرسل رسالة | | الرسالة تظهر في المحادثة | |
-| 4 | 🔗 **إشعار رسالة** | | إشعار للمستلم | |
-| | ↳ Webhook: `gn-message-notify` | | بريد/إشعار للطرف الآخر | |
-| 5 | كمرشح، تحقق من الرسائل | `/candidate/messages` | الرسالة من صاحب العمل تظهر | |
-| 6 | ردّ | | المحادثة تتحدث | |
-
----
-
-## التدفق 14: صفحات الهبوط (Landing Pages)
-
-| # | الخطوة | الرابط | المتوقع | النتيجة |
-|---|--------|--------|---------|---------|
-| 1 | اذهب لصفحات الهبوط | `/employer/landing-pages` | قائمة الصفحات | |
-| 2 | أنشئ صفحة جديدة | `/employer/landing-pages/new` | معالج الإنشاء | |
-| 3 | تحقق أن الصفحة تعمل عبر الرابط المشارك | `/apply/[token]` | صفحة الهبوط تظهر | |
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|--------|
+| 1 | Go to evaluation page | `/employer/evaluate/[appId]` | Scorecard loads | |
+| 2 | See candidate name + job | | Correct info | |
+| 3 | Rate 5 criteria (sliders 1-10): | | |
+| | - Technical Skills | | Number updates | |
+| | - Communication | | Number updates | |
+| | - Work Experience | | Number updates | |
+| | - Cultural Fit | | Number updates | |
+| | - Overall Rating | | Number updates | |
+| 4 | Add notes (optional) | | Text accepted | |
+| 5 | Submit evaluation | | "Evaluation saved" | |
+| 6 | Login as 2nd evaluator, rate same person | | 2nd evaluation saves | |
+| 7 | 🔗 Committee summary auto-generated | | Average + recommendation | |
 
 ---
 
-## ملخص Webhooks المطلوبة
+## Flow 9: Contract Generation & Tracking
 
-| # | Webhook | المسار في n8n | يُستخدم في | الحالة |
-|---|---------|---------------|------------|--------|
-| 1 | `gn-cv-parser` | `/webhook/gn-cv-parser` | رفع السيرة الذاتية | |
-| 2 | `gn-match-score` | `/webhook/gn-match-score` | حساب المطابقة عند التقديم | |
-| 3 | `gn-application-notify` | `/webhook/gn-application-notify` | إشعار تقديم جديد | |
-| 4 | `gn-smart-match` | `/webhook/gn-smart-match` | البحث الذكي عن مرشحين | |
-| 5 | `gn-message-notify` | `/webhook/gn-message-notify` | إشعار رسالة جديدة | |
-| 6 | `gn-payment-verify` | `/webhook/gn-payment-verify` | تحقق الدفع (قديم) | |
-| 7 | `gn-ai-job-description` | `/webhook/gn-ai-job-description` | مساعد AI لوصف الوظيفة | |
-| 8 | `gn-company-verify` | `/webhook/gn-company-verify` | OCR رخصة تجارية | |
-| 9 | `gn-interview-questions` | `/webhook/gn-interview-questions` | توليد أسئلة المقابلة | |
-| 10 | `gn-interview-eval` | `/webhook/gn-interview-eval` | تقييم إجابات المرشح | |
-| 11 | `gn-committee-summary` | `/webhook/gn-committee-summary` | ملخص تقييم اللجنة | |
-| 12 | `gn-contract-gen` | `/webhook/gn-contract-gen` | إنشاء عقد العمل (مستقبلي) | |
-
-> **ملاحظة:** جميع الـ Webhooks تعمل بنتائج وهمية (Mock) عندما لا يكون n8n متصلاً.
-> عند تفعيل n8n، استبدل `your-n8n-domain.com` في `.env.local` بعنوان n8n الفعلي.
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|--------|
+| 1 | Move applicant to "Offer" status | | Contract generate button appears | |
+| 2 | Generate contract | | Contract created in DB | |
+| 3 | 🔗 `contract_created` n8n event fires | | Notification sent | |
+| 4 | Go to contract tracking | `/employer/contracts/track` | Contract list loads | |
+| 5 | Send contract to candidate | | Status → "sent" | |
+| 6 | 🔗 `contract_sent` n8n event fires | | Email notification | |
+| 7 | Download contract PDF | | PDF file downloads | |
 
 ---
 
-## بطاقة اختبار Stripe
+## Flow 10: Candidate Contract Portal ⭐ NEW
 
-| الحقل | القيمة |
-|-------|--------|
-| رقم البطاقة | `4242 4242 4242 4242` |
-| تاريخ الانتهاء | أي تاريخ مستقبلي |
-| CVC | أي 3 أرقام |
-| الرمز البريدي | أي رقم |
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|--------|
+| 1 | Login as candidate with pending contract | | | |
+| 2 | Click "العقود" in sidebar | `/candidate/contracts` | Contract list | |
+| 3 | Click on a contract | `/candidate/contracts/[id]` | Contract details | |
+| 4 | Download PDF | | PDF downloads | |
+| 5 | Click "Accept & Sign" | | Confirmation modal | |
+| 6 | Confirm signature | | Status → "signed" | |
+| 7 | 🔗 `contract_signed` n8n event fires | | Email notification | |
+| 8 | **OR** Click "Decline" | | Reason modal | |
+| 9 | Enter reason + confirm | | Status → "declined" | |
+| 10 | 🔗 `contract_declined` n8n event fires | | Email notification | |
 
 ---
 
-## إعداد Admin
+## Flow 11: Analytics & Emiratisation
+
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|--------|
+| 1 | Go to analytics | `/employer/analytics` | KPI cards load | |
+| 2 | View: total applications, interviews, offers, hire rate | | Numbers from DB | |
+| 3 | View rejection reasons analysis | | Chart or list | |
+| 4 | Go to emiratisation | `/employer/emiratisation` | Gauge + statistics | |
+| 5 | View: total employees, nationals, ratio, target | | Numbers + MOHRE alert | |
+| 6 | Fill emiratisation profile form | | Data saves | |
+
+---
+
+## Flow 12: Stripe Subscription
+
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|--------|
+| 1 | Go to pricing | `/pricing` | 3 plans + features | |
+| 2 | Note: prices NOT visible (features only) | | No AED amounts shown | |
+| 3 | Click "Choose Plan" on Pro | | Redirect to Stripe Checkout | |
+| 4 | Use test card: `4242 4242 4242 4242` | | Payment succeeds | |
+| 5 | Redirect to `/payment/success` | | Success page with buttons | |
+| 6 | Check DB: `subscription_tier` updated | | In `companies` table | |
+| 7 | Settings → Billing Portal | | Stripe Portal opens | |
+
+---
+
+## Flow 13: Admin Panel
+
+> **Setup:** `UPDATE profiles SET role = 'admin' WHERE email = 'your@email.com';`
+
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|--------|
+| 1 | Login as admin | `/login` | Redirect to `/admin/dashboard` | |
+| 2 | Dashboard | `/admin/dashboard` | KPI: users, companies, jobs, apps | |
+| 3 | Users management | `/admin/users` | Search + role filter + inline change | |
+| 4 | Companies management | `/admin/companies` | Verify/reject companies | |
+| 5 | Jobs moderation | `/admin/jobs` | Feature/close jobs | |
+| 6 | System config | `/admin/config` | Inline edit settings | |
+| 7 | Transactions | `/admin/transactions` | Payment history + revenue | |
+
+---
+
+## Flow 14: Messages
+
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|--------|
+| 1 | As employer, go to messages | `/employer/messages` | Conversation list | |
+| 2 | Start conversation with candidate | | Message field appears | |
+| 3 | Send message | | Message shows in chat | |
+| 4 | As candidate, check messages | `/candidate/messages` | Employer message visible | |
+| 5 | Reply | | Conversation updates | |
+
+---
+
+## Flow 15: Landing Pages
+
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|--------|
+| 1 | Go to landing pages | `/employer/landing-pages` | Page list | |
+| 2 | Create new page | `/employer/landing-pages/new` | Builder wizard | |
+| 3 | View public page via shared link | `/apply/[token]` | Landing page works | |
+
+---
+
+## Contract Expiry Cron (Auto)
+
+| # | Step | Expected | Result |
+|---|------|----------|--------|
+| 1 | Cron runs daily at 06:00 UTC | `/api/cron/contract-expiry` | |
+| 2 | Contracts older than 7 days with status "sent" | | Status → "expired" | |
+| 3 | Bearer token `CRON_SECRET` required | | Unauthorized without token | |
+
+---
+
+## Test Card (Stripe)
+
+| Field | Value |
+|-------|-------|
+| Card Number | `4242 4242 4242 4242` |
+| Expiry | Any future date |
+| CVC | Any 3 digits |
+| ZIP | Any number |
+
+---
+
+## Admin Setup
 
 ```sql
 UPDATE profiles SET role = 'admin' WHERE email = 'your@email.com';
 ```
+
+---
+
+## N8N Webhook Summary
+
+| # | Webhook | Path | Used In |
+|---|---------|------|---------|
+| 1 | CV Parser | `/webhook/gn-cv-parser` | CV upload |
+| 2 | AI Job Description | `/webhook/gn-ai-job-description` | Job wizard |
+| 3 | Match Score | `/webhook/gn-match-score` | Application submission |
+| 4 | Interview Questions | `/webhook/gn-interview-questions` | AI interview |
+| 5 | Interview Evaluation | `/webhook/gn-interview-eval` | Answer scoring |
+| 6 | App Notification | `/webhook/gn-application-notify` | New application |
+| 7 | Smart Matching | `/webhook/gn-smart-match` | Candidate search |
+| 8 | Message Notification | `/webhook/gn-message-notify` | Chat messages |
+| 9 | Payment Verification | `/webhook/gn-payment-verify` | Payment fulfillment |
+| 10 | Company Verification | `/webhook/gn-company-verify` | Trade license OCR |
+| 11 | Committee Summary | `/webhook/gn-committee-summary` | Panel evaluation |
+| 12 | Contract Notifications | (direct fetch) | Contract lifecycle |
+
+> **Note:** All webhooks work with mock/fallback data when n8n is offline.
