@@ -175,7 +175,7 @@
 | 9 | Payment Verification | ❌ Not Started | Stripe fulfillment |
 | 10 | Company Verification | ✅ Done | Webhook → Download → Gemini OCR → Decision Engine → 3× Supabase |
 | 11 | Committee Summary | ✅ Done | Gemini → Respond |
-| 12 | Contract Notifications | ⚠️ Code Ready | Blueprint exists (`n8n-contract-notify-workflow.json`). **Not published on n8n yet** |
+| 12 | Contract Notifications | ✅ Done | Workflow imported and activated on n8n |
 
 ### Summary: 7 Done, 2 Partial/Code Ready, 3 Not Started
 
@@ -195,7 +195,7 @@
 | Candidate Portal (List) | ✅ | `/candidate/contracts` — view all contracts |
 | Candidate Portal (View) | ✅ | `/candidate/contracts/[id]` — sign/decline with modal |
 | PDF Generation API | ✅ | `/api/contracts/pdf/[id]` — Arabic font support |
-| N8N Notifications | ⚠️ | `contract-notify.ts` → 4 events. **N8N workflow not published yet** |
+| N8N Notifications | ✅ | `contract-notify.ts` → 4 events. **N8N workflow active** |
 | Auto-Expiry Cron | ✅ | `/api/cron/contract-expiry` — daily via vercel.json |
 | N8N Workflow Blueprint | ✅ | `n8n-contract-notify-workflow.json` ready to import |
 | MOHRE Default Template | ✅ | Seeded in `full.sql` with Arabic HTML |
@@ -230,6 +230,19 @@
 | Scoring | ✅ Match % = (matched ÷ union) × 100 |
 | Display | ✅ Top 5 candidates, up to 4 skills each |
 | Empty state | ✅ "أنشر وظائف لاقتراح مرشحين مطابقين" when no matches |
+
+---
+
+## AI Match Score Enhancement ✅ COMPLETE (12 May 2026)
+
+> **Previously:** Hardcoded match score (86%), mock applicants count, and fake Similar Jobs. **Replaced with real DB queries & enhanced composite score.**
+
+| Component | Status |
+|-----------|--------|
+| `calculate_match_score` RPC | ✅ Enhanced: 45% Skills, 25% Experience, 15% Salary, 15% Location |
+| Job Detail: Match Score | ✅ Real score via RPC (only shown for logged-in candidates) |
+| Job Detail: Applicants Count| ✅ Real count via `job.applicants_count` |
+| Job Detail: Similar Jobs | ✅ Real jobs from DB, scored by Jaccard skill overlap |
 
 ---
 
@@ -321,12 +334,12 @@
 
 | Feature | Priority | Phase |
 |---------|----------|-------|
-| **Contract notify → publish on n8n** | 🔴 High | 10 |
+| ~~**Contract notify → publish on n8n**~~ | ~~🔴 High~~ | ~~10~~ ✅ Done |
 | ~~Emiratisation data seeding~~ | ~~🔴 High~~ | ~~10~~ ✅ Done (12 May) |
 | **Security hardening** (secrets, Zod, rate limiting) | 🔴 High | 10 |
 | ~~Company verification enforcement~~ | ~~🟡 Medium~~ | ~~10~~ ✅ Done (12 May) |
-| **Smart candidate suggestions (replace mocks)** | 🟡 Medium | 10 |
-| **AI match score enhancement** | 🟡 Medium | 10 |
+| ~~**Smart candidate suggestions (replace mocks)**~~ | ~~🟡 Medium~~ | ~~10~~ ✅ Done |
+| ~~**AI match score enhancement**~~ | ~~🟡 Medium~~ | ~~10~~ ✅ Done |
 | **Landing page builder (full CRUD)** | 🟡 Medium | 10 |
 | **Stripe production readiness** | 🟡 Medium | 10 |
 | **Company verification OCR (n8n workflow)** | 🟡 Medium | 10 |
@@ -363,7 +376,7 @@ N8N_COMMITTEE_SUMMARY_WEBHOOK=
 N8N_APPLICATION_NOTIFY_WEBHOOK=
 
 # Contract Notifications
-N8N_CONTRACT_NOTIFY_WEBHOOK=     # ⚠️ Not published on n8n yet
+N8N_CONTRACT_NOTIFY_WEBHOOK=     # ✅ Set to n8n webhook URL
 N8N_WEBHOOK_SECRET=              # ⚠️ Change from default!
 
 # Contract Expiry Cron
@@ -400,10 +413,10 @@ STRIPE_PRO_PRICE_ID=
 | Issue | Impact | Resolution |
 |-------|--------|------------|
 | `emiratisation_profiles` table empty | Compliance export returns 404 | Use `EmiratisationProfileForm.tsx` to seed data |
-| Contract notify not on n8n | Email notifications won't fire | Import `n8n-contract-notify-workflow.json` → activate |
+| Contract notify not on n8n | Email notifications won't fire | ✅ Fixed — Workflow imported and active |
 | `N8N_WEBHOOK_SECRET` = default | Security risk | Change to strong value before production |
 | `CRON_SECRET` not set | Anyone can trigger contract expiry | Set env var in Vercel dashboard |
-| Smart candidate suggestions mock | Dashboard shows hardcoded names | Replace with real DB query |
+| ~~Smart candidate suggestions mock~~ | ~~Dashboard shows hardcoded names~~ | ~~Replace with real DB query~~ ✅ Fixed |
 | Multi-language not implemented | Arabic-only UI | Phase 12 work (next-intl) |
 | Stripe in test mode | No real payments | Switch to live keys for production |
 | No email service | Can't send emails | Integrate Resend or SendGrid |

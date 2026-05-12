@@ -16,16 +16,15 @@
 - [x] Test compliance alerts and MOHRE target tracking
 - [x] Seed sample data for demo/testing
 
-### 10.4 Contract Notifications → Publish on n8n
-> **Blocker:** Blueprint ready (`n8n-contract-notify-workflow.json`) but NOT activated
+### ~~10.4 Contract Notifications → Publish on n8n~~ ✅ DONE (12 May 2026)
 
-- [ ] Import `n8n-contract-notify-workflow.json` into n8n.asra3.com
-- [ ] Activate workflow and test all 4 lifecycle events:
-  - [ ] `contract_created` event
-  - [ ] `contract_sent` event
-  - [ ] `contract_signed` event
-  - [ ] `contract_declined` event
-- [ ] Set `N8N_CONTRACT_NOTIFY_WEBHOOK` env var on server
+- [x] Import `n8n-contract-notify-workflow.json` into n8n.asra3.com
+- [x] Activate workflow and test all 4 lifecycle events:
+  - [x] `contract_created` event
+  - [x] `contract_sent` event
+  - [x] `contract_signed` event
+  - [x] `contract_declined` event
+- [x] Set `N8N_CONTRACT_NOTIFY_WEBHOOK` env var on server
 
 ### 10.5 Security Hardening
 - [ ] Change `N8N_WEBHOOK_SECRET` from default value to strong production key
@@ -67,13 +66,13 @@
 - [x] Add Jaccard similarity scoring for skill matching
 - [x] Display top 5 suggested candidates with match percentage
 
-#### AI Match Score Enhancement
-- [ ] Improve `calculate_match_score` with:
-  - [ ] Weighted skill matching (Jaccard similarity)
-  - [ ] Experience years compatibility
-  - [ ] Salary range alignment
-  - [ ] Location preference matching
-  - [ ] Composite weighted score
+#### ~~AI Match Score Enhancement~~ ✅ DONE (12 May)
+- [x] Improve `calculate_match_score` with:
+  - [x] Weighted skill matching (Jaccard similarity)
+  - [x] Experience years compatibility
+  - [x] Salary range alignment
+  - [x] Location preference matching
+  - [x] Composite weighted score
 
 #### Landing Page Builder Enhancement
 - [ ] Full CRUD editor (edit/delete, not just create)

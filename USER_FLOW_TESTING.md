@@ -157,10 +157,10 @@
 | 1 | Move applicant to "Offer" status | | Contract generate button appears | |
 | 2 | Select template (MOHRE or custom) | | Template from `contract_templates` | |
 | 3 | Generate contract | | Contract created in `contracts` table | |
-| 4 | 🔗 `contract_created` n8n event fires | | ⚠️ Requires n8n workflow published | |
+| 4 | 🔗 `contract_created` n8n event fires | | Event fired ✅ |
 | 5 | Go to contract tracking | `/employer/contracts/track` | Contract list loads | |
 | 6 | Send contract to candidate | | Status → "sent", `sent_at` timestamp | |
-| 7 | 🔗 `contract_sent` n8n event fires | | ⚠️ Requires n8n workflow published | |
+| 7 | 🔗 `contract_sent` n8n event fires | | Event fired ✅ |
 | 8 | Download contract PDF | | PDF file downloads (Arabic fonts) | |
 
 ---
@@ -175,10 +175,10 @@
 | 4 | Download PDF | | PDF downloads via `/api/contracts/pdf/[id]` | |
 | 5 | Click "Accept & Sign" | | Confirmation modal | |
 | 6 | Confirm signature | | Status → "signed", `signed_at` set | |
-| 7 | 🔗 `contract_signed` n8n event fires | | ⚠️ Requires n8n workflow published | |
+| 7 | 🔗 `contract_signed` n8n event fires | | Event fired ✅ |
 | 8 | **OR** Click "Decline" | | Reason modal | |
 | 9 | Enter reason + confirm | | Status → "declined", `decline_reason` saved | |
-| 10 | 🔗 `contract_declined` n8n event fires | | ⚠️ Requires n8n workflow published | |
+| 10 | 🔗 `contract_declined` n8n event fires | | Event fired ✅ |
 
 ---
 
@@ -329,10 +329,9 @@ UPDATE profiles SET role = 'admin' WHERE email = 'your@email.com';
 | 9 | Payment Verification | `/webhook/gn-payment-verify` | Payment fulfillment | ❌ |
 | 10 | Company Verification | `/webhook/gn-company-verify` | Trade license OCR | ✅ |
 | 11 | Committee Summary | `/webhook/gn-committee-summary` | Panel evaluation | ✅ |
-| 12 | Contract Notifications | (direct fetch) | Contract lifecycle | ⚠️ Not on n8n |
+| 12 | Contract Notifications | (direct fetch) | Contract lifecycle | ✅ |
 
 > **Note:** All webhooks work with mock/fallback data when n8n is offline.
-> **⚠️ Contract notifications:** Blueprint ready but **not published on n8n yet**.
 
 ---
 

@@ -23,7 +23,7 @@
 | 9 | **Payment Verification** | `/gn-payment-verify` | ❌ Not Started | Verify Stripe/EdfaPay → fulfill subscription/credits |
 | 10 | **Company Verification** | `/gn-company-verify` | ✅ Done | Webhook → HTTP Download → Gemini OCR → Decision Engine (risk scoring) → 3× Supabase updates (company status, doc OCR data, audit log). Triggered by Supabase DB webhook on `company_documents` INSERT |
 | 11 | **Committee Summary** | `/gn-committee-summary` | ✅ Done | Webhook → Gemini → Code cleanup → Respond. Auto-triggers when 2+ evaluators submit |
-| 12 | **Contract Notifications** | Direct fetch via `contract-notify.ts` | ⚠️ Code Ready | 4 events: created / sent / signed / declined. S2S auth via `N8N_WEBHOOK_SECRET`. Blueprint: `n8n-contract-notify-workflow.json`. **⚠️ Not published on n8n yet — needs import + activate** |
+| 12 | **Contract Notifications** | Direct fetch via `contract-notify.ts` | ✅ Done | 4 events: created / sent / signed / declined. S2S auth via `N8N_WEBHOOK_SECRET`. Blueprint: `n8n-contract-notify-workflow.json`. |
 | 13 | **Contract Generation** | `/gn-contract-gen` | 🔧 Code Ready | API route at `/api/contracts/generate` works end-to-end. PDF via `/api/contracts/pdf/[id]`. **Optional: n8n workflow for HTML→PDF if needed** |
 
 ---
@@ -32,8 +32,8 @@
 
 | Status | Count |
 |--------|-------|
-| ✅ Done | 7 |
-| ⚠️ Partial / Code Ready | 3 |
+| ✅ Done | 8 |
+| ⚠️ Partial / Code Ready | 2 |
 | ❌ Not Started | 3 |
 
 ## Where Results Appear

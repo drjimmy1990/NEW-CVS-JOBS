@@ -93,6 +93,64 @@ export default async function JobDetailPage({ params }: Props) {
 
     const company = job.companies as any
 
+    // --- REAL MATCH SCORE (only for logged-in candidates) ---
+    let matchScore: number | null = null
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+        const { data: candidate } = await supabase
+            .from('candidates')
+            .select('id')
+            .eq('id', user.id)
+            .single()
+        if (candidate) {
+            const { data: scoreResult } = await supabase.rpc('calculate_match_score', {
+                p_job_id: job.id,
+                p_candidate_id: user.id
+            })
+            if (scoreResult !== null && scoreResult !== undefined) {
+                matchScore = scoreResult as number
+            }
+        }
+    }
+
+    // --- REAL SIMILAR JOBS (by skill overlap + same location) ---
+    const jobSkills = (job.skills_required as string[]) || []
+    let similarJobs: { id: string; title: string; slug: string; location_city: string; job_type: string; experience_level: string | null; company_name: string; match_percent: number }[] = []
+
+    if (jobSkills.length > 0) {
+        const { data: candidates_for_similar } = await supabase
+            .from('jobs')
+            .select('id, title, slug, location_city, job_type, experience_level, skills_required, companies(name)')
+            .eq('status', 'active')
+            .neq('id', job.id)
+            .limit(20)
+
+        if (candidates_for_similar && candidates_for_similar.length > 0) {
+            const jobSkillsLower = new Set(jobSkills.map(s => s.toLowerCase().trim()))
+
+            similarJobs = candidates_for_similar
+                .map(sj => {
+                    const sjSkills = ((sj.skills_required as string[]) || []).map(s => s.toLowerCase().trim())
+                    const intersection = sjSkills.filter(s => jobSkillsLower.has(s)).length
+                    const union = new Set([...jobSkillsLower, ...sjSkills]).size
+                    const match_percent = union > 0 ? Math.round((intersection / union) * 100) : 0
+                    return {
+                        id: sj.id,
+                        title: sj.title,
+                        slug: sj.slug,
+                        location_city: sj.location_city,
+                        job_type: sj.job_type,
+                        experience_level: sj.experience_level,
+                        company_name: (sj.companies as any)?.name || 'Company',
+                        match_percent
+                    }
+                })
+                .filter(sj => sj.match_percent > 0)
+                .sort((a, b) => b.match_percent - a.match_percent)
+                .slice(0, 3)
+        }
+    }
+
     return (
         <div className="min-h-screen bg-slate-950">
 
@@ -222,14 +280,16 @@ export default async function JobDetailPage({ params }: Props) {
                     <div className="space-y-6">
                         {/* Apply Card */}
                         <Card className="bg-slate-900 border-slate-800 shadow-xl shadow-emerald-500/5 relative overflow-hidden">
-                            <div className="absolute top-0 right-0 bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl shadow-md z-10 flex items-center gap-1">
-                                Match Score: 86%
-                            </div>
-                            <CardContent className="p-6 pt-8 text-center flex flex-col items-center">
+                            {matchScore !== null && matchScore > 0 && (
+                                <div className="absolute top-0 right-0 bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl shadow-md z-10 flex items-center gap-1">
+                                    Match Score: {matchScore}%
+                                </div>
+                            )}
+                            <CardContent className={`p-6 ${matchScore !== null && matchScore > 0 ? 'pt-8' : 'pt-6'} text-center flex flex-col items-center`}>
                                 <h3 className="text-xl font-bold text-white mb-2">Ready to Apply?</h3>
                                 <div className="text-sm text-slate-400 mb-6 flex items-center gap-2 justify-center w-full">
                                     <Users className="h-4 w-4" />
-                                    <span>Applicants: 86 candidates</span>
+                                    <span>Applicants: {job.applicants_count || 0} candidates</span>
                                 </div>
                                 
                                 <ApplyButton
@@ -382,40 +442,41 @@ export default async function JobDetailPage({ params }: Props) {
                     </div>
                 </div>
                 
-                {/* Similar Jobs Section */}
-                <div className="mt-16">
-                    <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-2xl font-bold text-white">Similar Jobs</h2>
+                {/* Similar Jobs Section — Real Data */}
+                {similarJobs.length > 0 && (
+                    <div className="mt-16">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-2xl font-bold text-white">Similar Jobs</h2>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {similarJobs.map(sj => (
+                                <Link key={sj.id} href={`/jobs/${sj.slug}`}>
+                                    <Card className="bg-slate-900 border-slate-800 hover:border-slate-700 transition-colors cursor-pointer group">
+                                        <CardContent className="p-5 relative overflow-hidden">
+                                            {sj.match_percent > 0 && (
+                                                <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">
+                                                    {sj.match_percent}% Match
+                                                </div>
+                                            )}
+                                            <h4 className="font-semibold text-white group-hover:text-emerald-400 transition-colors mt-2">{sj.title}</h4>
+                                            <p className="text-sm text-slate-400 mb-3">{sj.company_name} • {sj.location_city}</p>
+                                            <div className="flex gap-2">
+                                                <Badge variant="outline" className="border-slate-700 text-slate-300">
+                                                    {typeLabels[sj.job_type] || sj.job_type}
+                                                </Badge>
+                                                {sj.experience_level && (
+                                                    <Badge variant="outline" className="border-slate-700 text-slate-300">
+                                                        {sj.experience_level}
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </Link>
+                            ))}
+                        </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <Card className="bg-slate-900 border-slate-800 hover:border-slate-700 transition-colors cursor-pointer group">
-                            <CardContent className="p-5 relative overflow-hidden">
-                                <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">
-                                    78% Match
-                                </div>
-                                <h4 className="font-semibold text-white group-hover:text-emerald-400 transition-colors mt-2">Marketing Coordinator</h4>
-                                <p className="text-sm text-slate-400 mb-3">Tech Visionaries LLC • Dubai</p>
-                                <div className="flex gap-2">
-                                    <Badge variant="outline" className="border-slate-700 text-slate-300">Full Time</Badge>
-                                    <Badge variant="outline" className="border-slate-700 text-slate-300">Mid Level</Badge>
-                                </div>
-                            </CardContent>
-                        </Card>
-                        <Card className="bg-slate-900 border-slate-800 hover:border-slate-700 transition-colors cursor-pointer group">
-                            <CardContent className="p-5 relative overflow-hidden">
-                                <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">
-                                    73% Match
-                                </div>
-                                <h4 className="font-semibold text-white group-hover:text-emerald-400 transition-colors mt-2">Sales Executive</h4>
-                                <p className="text-sm text-slate-400 mb-3">Global Trade Inc • Abu Dhabi</p>
-                                <div className="flex gap-2">
-                                    <Badge variant="outline" className="border-slate-700 text-slate-300">Full Time</Badge>
-                                    <Badge variant="outline" className="border-slate-700 text-slate-300">Entry Level</Badge>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
-                </div>
+                )}
             </div>
 
             {/* Footer */}

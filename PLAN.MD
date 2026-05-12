@@ -138,7 +138,7 @@ GrowthNexus is an **AI Recruitment Operating System** for the UAE market, servin
 ### 10.4 Remaining N8N Workflows
 | # | Workflow | Priority | Description |
 |---|---------|----------|-------------|
-| 12 | Contract Notifications | 🔴 High | **Blueprint ready** (`n8n-contract-notify-workflow.json`). ⚠️ **Not published on n8n yet** — import → activate → test 4 events |
+| 12 | Contract Notifications | 🔴 High | ✅ **Published on n8n** — workflow imported and active |
 | 7 | Smart Matching | 🟡 Medium | AI ranks best candidates from talent pool |
 | 6 | App Notification | 🟢 Low | Add email/Telegram node to existing workflow |
 | 8 | Message Notification | 🟢 Low | Chat message notifications (`/api/conversations/start` trigger) |
@@ -155,8 +155,8 @@ GrowthNexus is an **AI Recruitment Operating System** for the UAE market, servin
 ### 10.6 AI Enhancement (Replace Mocks)
 > **Status:** Several AI features use mock/fallback data that should be connected to real models
 
-- [ ] **Smart Candidate Suggestions** — employer dashboard shows hardcoded candidates → replace with real DB query + match scoring
-- [ ] **AI Match Score Enhancement** — add real skill matching (Jaccard similarity), experience compatibility, salary alignment, weighted composite score
+- [x] **Smart Candidate Suggestions** — employer dashboard shows hardcoded candidates → replace with real DB query + match scoring
+- [x] **AI Match Score Enhancement** — add real skill matching (Jaccard similarity), experience compatibility, salary alignment, weighted composite score
 - [ ] **Landing Page Builder** — pages exist (list + new) → enhance with full CRUD editor, preview, custom branding
 
 ### 10.7 Stripe Production Readiness
@@ -386,9 +386,9 @@ All critical columns indexed: job status, company, applications, candidates, sea
 **Recommended execution order:**
 1. ~~10.3a (Verification enforcement)~~ ✅ Done (12 May)
 2. 10.1 (Emiratisation seeding) — unblocks compliance
-3. 10.4 (Contract notify n8n publish) — blueprint already ready
+3. ~~10.4 (Contract notify n8n publish)~~ ✅ Done
 4. 10.5 (Security hardening) — production requirement
-5. 10.6 (AI enhancement / mock replacement) — quality improvement
+5. ~~10.6 (AI enhancement / mock replacement)~~ ✅ Done (12 May)
 6. 10.7 (Stripe production) — monetization
 7. 10.3b (Company verification OCR) — trust & compliance
 8. 12.x (i18n + SEO + testing) — launch polish
@@ -405,5 +405,5 @@ All critical columns indexed: job status, company, applications, candidates, sea
 | Arabic RTL edge cases | Test all components with long Arabic text strings |
 | Supabase RLS bypass | Audit all RPC functions and service role usage |
 | No email provider | Integrate Resend or SendGrid before launch |
-| Contract notify not on n8n | Import blueprint JSON and activate — code already done |
+| Contract notify not on n8n | ✅ Fixed — Workflow imported and activated |
 | CRON_SECRET not set | Anyone can call `/api/cron/contract-expiry` — set in Vercel dashboard |

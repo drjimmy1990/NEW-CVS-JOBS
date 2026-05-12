@@ -11,6 +11,7 @@ import {
     Briefcase,
     Building2,
     Filter,
+    Globe,
 } from 'lucide-react'
 import { JobCard } from '@/components/ui/job-card'
 import { SortSelect } from '@/components/ui/sort-select'
@@ -26,7 +27,7 @@ export const metadata: Metadata = {
 }
 
 interface Props {
-    searchParams: Promise<{ q?: string; type?: string; location?: string; sort?: string; experience?: string; candidate_type?: string; date?: string }>
+    searchParams: Promise<{ q?: string; type?: string; location?: string; sort?: string; experience?: string; candidate_type?: string; date?: string; source?: string }>
 }
 
 export default async function JobsPage({ searchParams }: Props) {
@@ -96,6 +97,67 @@ export default async function JobsPage({ searchParams }: Props) {
     }
 
     const { data: jobs } = await query
+
+    // ==========================================
+    // EXTERNAL JOBS QUERY (merge into feed)
+    // ==========================================
+    let externalJobs: any[] = []
+    if (params.source !== 'platform') { // Don't fetch if filtering platform-only
+        let extQuery = supabase
+            .from('external_jobs')
+            .select('*')
+            .eq('is_active', true)
+            .order('is_featured', { ascending: false })
+            .order('created_at', { ascending: false })
+            .limit(20)
+
+        // Apply same text search to external jobs
+        if (params.q) {
+            extQuery = extQuery.or(`title.ilike.%${params.q}%,description.ilike.%${params.q}%,company_name.ilike.%${params.q}%`)
+        }
+        // Location filter
+        if (params.location) {
+            extQuery = extQuery.ilike('location_city', `%${params.location}%`)
+        }
+        // Job type filter
+        if (params.type) {
+            extQuery = extQuery.eq('job_type', params.type)
+        }
+        // Source platform filter
+        if (params.source && params.source !== 'all' && params.source !== 'platform') {
+            extQuery = extQuery.eq('source_platform', params.source)
+        }
+
+        const { data: extData } = await extQuery
+        externalJobs = extData || []
+    }
+
+    // Merge: internal jobs first (featured), then interleave external
+    const allJobs: Array<{ data: any; isExternal: boolean }> = []
+    
+    // If filtering external only
+    if (params.source && params.source !== 'all' && params.source !== 'platform') {
+        externalJobs.forEach(j => allJobs.push({ data: j, isExternal: true }))
+    } else if (params.source === 'platform') {
+        // Platform only = internal jobs only
+        (jobs || []).forEach(j => allJobs.push({ data: j, isExternal: false }))
+    } else {
+        // Mixed: interleave — every 5th job is external
+        const internalList = jobs || []
+        let extIdx = 0
+        for (let i = 0; i < internalList.length; i++) {
+            allJobs.push({ data: internalList[i], isExternal: false })
+            if ((i + 1) % 5 === 0 && extIdx < externalJobs.length) {
+                allJobs.push({ data: externalJobs[extIdx], isExternal: true })
+                extIdx++
+            }
+        }
+        // Append remaining external jobs
+        while (extIdx < externalJobs.length) {
+            allJobs.push({ data: externalJobs[extIdx], isExternal: true })
+            extIdx++
+        }
+    }
 
     return (
         <div className="min-h-screen bg-navy">
@@ -217,6 +279,23 @@ export default async function JobsPage({ searchParams }: Props) {
                             </select>
                         </div>
 
+                        {/* Source Filter */}
+                        <div className="mb-8">
+                            <h3 className="text-lg font-semibold text-cream mb-4">المصدر</h3>
+                            <select
+                                name="source"
+                                defaultValue={params.source || ''}
+                                className="w-full h-11 px-3 bg-navy border border-gold/15 rounded-xl text-cream-dark/60 focus-visible:ring-1 focus-visible:ring-gold outline-none appearance-none"
+                            >
+                                <option value="">جميع المصادر</option>
+                                <option value="platform">وظائف المنصة فقط</option>
+                                <option value="linkedin">LinkedIn</option>
+                                <option value="bayt">Bayt.com</option>
+                                <option value="gulftalen">GulfTalent</option>
+                                <option value="indeed">Indeed</option>
+                            </select>
+                        </div>
+
                         <Button
                             type="submit"
                             className="w-full h-11 bg-gradient-to-r from-gold to-gold-light hover:from-gold-dark hover:to-gold text-navy font-bold rounded-xl"
@@ -231,9 +310,9 @@ export default async function JobsPage({ searchParams }: Props) {
                 <div className="flex-1">
                     <div className="flex items-center justify-between xl:mb-6 mb-4 xl:mt-0 mt-8">
                         <h2 className="text-2xl font-semibold text-cream">
-                            {params.q || params.type || params.location
-                                ? `نتائج البحث (${jobs?.length || 0})`
-                                : `جميع الوظائف (${jobs?.length || 0})`
+                            {params.q || params.type || params.location || params.source
+                                ? `نتائج البحث (${allJobs.length})`
+                                : `جميع الوظائف (${allJobs.length})`
                             }
                         </h2>
                         <div className="flex items-center gap-2 text-sm text-cream-dark/40">
@@ -242,10 +321,19 @@ export default async function JobsPage({ searchParams }: Props) {
                         </div>
                     </div>
 
-                {jobs && jobs.length > 0 ? (
+                {allJobs.length > 0 ? (
                     <div className="space-y-4">
-                        {jobs.map((job: any) => (
-                            <JobCard key={job.id} job={job} isLoggedIn={!!user} isSaved={savedJobIds.has(job.id)} />
+                        {allJobs.map((item, idx) => (
+                            <JobCard
+                                key={item.isExternal ? `ext-${item.data.id}` : item.data.id}
+                                job={item.data}
+                                isLoggedIn={!!user}
+                                isSaved={!item.isExternal && savedJobIds.has(item.data.id)}
+                                isExternal={item.isExternal}
+                                sourceUrl={item.isExternal ? item.data.source_url : undefined}
+                                sourcePlatform={item.isExternal ? item.data.source_platform : undefined}
+                                accessLevel={item.isExternal ? item.data.access_level : undefined}
+                            />
                         ))}
                     </div>
                 ) : (

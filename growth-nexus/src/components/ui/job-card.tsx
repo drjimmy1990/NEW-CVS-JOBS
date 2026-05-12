@@ -15,7 +15,10 @@ import {
     ChevronLeft,
     Heart,
     Zap,
-    Users
+    Users,
+    Globe,
+    ExternalLink,
+    Lock
 } from 'lucide-react';
 
 const typeLabels: Record<string, string> = {
@@ -38,16 +41,29 @@ interface JobCardProps {
     job: any;
     isLoggedIn?: boolean;
     isSaved?: boolean;
+    isExternal?: boolean;
+    sourceUrl?: string;
+    sourcePlatform?: string;
+    accessLevel?: string;
 }
 
-export function JobCard({ job, isLoggedIn = false, isSaved = false }: JobCardProps) {
+const platformLabels: Record<string, string> = {
+    linkedin: 'LinkedIn',
+    bayt: 'Bayt.com',
+    gulftalen: 'GulfTalent',
+    indeed: 'Indeed',
+    glassdoor: 'Glassdoor',
+};
+
+export function JobCard({ job, isLoggedIn = false, isSaved = false, isExternal = false, sourceUrl, sourcePlatform, accessLevel }: JobCardProps) {
     const router = useRouter();
     const supabase = createClient();
     const [saved, setSaved] = useState(isSaved);
     const [isLoading, setIsLoading] = useState(false);
+    const [clickLoading, setClickLoading] = useState(false);
 
     // Use real applicants_count from DB instead of Math.random()
-    const applicantsCount = job.applicants_count || 0;
+    const applicantsCount = isExternal ? (job.clicks_count || 0) : (job.applicants_count || 0);
     
     let competitionLevel = 'منخفضة';
     let competitionColor = 'text-green-400 border-green-500/30 bg-green-500/10';
@@ -92,10 +108,31 @@ export function JobCard({ job, isLoggedIn = false, isSaved = false }: JobCardPro
         }
     };
 
+    // Handle external job apply click
+    const handleExternalApply = async () => {
+        if (!sourceUrl) return;
+        setClickLoading(true);
+        try {
+            await fetch(`/api/external-jobs/${job.id}/click`, { method: 'POST' });
+        } catch { /* don't block redirect */ }
+        window.open(sourceUrl, '_blank', 'noopener,noreferrer');
+        setClickLoading(false);
+    };
+
+    const isPremiumLocked = isExternal && accessLevel === 'premium' && !isLoggedIn;
+    const jobDetailUrl = isExternal ? `/jobs/external/${job.slug}` : `/jobs/${job.slug}`;
+
     return (
-        <Card className="bg-navy-light border-gold/8 hover:border-gold/20 hover:shadow-2xl hover:shadow-gold/5 transition-all duration-300 group overflow-hidden relative hover:border-l-gold/40 hover:border-l-2">
-            {/* Match Score Strip (If logged in and score exists) */}
-            {isLoggedIn && matchScore && (
+        <Card className={`bg-navy-light border-gold/8 hover:border-gold/20 hover:shadow-2xl hover:shadow-gold/5 transition-all duration-300 group overflow-hidden relative hover:border-l-gold/40 hover:border-l-2 ${isExternal ? 'border-l-blue-500/20' : ''}`}>
+            {/* External Badge */}
+            {isExternal && (
+                <div className="absolute top-0 start-0 bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-be-xl shadow-md z-10 flex items-center gap-1">
+                    <Globe className="h-3 w-3" />
+                    {platformLabels[sourcePlatform || ''] || sourcePlatform || 'خارجي'}
+                </div>
+            )}
+            {/* Match Score Strip (If logged in, not external, and score exists) */}
+            {!isExternal && isLoggedIn && matchScore && (
                 <div className="absolute top-0 start-0 bg-gold text-navy text-xs font-bold px-3 py-1 rounded-be-xl shadow-md z-10 flex items-center gap-1">
                     <Zap className="h-3 w-3 fill-current" />
                     {matchScore}% مطابقة
@@ -106,15 +143,15 @@ export function JobCard({ job, isLoggedIn = false, isSaved = false }: JobCardPro
                 <div className="flex flex-col sm:flex-row items-start gap-5">
                     
                     {/* Company Logo */}
-                    <div className="w-16 h-16 rounded-2xl bg-navy/80 flex items-center justify-center flex-shrink-0 border border-gold/10 group-hover:border-gold/25 transition-all duration-300 shadow-inner">
-                        {job.companies?.logo_url ? (
+                    <div className={`w-16 h-16 rounded-2xl bg-navy/80 flex items-center justify-center flex-shrink-0 border ${isExternal ? 'border-blue-500/20 group-hover:border-blue-500/40' : 'border-gold/10 group-hover:border-gold/25'} transition-all duration-300 shadow-inner`}>
+                        {(isExternal ? job.company_logo_url : job.companies?.logo_url) ? (
                             <img
-                                src={job.companies.logo_url}
-                                alt={job.companies.name}
+                                src={isExternal ? job.company_logo_url : job.companies.logo_url}
+                                alt={isExternal ? job.company_name : job.companies.name}
                                 className="w-full h-full object-cover rounded-xl"
                             />
                         ) : (
-                            <Building2 className="h-8 w-8 text-cream-dark/30" />
+                            <Building2 className={`h-8 w-8 ${isExternal ? 'text-blue-400/30' : 'text-cream-dark/30'}`} />
                         )}
                     </div>
 
@@ -122,7 +159,7 @@ export function JobCard({ job, isLoggedIn = false, isSaved = false }: JobCardPro
                     <div className="flex-1 min-w-0 w-full">
                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mt-1 sm:mt-0">
                             <div>
-                                <Link href={`/jobs/${job.slug}`} className="block group/title">
+                                <Link href={jobDetailUrl} className="block group/title">
                                     <div className="flex items-center gap-2 mb-1.5">
                                         <h3 className="text-xl font-bold text-cream group-hover/title:text-gold transition-colors line-clamp-1">
                                             {job.title}
@@ -134,7 +171,10 @@ export function JobCard({ job, isLoggedIn = false, isSaved = false }: JobCardPro
                                         )}
                                     </div>
                                     <p className="text-cream-dark/50 text-base font-medium mb-3">
-                                        {job.is_confidential ? 'شركة سرية' : job.companies?.name}
+                                        {isExternal
+                                            ? (job.company_name || 'شركة خارجية')
+                                            : (job.is_confidential ? 'شركة سرية' : job.companies?.name)
+                                        }
                                     </p>
                                 </Link>
                                 
@@ -161,37 +201,67 @@ export function JobCard({ job, isLoggedIn = false, isSaved = false }: JobCardPro
                             {/* Actions & Competition */}
                             <div className="flex flex-col items-start sm:items-end gap-3 min-w-[200px]">
                                 <div className="flex items-center gap-2 w-full sm:w-auto">
-                                    <Button 
-                                        variant="outline" 
-                                        size="icon" 
-                                        onClick={handleSaveToggle}
-                                        disabled={isLoading}
-                                        className={`h-10 w-10 shrink-0 transition-colors border-gold/15 ${
-                                            saved 
-                                                ? 'text-rose-500 border-rose-500 bg-rose-500/10' 
-                                                : 'text-cream-dark/40 hover:text-rose-500 hover:border-rose-500 hover:bg-rose-500/10'
-                                        }`}
-                                    >
-                                        <Heart className={`h-5 w-5 ${saved ? 'fill-current' : ''}`} />
-                                    </Button>
-                                    <Link href={`/jobs/${job.slug}`} className="flex-1 sm:flex-initial">
-                                        <Button className="w-full h-10 bg-gold text-navy hover:bg-gold-dark font-bold shadow-sm">
-                                            تقدم الآن
-                                            <ChevronLeft className="ms-1 h-4 w-4" />
+                                    {/* Save button — only for internal jobs */}
+                                    {!isExternal && (
+                                        <Button 
+                                            variant="outline" 
+                                            size="icon" 
+                                            onClick={handleSaveToggle}
+                                            disabled={isLoading}
+                                            className={`h-10 w-10 shrink-0 transition-colors border-gold/15 ${
+                                                saved 
+                                                    ? 'text-rose-500 border-rose-500 bg-rose-500/10' 
+                                                    : 'text-cream-dark/40 hover:text-rose-500 hover:border-rose-500 hover:bg-rose-500/10'
+                                            }`}
+                                        >
+                                            <Heart className={`h-5 w-5 ${saved ? 'fill-current' : ''}`} />
                                         </Button>
-                                    </Link>
+                                    )}
+                                    
+                                    {/* Apply button — different behavior for external vs internal */}
+                                    {isExternal ? (
+                                        isPremiumLocked ? (
+                                            <Link href="/pricing" className="flex-1 sm:flex-initial">
+                                                <Button className="w-full h-10 bg-gradient-to-r from-gold to-gold-light text-navy font-bold shadow-sm">
+                                                    <Lock className="me-1 h-4 w-4" />
+                                                    اشترك للتقديم
+                                                </Button>
+                                            </Link>
+                                        ) : (
+                                            <Button
+                                                onClick={handleExternalApply}
+                                                disabled={clickLoading}
+                                                className="flex-1 sm:flex-initial w-full h-10 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold shadow-sm"
+                                            >
+                                                <ExternalLink className="me-1 h-4 w-4" />
+                                                تقدم على الموقع
+                                            </Button>
+                                        )
+                                    ) : (
+                                        <Link href={`/jobs/${job.slug}`} className="flex-1 sm:flex-initial">
+                                            <Button className="w-full h-10 bg-gold text-navy hover:bg-gold-dark font-bold shadow-sm">
+                                                تقدم الآن
+                                                <ChevronLeft className="ms-1 h-4 w-4" />
+                                            </Button>
+                                        </Link>
+                                    )}
                                 </div>
 
                                 <div className="w-full bg-navy/60 rounded-xl p-2.5 border border-gold/8 backdrop-blur-sm">
                                     <div className="flex items-center justify-between text-xs text-cream-dark/40 mb-1.5">
                                         <span className="flex items-center gap-1">
-                                            <Users className="h-3 w-3" />
-                                            {applicantsCount} متقدم
+                                            {isExternal ? (
+                                                <><Globe className="h-3 w-3" />{applicantsCount} نقرة</>
+                                            ) : (
+                                                <><Users className="h-3 w-3" />{applicantsCount} متقدم</>
+                                            )}
                                         </span>
                                     </div>
-                                    <div className={`text-xs font-semibold px-2 py-1 rounded border inline-block ${competitionColor}`}>
-                                        منافسة {competitionLevel}
-                                    </div>
+                                    {!isExternal && (
+                                        <div className={`text-xs font-semibold px-2 py-1 rounded border inline-block ${competitionColor}`}>
+                                            منافسة {competitionLevel}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
