@@ -1,9 +1,9 @@
 # 📋 GrowthNexus — Master Plan
 
-> **Last Updated:** 12 May 2026 — 02:18 AM
-> **Current Phase: 10 (Integration, Security & Launch)**
-> **Completed: 9 of 12 phases (Phase 10 at ~70%)**
-> **Source of Truth:** `full.sql` + GitNexus (2065 symbols, 111 flows)
+> **Last Updated:** 12 May 2026 — 09:10 PM
+> **Current Phase: 10–11 (Integration + B2C Backend)**
+> **Completed: 9 of 12 phases + Phase 11 backend done (Phase 10 at ~70%, Phase 11 at ~40%)**
+> **Source of Truth:** `full.sql` + GitNexus (2304 symbols, 120 flows)
 
 ---
 
@@ -136,13 +136,19 @@ GrowthNexus is an **AI Recruitment Operating System** for the UAE market, servin
 - [ ] API: `GET /api/trust-score/:userId`
 
 ### 10.4 Remaining N8N Workflows
-| # | Workflow | Priority | Description |
-|---|---------|----------|-------------|
-| 12 | Contract Notifications | 🔴 High | ✅ **Published on n8n** — workflow imported and active |
-| 7 | Smart Matching | 🟡 Medium | AI ranks best candidates from talent pool |
-| 6 | App Notification | 🟢 Low | Add email/Telegram node to existing workflow |
-| 8 | Message Notification | 🟢 Low | Chat message notifications (`/api/conversations/start` trigger) |
-| 9 | Payment Verification | 🟡 Medium | Stripe webhook fulfillment |
+| # | Workflow | Priority | Status | Description |
+|---|---------|----------|--------|-------------|
+| 12 | Contract Notifications | 🔴 High | ✅ **Published** | Workflow imported and active on n8n |
+| 13 | CV Parse | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-cv-parse` |
+| 14 | CV Optimize | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-cv-optimize` |
+| 15 | CV Create | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-cv-create` |
+| 16 | CV ATS Convert | 🔴 High | API ✅ / n8n pending | **BUILD NEW** → `gn-cv-ats-convert` |
+| 17 | CV Finalize | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-cv-finalize` |
+| 18 | Email Send | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-email-send` |
+| 19 | External Jobs Scraper | 🟡 Medium | API ✅ / n8n pending | LinkedIn/Bayt/Indeed scraper |
+| 7 | Smart Matching | 🟡 Medium | Pending | AI ranks best candidates |
+| 8 | Message Notification | 🟢 Low | Pending | Chat message notifications |
+| 9 | Payment Verification | 🟡 Medium | Pending | Stripe webhook fulfillment |
 
 ### 10.5 Security Hardening
 - [ ] Change `N8N_WEBHOOK_SECRET` from default value to strong production key
@@ -157,6 +163,7 @@ GrowthNexus is an **AI Recruitment Operating System** for the UAE market, servin
 
 - [x] **Smart Candidate Suggestions** — employer dashboard shows hardcoded candidates → replace with real DB query + match scoring
 - [x] **AI Match Score Enhancement** — add real skill matching (Jaccard similarity), experience compatibility, salary alignment, weighted composite score
+- [x] **External Jobs Aggregator** — separate `external_jobs` table, upsert API, admin panel, merged feed, click tracking, access level gating 🆕
 - [ ] **Landing Page Builder** — pages exist (list + new) → enhance with full CRUD editor, preview, custom branding
 
 ### 10.7 Stripe Production Readiness
@@ -173,12 +180,32 @@ GrowthNexus is an **AI Recruitment Operating System** for the UAE market, servin
 
 Based on the business strategy doc (منصة التوظيف), launch in order:
 
-### Phase 11.1 — Starter Pack
-| Service | Price | Status | Details |
+### ✅ Phase 11.0 — CV Services Backend (DONE 12 May 2026)
+| Artifact | Type | Status |
+|----------|------|--------|
+| `20260513000000_cv_services.sql` | Migration | ✅ Written + added to `full.sql` |
+| `cv_sessions` table | DB | ✅ session_type, input_mode, language, linked_to_profile |
+| `cv_chat_messages` table | DB | ✅ sender (user/ai/system), metadata JSONB |
+| `profiles.credits_cv` | Column | ✅ Dual credits model |
+| `cv_link_to_profile()` | RPC | ✅ User-initiated profile update |
+| `deduct_cv_credits()` | RPC | ✅ credits_cv → credits_balance fallback |
+| `src/types/cv.ts` | Types | ✅ 12 interfaces from cv-editor-maker-website |
+| `/api/cv/parse` | API | ✅ n8n proxy |
+| `/api/cv/optimize` | API | ✅ n8n proxy + session ownership |
+| `/api/cv/create` | API | ✅ n8n proxy |
+| `/api/cv/ats-convert` | API | ✅ n8n proxy (NEW workflow) |
+| `/api/cv/finalize` | API | ✅ n8n proxy |
+| `/api/cv/link-profile` | API | ✅ User-initiated CV → profile link |
+| `/api/notifications/email` | API | ✅ Generic n8n SMTP sender |
+| `.env.local` | Config | ✅ 6 new webhook URLs (#13–#18) |
+| `N8N_CV_WORKFLOW_REUSE_GUIDE.md` | Guide | ✅ Copy/modify instructions for 6 workflows |
+
+### Phase 11.1 — CV Services Frontend (Pending)
+| Service | Route | Status | Details |
 |---------|-------|--------|---------|
-| CV Analyzer | 25 AED one-time | ❌ Not Started | Deep AI analysis, ATS score, keyword optimization, formatting tips |
-| CV Builder | 39 AED one-time | ❌ Not Started | 3-5 templates, drag-drop sections, live preview, PDF export |
-| Interview AI (Candidate) | 39 AED/month | ❌ Not Started | Already built for employer flow — adapt for candidate self-practice |
+| CV Optimizer | `/candidate/cv-optimizer` | ❌ UI pending (API ready) | Split-screen: PDF preview + AI chat, language selector |
+| CV Builder | `/candidate/cv-builder` | ❌ UI pending (API ready) | 3 tabs: Build from Scratch / Upload ATS / Paste ATS |
+| Interview AI (Candidate) | TBD | ❌ Not Started | Adapt employer interview flow for self-practice |
 
 ### Phase 11.2 — Growth Pack
 | Service | Price | Status | Details |
@@ -290,7 +317,7 @@ UI requirements noted:
 
 ## Database Schema (from full.sql — ALL APPLIED)
 
-### Core Tables (14 total)
+### Core Tables (15 total, incl. external_jobs)
 | Table | Purpose | RLS |
 |-------|---------|-----|
 | `profiles` | User identity, roles, credits | ✅ |
@@ -298,6 +325,7 @@ UI requirements noted:
 | `candidates` | CV, skills, UAE fields (12 columns), views | ✅ |
 | `jobs` | Listings, search_vector, status, skills | ✅ |
 | `applications` | Pipeline (7 statuses), interview data, match score | ✅ |
+| `external_jobs` | Scraped jobs from LinkedIn/Bayt/Indeed + access_level + click tracking | ✅ 🆕 |
 | `saved_jobs` | Candidate bookmarks | ✅ |
 | `saved_candidates` | Employer bookmarks | ✅ |
 | `conversations` | Chat system (unread counts) | ✅ |
@@ -317,7 +345,7 @@ UI requirements noted:
 ### Views
 - `public_jobs_view` — Secure view with confidentiality logic + Arabic entity type
 
-### Functions/RPCs (8)
+### Functions/RPCs (14)
 | Function | Purpose |
 |----------|---------|
 | `upsert_private_candidate` | Guest user CV submission (with auth_user_id) |
@@ -325,13 +353,15 @@ UI requirements noted:
 | `increment_landing_page_views` | Atomic view counter |
 | `increment_candidate_views` | Profile view counter |
 | `increment_job_views` | Job view counter |
-| `calculate_match_score` | Skill-based matching (% score) |
+| `calculate_match_score` | Composite matching (45% skills + 25% exp + 15% salary + 15% location) |
 | `save_interview_result` | Bypass RLS for candidate interview saves |
 | `get_user_company` | Returns company for user (owner OR member) |
 | `create_notification` | Insert notification via SECURITY DEFINER |
 | `update_updated_at_column` | Auto-timestamp trigger |
 | `update_unread_counts` | Messaging unread counter trigger |
 | `update_job_applicants_count` | Auto-count applications per job |
+| `increment_external_job_clicks` | Track Apply redirects on external jobs 🆕 |
+| `increment_external_job_views` | Track detail page views on external jobs 🆕 |
 
 ### Indexes (20+)
 All critical columns indexed: job status, company, applications, candidates, search vector, notifications (unread), contracts, emiratisation.
@@ -373,6 +403,8 @@ All critical columns indexed: job status, company, applications, candidates, sea
 - [ ] CDN configuration for static assets
 - [ ] CRON_SECRET set in Vercel
 - [ ] N8N_WEBHOOK_SECRET changed from default
+- [ ] External jobs SQL migration applied (`20260512100000_external_jobs.sql`)
+- [ ] n8n external jobs scraper workflow built and active
 
 ---
 
@@ -389,10 +421,11 @@ All critical columns indexed: job status, company, applications, candidates, sea
 3. ~~10.4 (Contract notify n8n publish)~~ ✅ Done
 4. 10.5 (Security hardening) — production requirement
 5. ~~10.6 (AI enhancement / mock replacement)~~ ✅ Done (12 May)
-6. 10.7 (Stripe production) — monetization
-7. 10.3b (Company verification OCR) — trust & compliance
-8. 12.x (i18n + SEO + testing) — launch polish
-9. 11.x (B2C services) — revenue expansion
+6. ~~10.6b (External Jobs Aggregator)~~ ✅ Done (12 May) — n8n scraper workflow still needed
+7. 10.7 (Stripe production) — monetization
+8. 10.3b (Company verification OCR) — trust & compliance
+9. 12.x (i18n + SEO + testing) — launch polish
+10. 11.x (B2C services) — revenue expansion
 
 ---
 

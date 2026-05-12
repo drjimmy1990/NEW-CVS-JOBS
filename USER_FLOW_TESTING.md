@@ -1,7 +1,7 @@
 # 🔄 GrowthNexus — User Flow Testing Guide
 
-> **Last Updated:** 12 May 2026 — 02:18 AM
-> **Source of Truth:** GitNexus (2065 symbols, 111 flows) + `full.sql` (23 tables, 12 RPCs)
+> **Last Updated:** 12 May 2026 — 08:30 PM
+> **Source of Truth:** GitNexus (2304 symbols, 120 flows) + `full.sql` (24 tables, 14 RPCs)
 > **Instructions:** Test each flow in order. Mark ✅ for working, ❌ for broken.
 > Items marked 🔗 use **n8n webhooks** — they work with mock data if n8n is offline.
 > Items marked 🔒 require **company verification** — only verified employers can access.
@@ -330,6 +330,8 @@ UPDATE profiles SET role = 'admin' WHERE email = 'your@email.com';
 | 10 | Company Verification | `/webhook/gn-company-verify` | Trade license OCR | ✅ |
 | 11 | Committee Summary | `/webhook/gn-committee-summary` | Panel evaluation | ✅ |
 | 12 | Contract Notifications | (direct fetch) | Contract lifecycle | ✅ |
+| 13 | Contract Generation | `/webhook/gn-contract-gen` | Contract PDF | 🔧 Code Ready |
+| 14 | External Jobs Import | `/api/external-jobs` | Scraped job import | 🔧 Code Ready 🆕 |
 
 > **Note:** All webhooks work with mock/fallback data when n8n is offline.
 
@@ -447,3 +449,69 @@ Dashboard server query:
 | `company_documents` | Employer own + admin | trade licenses, status |
 | `company_verification_log`| Employer read + admin | tracking admin approvals and status changes |
 | `company_blacklist` | Admin only | blocked domains and licenses |
+| `external_jobs` | Anon(public) + Auth(all levels) | scraped jobs, source_platform, access_level, clicks/views 🆕 |
+
+---
+
+## Flow 20: External Jobs Aggregator 🌐
+
+> **Added:** 12 May 2026 — Tests the external jobs import, display, and management flow
+
+### 20.1 API Import (n8n → GrowthNexus)
+
+| # | Step | Expected | Result |
+|---|------|----------|--------|
+| 1 | POST `/api/external-jobs` without secret | 401 Unauthorized | |
+| 2 | POST with valid secret + 1 job | `{"success": true, "imported": 1}` | |
+| 3 | POST same job again (same `external_id` + `source_platform`) | `{"updated": 1}` (upsert, no duplicate) | |
+| 4 | POST with missing `title` or `source_url` | Error in `errors[]` array | |
+| 5 | POST batch of 5 jobs | `{"imported": 5, "total": 5}` | |
+
+### 20.2 Public Display (/jobs Feed)
+
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|--------|
+| 1 | Visit `/jobs` as anonymous | `/jobs` | External jobs appear every 5th card with blue badge | |
+| 2 | Blue badge shows source platform | | e.g., "LinkedIn", "Bayt.com" | |
+| 3 | Filter sidebar: select "LinkedIn" | | Only LinkedIn external jobs + all internal jobs | |
+| 4 | Filter sidebar: select "من المنصة فقط" | | Only internal platform jobs | |
+| 5 | Click external job card | | Opens `/jobs/external/[slug]` detail page | |
+
+### 20.3 External Job Detail Page
+
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|--------|
+| 1 | View external job detail | `/jobs/external/[slug]` | Full job description, company info, source badge | |
+| 2 | Click "تقدم على الموقع" (Apply) | | Opens `source_url` in new tab | |
+| 3 | Click tracking increments | | `clicks_count` +1 via RPC | |
+| 4 | Premium job (not logged in) | | "اشترك للتقديم" → redirects to `/pricing` | |
+
+### 20.4 Admin Management
+
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|--------|
+| 1 | Navigate to admin panel | `/admin/external-jobs` | List of all external jobs | |
+| 2 | Filter by platform | | Shows only selected platform's jobs | |
+| 3 | Toggle access level (public → premium) | | Job now shows lock icon for non-subscribers | |
+| 4 | Toggle active/inactive | | Inactive jobs hidden from `/jobs` feed | |
+| 5 | Toggle featured | | Featured jobs appear first in feed | |
+| 6 | Delete job | | Job removed from database | |
+
+### 20.5 Access Level Gating
+
+| # | Step | Expected | Result |
+|---|------|----------|--------|
+| 1 | `access_level = 'public'` + anonymous user | Job visible + Apply button works | |
+| 2 | `access_level = 'registered'` + anonymous user | Job NOT visible (hidden by RLS) | |
+| 3 | `access_level = 'registered'` + logged-in user | Job visible + Apply button works | |
+| 4 | `access_level = 'premium'` + any user | Job visible but Apply locked + "اشترك" CTA | |
+
+### Key Details
+
+- **Source:** `external_jobs` table (separate from `jobs`)
+- **Auth:** `N8N_WEBHOOK_SECRET` header or body field
+- **Dedup:** `UNIQUE(source_platform, external_id)` prevents duplicates
+- **Merge:** External jobs interleaved every 5th position in `/jobs` feed
+- **Tracking:** `increment_external_job_clicks` + `increment_external_job_views` RPCs
+- **Admin:** Full CRUD at `/admin/external-jobs`
+- **Guide:** See `N8N_EXTERNAL_JOBS_WORKFLOW_GUIDE.md` for n8n build instructions

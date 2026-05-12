@@ -1,10 +1,10 @@
 # 📊 GrowthNexus — Progress Report
 
-> **Last Updated:** 12 May 2026 — 01:00 AM
-> **Overall Completion: ~89%** (core platform + verification enforcement done, B2C services + polish remaining)
+> **Last Updated:** 12 May 2026 — 09:10 PM
+> **Overall Completion: ~95%** (core + verification + external jobs + CV services backend done, B2C UI + n8n wiring remaining)
 > **Repo:** `https://github.com/drjimmy1990/NEW-CVS-JOBS`
 > **Live Site:** `https://jobs-test.uae4jobs.ae`
-> **GitNexus:** 2065 symbols, 111 execution flows (indexed at commit `f99777f`)
+> **GitNexus:** 2304 symbols, 120 execution flows (indexed at commit `202a73a`)
 
 ---
 
@@ -18,7 +18,7 @@
 | AI Automation | n8n Webhooks → Google Gemini |
 | Payments | Stripe (Checkout + Portal + Webhook) |
 | Deployment | aaPanel VPS + PM2 + Nginx Reverse Proxy |
-| Code Intelligence | GitNexus (2065 symbols, 111 execution flows) |
+| Code Intelligence | GitNexus (2304 symbols, 120 execution flows) |
 
 ---
 
@@ -36,8 +36,8 @@
 | 7 | n8n Guides & AI APIs | ✅ Done | 100% |
 | 8 | Stripe + Interview AI + Committee Evaluation | ✅ Done | 100% |
 | 9 | Contract, Compliance & Team | ✅ Done | 100% |
-| 10 | Integration, Security & Launch | 🔧 In Progress | ~55% |
-| 11 | B2C Candidate Services | ❌ Not Started | 0% |
+| 10 | Integration, Security & Launch | 🔧 In Progress | ~70% |
+| 11 | B2C Candidate Services | 🔧 In Progress | ~40% (backend done, UI pending) |
 | 12 | i18n, SEO & Launch Polish | ❌ Not Started | 0% |
 
 ---
@@ -62,6 +62,9 @@
 | **Forecasting** | — | ✅ Complete | Live DB metrics, 7 KPIs, predictions widget |
 | **Contracts** | — | ✅ Complete | Generate, track, candidate portal, PDF, cron |
 | **Notifications** | — | ✅ Complete | In-app bell, application notify, DB table |
+| **External Jobs** | — | ✅ Complete | Scraped jobs from LinkedIn/Bayt/Indeed, admin panel, merged feed, click tracking |
+| **CV Services** | — | 🔧 Backend Done | 7 API routes, 2 tables, 2 RPCs, 12 types, 6 n8n webhooks configured 🆕 |
+| **Email** | — | 🔧 Backend Done | Generic n8n SMTP sender, `/api/notifications/email` 🆕 |
 
 ---
 
@@ -76,6 +79,7 @@
 | Company Profile | `/company/[slug]` | ✅ |
 | Pricing Plans | `/pricing` | ✅ |
 | Apply via Landing Page | `/apply/[token]` | ✅ |
+| External Job Detail | `/jobs/external/[slug]` | ✅ 🆕 |
 
 ### Candidate Dashboard (9 pages)
 | Page | Route | Status |
@@ -93,8 +97,8 @@
 ### Candidate — Not Built Yet (Phase 11)
 | Page | Route | Status |
 |------|-------|--------|
-| CV Builder | `/candidate/cv/builder` | ❌ Phase 11 |
-| CV Analyzer | `/candidate/cv/analyze` | ❌ Phase 11 |
+| CV Optimizer | `/candidate/cv-optimizer` | ❌ Phase 11 (API ready ✅) |
+| CV Builder | `/candidate/cv-builder` | ❌ Phase 11 (API ready ✅) |
 | Career Path | `/candidate/career-path` | ❌ Phase 11 |
 | Job Alerts | `/candidate/job-alerts` | ❌ Phase 11 |
 
@@ -128,6 +132,7 @@
 | Jobs | `/admin/jobs` | ✅ |
 | Transactions | `/admin/transactions` | ✅ |
 | System Config | `/admin/config` | ✅ |
+| External Jobs | `/admin/external-jobs` | ✅ 🆕 |
 
 ---
 
@@ -157,6 +162,8 @@
 | `/api/emiratisation/profile` | GET/POST | ✅ |
 | `/api/emiratisation/export` | GET | ✅ |
 | `/api/team` | GET/POST/DELETE | ✅ |
+| `/api/external-jobs` | GET/POST | ✅ 🆕 (upsert import + list) |
+| `/api/external-jobs/[id]/click` | POST | ✅ 🆕 (click tracking) |
 
 ---
 
@@ -176,8 +183,10 @@
 | 10 | Company Verification | ✅ Done | Webhook → Download → Gemini OCR → Decision Engine → 3× Supabase |
 | 11 | Committee Summary | ✅ Done | Gemini → Respond |
 | 12 | Contract Notifications | ✅ Done | Workflow imported and activated on n8n |
+| 13 | Contract Generation | 🔧 Code Ready | API works, optional n8n PDF enhancement |
+| 14 | External Jobs Import | 🔧 Code Ready | API + admin + UI done. **n8n scraper workflow needed** 🆕 |
 
-### Summary: 7 Done, 2 Partial/Code Ready, 3 Not Started
+### Summary: 8 Done, 3 Code Ready, 3 Not Started
 
 > **See `webhooks_status.md` for full details**
 
@@ -246,10 +255,31 @@
 
 ---
 
+## External Jobs Aggregator ✅ COMPLETE (12 May 2026) 🆕
+
+> **Purpose:** Ingest scraped jobs from LinkedIn/Bayt/Indeed into the platform for users to browse and redirect-apply
+
+| Component | Status |
+|-----------|--------|
+| `external_jobs` table | ✅ Separate from internal `jobs` |
+| Access levels | ✅ `public` / `registered` / `premium` |
+| RLS policies | ✅ Anonymous sees public, auth sees all |
+| Upsert API | ✅ `POST /api/external-jobs` (dedup via `source_platform` + `external_id`) |
+| Click tracking | ✅ `POST /api/external-jobs/[id]/click` |
+| Admin panel | ✅ `/admin/external-jobs` (CRUD, toggle, filters) |
+| Main feed merge | ✅ Interleaved every 5th card on `/jobs` |
+| Source filter | ✅ Sidebar filter: All / Platform / LinkedIn / Bayt / etc. |
+| Blue badge | ✅ Source platform badge on job cards |
+| Premium lock | ✅ "اشترك للتقديم" CTA for premium jobs |
+| Detail page | ✅ `/jobs/external/[slug]` |
+| n8n scraper | ❌ Needs workflow. See `N8N_EXTERNAL_JOBS_WORKFLOW_GUIDE.md` |
+
+---
+
 ## Database Schema (from full.sql — Source of Truth)
 
-### Tables (23)
-`profiles` · `companies` · `candidates` · `jobs` · `applications` · `saved_jobs` · `saved_candidates` · `conversations` · `messages` · `landing_pages` · `transactions` · `system_config` · `committee_evaluations` · `contract_templates` · `contracts` · `emiratisation_profiles` · `emiratisation_audit_log` · `company_members` · `notifications` · `cv_unlocks` · `company_documents` · `company_blacklist` · `company_verification_log`
+### Tables (24)
+`profiles` · `companies` · `candidates` · `jobs` · `applications` · `saved_jobs` · `saved_candidates` · `conversations` · `messages` · `landing_pages` · `transactions` · `system_config` · `committee_evaluations` · `contract_templates` · `contracts` · `emiratisation_profiles` · `emiratisation_audit_log` · `company_members` · `notifications` · `cv_unlocks` · `company_documents` · `company_blacklist` · `company_verification_log` · `external_jobs` 🆕
 
 ### Enums (4)
 `user_role` (candidate/employer/admin) · `job_type` (5 values) · `job_status` (5 values incl. paused) · `app_status` (6 values incl. offer) · `candidate_type_enum` (emirati/resident) · `company_type_enum` (3 values)
@@ -257,8 +287,8 @@
 ### Views (1)
 `public_jobs_view` — Secure view with Arabic confidentiality labels (جهة حكومية / شبه حكومية / خاصة)
 
-### Functions/RPCs (12)
-`upsert_private_candidate` · `get_or_create_private_job` · `increment_landing_page_views` · `increment_candidate_views` · `increment_job_views` · `calculate_match_score` · `save_interview_result` · `get_user_company` · `create_notification` · `update_updated_at_column` · `update_unread_counts` · `update_job_applicants_count`
+### Functions/RPCs (14)
+`upsert_private_candidate` · `get_or_create_private_job` · `increment_landing_page_views` · `increment_candidate_views` · `increment_job_views` · `calculate_match_score` · `save_interview_result` · `get_user_company` · `create_notification` · `update_updated_at_column` · `update_unread_counts` · `update_job_applicants_count` · `increment_external_job_clicks` 🆕 · `increment_external_job_views` 🆕
 
 ### Migrations (14 — ALL IN full.sql)
 | Migration | Status |
@@ -277,15 +307,17 @@
 | `20260511000000_emiratisation_module.sql` | ✅ In full.sql |
 | `20260511100000_contracts_tracking.sql` | ✅ In full.sql |
 | `ai_analysis.sql` | ✅ In full.sql |
+| 15 | `20260512000000_enhanced_match_score.sql` | ✅ In full.sql 🆕 |
+| 16 | `20260512100000_external_jobs.sql` | ✅ In full.sql 🆕 |
 | RLS infinite recursion fix | ✅ In full.sql (at end) |
 
-> **Note:** `full.sql` is the canonical source of truth. Every query the user has executed is recorded there. All 14 migration files + RLS fixes are included.
+> **Note:** `full.sql` is the canonical source of truth. Every query the user has executed is recorded there. All 16 migration files + RLS fixes are included.
 
 ---
 
 ## What's Done vs What Remains
 
-### ✅ Completed (Core Platform ~87%)
+### ✅ Completed (Core Platform ~91%)
 
 | Area | Status |
 |------|--------|
@@ -329,6 +361,14 @@
 | — Auto-create company bypass removed | ✅ |
 | — All companies default to `under_review` | ✅ |
 | — Server-side API protection (conversations) | ✅ |
+| **External Jobs Aggregator** (12 May 2026) | ✅ 🆕 |
+| — `external_jobs` table + RLS + RPCs | ✅ |
+| — Upsert API: `POST /api/external-jobs` | ✅ |
+| — Click tracking: `POST /api/external-jobs/[id]/click` | ✅ |
+| — Admin management panel: `/admin/external-jobs` | ✅ |
+| — Merged into `/jobs` feed with source filter | ✅ |
+| — Job card blue badge + redirect Apply + premium lock | ✅ |
+| — Detail page: `/jobs/external/[slug]` | ✅ |
 
 ### ⏳ Still Needed (~13%)
 
@@ -355,6 +395,7 @@
 | **SEO (sitemap, OG, structured data)** | 🟠 Phase 12 | 12 |
 | **E2E tests (Playwright)** | 🟠 Phase 12 | 12 |
 | **n8n remaining workflows (4)** | 🟢 Low | 10 |
+| **n8n external jobs scraper** | 🔴 High | 10 |
 
 ---
 

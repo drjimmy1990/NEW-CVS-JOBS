@@ -1,6 +1,6 @@
 # 🔌 GrowthNexus — N8N Webhooks Status
 
-> **Last Updated:** 12 May 2026 — 02:18 AM
+> **Last Updated:** 12 May 2026 — 08:30 PM
 
 ## Legend
 - ✅ **Done** = n8n workflow built + frontend code connected + tested
@@ -25,6 +25,7 @@
 | 11 | **Committee Summary** | `/gn-committee-summary` | ✅ Done | Webhook → Gemini → Code cleanup → Respond. Auto-triggers when 2+ evaluators submit |
 | 12 | **Contract Notifications** | Direct fetch via `contract-notify.ts` | ✅ Done | 4 events: created / sent / signed / declined. S2S auth via `N8N_WEBHOOK_SECRET`. Blueprint: `n8n-contract-notify-workflow.json`. |
 | 13 | **Contract Generation** | `/gn-contract-gen` | 🔧 Code Ready | API route at `/api/contracts/generate` works end-to-end. PDF via `/api/contracts/pdf/[id]`. **Optional: n8n workflow for HTML→PDF if needed** |
+| 14 | **External Jobs Import** | `/api/external-jobs` | 🔧 Code Ready | Upsert API for scraped jobs (LinkedIn/Bayt/Indeed). S2S auth via `N8N_WEBHOOK_SECRET`. Admin panel at `/admin/external-jobs`. **Needs: n8n scraper workflow** |
 
 ---
 
@@ -33,7 +34,7 @@
 | Status | Count |
 |--------|-------|
 | ✅ Done | 8 |
-| ⚠️ Partial / Code Ready | 2 |
+| ⚠️ Partial / Code Ready | 3 |
 | ❌ Not Started | 3 |
 
 ## Where Results Appear
@@ -46,21 +47,26 @@
 | **Notification** | — | 🔔 Bell icon in top bar with unread count + dropdown |
 | **Committee** | — | Summary auto-saved to `applications.committee_summary` after 2+ evaluators |
 | **Contract Notify** | Email on contract sent / reminder | Email on contract signed / declined |
+| **External Jobs** | Blue badge on `/jobs` page, source attribution, redirect Apply | Admin panel at `/admin/external-jobs` for management |
 | **Contract PDF** | `/candidate/contracts/[id]` — download PDF | `/employer/contracts/track` — download PDF |
 
 ## Next To Build (Priority Order)
 
-### 1. Smart Candidate Matching (#7) — HIGH VALUE
+### 1. External Jobs Scraper (#14) — HIGH VALUE 🆕
+Build n8n scraper workflow for LinkedIn/Bayt/Indeed → `/api/external-jobs`.
+See: `N8N_EXTERNAL_JOBS_WORKFLOW_GUIDE.md`
+
+### 2. Smart Candidate Matching (#7) — HIGH VALUE
 Employer can search their candidate pool and AI ranks best matches for a job.
 
-### ~~2. Company Verification (#10)~~ ✅ DONE
+### ~~3. Company Verification (#10)~~ ✅ DONE
 ~~OCR trade license, extract company data, calculate trust score.~~
 
-### 3. Payment Verification (#9) — MONETIZATION
+### 4. Payment Verification (#9) — MONETIZATION
 Stripe/EdfaPay webhook to fulfill subscriptions and credits.
 
-### 4. Application Notification (#6) — FINISH
+### 5. Application Notification (#6) — FINISH
 Add Email/Telegram send node in existing n8n workflow.
 
-### 5. Message Notification (#8) — NICE TO HAVE
+### 6. Message Notification (#8) — NICE TO HAVE
 Chat message notifications.

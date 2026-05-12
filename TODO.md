@@ -1,8 +1,8 @@
 # 📋 GrowthNexus — Remaining TODO
 
 > **Created:** 12 May 2026
-> **Overall Completion: ~91%** — Core platform + verification + OCR workflow done
-> **What Remains:** Phase 10 completion (~45% left), Phase 11 (B2C), Phase 12 (i18n/SEO/QA), Phase 13 (Enterprise)
+> **Overall Completion: ~95%** — Core platform + verification + OCR + External Jobs + CV Services backend done
+> **What Remains:** Phase 10 security (~20% left), Phase 11 UI + n8n wiring, Phase 12 (i18n/SEO/QA), Phase 13 (Enterprise)
 
 ---
 
@@ -74,6 +74,18 @@
   - [x] Location preference matching
   - [x] Composite weighted score
 
+#### ✅ External Jobs Aggregator — DONE (12 May 2026) 🆕
+- [x] `external_jobs` table (separate from internal `jobs`)
+- [x] Access level gating: `public` / `registered` / `premium`
+- [x] RLS policies (anonymous sees public only, auth sees all levels)
+- [x] Upsert API: `POST /api/external-jobs` (n8n import with dedup)
+- [x] Click tracking: `POST /api/external-jobs/[id]/click`
+- [x] Admin management panel: `/admin/external-jobs`
+- [x] Job card integration (blue badge, redirect Apply, premium lock)
+- [x] Merged into main `/jobs` feed with source filter
+- [x] External job detail page: `/jobs/external/[slug]`
+- [ ] **n8n scraper workflow** — See `N8N_EXTERNAL_JOBS_WORKFLOW_GUIDE.md`
+
 #### Landing Page Builder Enhancement
 - [ ] Full CRUD editor (edit/delete, not just create)
 - [ ] Preview mode before publishing
@@ -89,44 +101,63 @@
 - [ ] Refund handling flow
 - [ ] Credit-based system enforcement (deduct credits on job post/CV unlock)
 
-### Email Service Integration
-- [ ] Choose provider: Resend or SendGrid
-- [ ] Integrate transactional emails:
-  - [ ] Registration confirmation
-  - [ ] Password reset
-  - [ ] Application notifications (to employer)
-  - [ ] Contract status changes (to candidate)
-  - [ ] Interview invitation
-  - [ ] Team member invitation
-- [ ] Email templates (Arabic + English)
+### ✅ Email Service Integration — DONE (12 May 2026) via n8n
+- [x] Provider: n8n SMTP workflow (`gn-email-send`) — reused from cv-editor-maker-website
+- [x] API route: `POST /api/notifications/email`
+- [x] Supports all notification types (application, contract, message, CV ready)
+- [ ] Email templates (Arabic + English) — to be built in n8n
+- [ ] Registration confirmation email
+- [ ] Password reset email
 
 ### Remaining n8n Workflows
-| # | Workflow | Priority | Description |
-|---|---------|----------|-------------|
-| 7 | Smart Matching | 🟡 Medium | AI ranks best candidates from talent pool |
-| 8 | Message Notification | 🟢 Low | Chat message push notifications |
-| 9 | Payment Verification | 🟡 Medium | Stripe webhook fulfillment validation |
-| 6 | App Notification (enhance) | 🟢 Low | Add email/Telegram to existing workflow |
+| # | Workflow | Priority | Status | Description |
+|---|---------|----------|--------|-------------|
+| 13 | CV Parse | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-cv-parse` |
+| 14 | CV Optimize | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-cv-optimize` |
+| 15 | CV Create | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-cv-create` |
+| 16 | CV ATS Convert | 🔴 High | API ✅ / n8n pending | **BUILD NEW** → `gn-cv-ats-convert` |
+| 17 | CV Finalize | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-cv-finalize` |
+| 18 | Email Send | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-email-send` |
+| 19 | External Jobs Scraper | 🟡 Medium | Pending | LinkedIn/Bayt/Indeed → `/api/external-jobs` |
+| 7 | Smart Matching | 🟡 Medium | Pending | AI ranks best candidates from talent pool |
+| 8 | Message Notification | 🟢 Low | Pending | Chat message push notifications |
+| 9 | Payment Verification | 🟡 Medium | Pending | Stripe webhook fulfillment validation |
 
 ---
 
 ## 🟠 PHASE 11 — B2C Candidate Services (Revenue Expansion)
 
-### 11.1 Starter Pack
-- [ ] **CV Analyzer** (25 AED one-time)
-  - [ ] Page: `/candidate/cv/analyze`
-  - [ ] Deep AI analysis, ATS compatibility score
-  - [ ] Keyword optimization suggestions
-  - [ ] Formatting tips and fix recommendations
-  - [ ] Payment gate (Stripe one-time charge)
+### ✅ 11.0 CV Services Backend — DONE (12 May 2026)
+- [x] Migration: `cv_sessions` + `cv_chat_messages` tables
+- [x] Migration: `profiles.credits_cv` column (dual credits model)
+- [x] RPC: `cv_link_to_profile()` — user-initiated profile linking
+- [x] RPC: `deduct_cv_credits()` — checks credits_cv first, falls back to credits_balance
+- [x] System config: `cv_services_free_mode` = true (testing), pricing toggles
+- [x] Types: `src/types/cv.ts` (12 interfaces from cv-editor-maker-website)
+- [x] API: `POST /api/cv/parse` → n8n proxy
+- [x] API: `POST /api/cv/optimize` → n8n proxy + session ownership
+- [x] API: `POST /api/cv/create` → n8n proxy
+- [x] API: `POST /api/cv/ats-convert` → n8n proxy (NEW workflow)
+- [x] API: `POST /api/cv/finalize` → n8n proxy
+- [x] API: `POST /api/cv/link-profile` → user-initiated CV → profile link
+- [x] .env.local: 6 new webhook URLs (#13–#18)
+- [x] Guide: `N8N_CV_WORKFLOW_REUSE_GUIDE.md` (copy + modify instructions)
 
-- [ ] **CV Builder** (39 AED one-time)
-  - [ ] Page: `/candidate/cv/builder`
-  - [ ] 3–5 professional templates
-  - [ ] Drag-and-drop section ordering
-  - [ ] Live preview with template switching
-  - [ ] PDF export with Arabic font support
-  - [ ] Payment gate
+### 11.1 CV Services Frontend (Pending)
+- [ ] **CV Optimizer** Page: `/candidate/cv-optimizer`
+  - [ ] Split-screen: PDF preview (left) + AI chat (right)
+  - [ ] Language selector: EN / AR / Bilingual
+  - [ ] Quick actions: "Optimize for ATS", "Improve Keywords"
+  - [ ] Session persistence from Supabase
+  - [ ] "Use this CV on my profile" button (user-initiated link)
+
+- [ ] **CV Builder** Page: `/candidate/cv-builder`
+  - [ ] **Tab 1: Build from Scratch** — Dynamic form (CvData)
+  - [ ] **Tab 2: Upload & Convert** — Upload PDF → ATS-ready (gn-cv-ats-convert)
+  - [ ] **Tab 3: Paste & Convert** — Paste text → ATS-ready (gn-cv-ats-convert)
+  - [ ] Shared language selector: EN / AR / Bilingual
+  - [ ] "Use this CV on my profile" button
+  - [ ] CV history panel (past sessions)
 
 - [ ] **Interview AI (Candidate Self-Practice)** (39 AED/month)
   - [ ] Adapt existing employer interview flow for candidate self-service
@@ -233,6 +264,8 @@
 - [ ] `N8N_WEBHOOK_SECRET` changed from default
 - [ ] `N8N_CONTRACT_NOTIFY_WEBHOOK` set and workflow activated
 - [ ] Test all 18 user flows from `USER_FLOW_TESTING.md`
+- [ ] External jobs table created in Supabase (`20260512100000_external_jobs.sql`)
+- [ ] n8n external jobs scraper workflow built and active
 
 ---
 
