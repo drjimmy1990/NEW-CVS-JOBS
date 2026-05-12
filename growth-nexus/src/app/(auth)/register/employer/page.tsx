@@ -222,7 +222,7 @@ export default function EmployerRegistrationWizard() {
             <RegistrationStepper currentStep={currentStep} completedSteps={completedSteps} />
 
             {/* Wizard Card */}
-            <div className="bg-navy-dark border border-gold/20 rounded-2xl p-6 md:p-8 shadow-xl shadow-navy-darker relative overflow-hidden">
+            <div className="bg-navy-dark border border-gold/20 rounded-2xl p-6 md:p-10 shadow-xl shadow-navy-dark/50 relative overflow-hidden">
                 
                 {/* Background Decoration */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-gold/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
@@ -236,7 +236,7 @@ export default function EmployerRegistrationWizard() {
                     )}
 
                     {/* Step Content */}
-                    <div className="min-h-[300px]">
+                    <div className="min-h-[400px]">
                         {currentStep === 1 && <AccountDataStep data={formData} updateData={updateFormData} />}
                         {currentStep === 2 && <EntityTypeStep data={formData} updateData={updateFormData} />}
                         {currentStep === 3 && <IndustryStep data={formData} updateData={updateFormData} />}

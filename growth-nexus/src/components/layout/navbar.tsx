@@ -52,10 +52,10 @@ export function Navbar() {
   };
 
   return (
-    <header className="border-b border-gold/10 bg-navy/80 backdrop-blur-xl sticky top-0 z-50">
+    <header className="border-b border-gold/8 bg-navy/90 backdrop-blur-xl sticky top-0 z-50 shadow-lg shadow-navy/30">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-gold to-gold-light flex items-center justify-center">
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-gold to-gold-light flex items-center justify-center shadow-md shadow-gold/20">
             <span className="text-lg font-bold text-navy">G</span>
           </div>
           <span className="text-xl font-bold text-cream tracking-tight">GrowthNexus</span>

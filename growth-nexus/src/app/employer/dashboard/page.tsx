@@ -250,7 +250,7 @@ export default async function EmployerDashboard() {
             {/* Stats Grid (6 metrics) */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 {stats.map((stat) => (
-                    <Card key={stat.title} className="bg-navy-light border-gold/10">
+                    <Card key={stat.title} className="bg-navy-light/80 border-gold/8 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-gold/5 transition-all duration-300">
                         <CardContent className="p-5">
                             <div className={`p-2.5 rounded-xl ${stat.bgColor} w-fit mb-3`}>
                                 <stat.icon className={`h-5 w-5 ${stat.color}`} />
@@ -265,7 +265,7 @@ export default async function EmployerDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Left Column: Job Performance Table */}
                 <div className="lg:col-span-2 space-y-8">
-                    <Card className="bg-navy-light border-gold/10">
+                    <Card className="bg-navy-light/80 border-gold/8">
                         <CardHeader className="flex flex-row items-center justify-between pb-3">
                             <CardTitle className="text-cream flex items-center gap-2">
                                 <BarChart3 className="h-5 w-5 text-gold" />
@@ -358,7 +358,7 @@ export default async function EmployerDashboard() {
                 {/* Right Column: Smart Candidate Suggestions + Quick Actions */}
                 <div className="space-y-6">
                     {/* Smart Candidate Suggestions */}
-                    <Card className="bg-navy-light border-gold/10">
+                    <Card className="bg-navy-light/80 border-gold/8">
                         <CardHeader className="pb-3">
                             <CardTitle className="text-cream text-base flex items-center gap-2">
                                 <Sparkles className="h-5 w-5 text-gold" />
@@ -368,7 +368,7 @@ export default async function EmployerDashboard() {
                         <CardContent className="space-y-4">
                             {suggestedCandidates.length > 0 ? (
                                 suggestedCandidates.map(candidate => (
-                                    <div key={candidate.id} className="p-3 rounded-xl border border-gold/10 bg-navy/50 hover:border-gold/20 transition-colors group">
+                                    <div key={candidate.id} className="p-3 rounded-xl border border-gold/8 bg-navy/40 hover:border-gold/20 hover:bg-navy/60 transition-all duration-200 group">
                                         <div className="flex items-start justify-between mb-2">
                                             <div>
                                                 <p className="text-cream font-medium text-sm">{candidate.name}</p>

@@ -93,7 +93,7 @@ export function JobCard({ job, isLoggedIn = false, isSaved = false }: JobCardPro
     };
 
     return (
-        <Card className="bg-navy-light border-gold/10 hover:border-gold/20 hover:shadow-xl hover:shadow-navy/50 transition-all group overflow-hidden relative">
+        <Card className="bg-navy-light border-gold/8 hover:border-gold/20 hover:shadow-2xl hover:shadow-gold/5 transition-all duration-300 group overflow-hidden relative hover:border-l-gold/40 hover:border-l-2">
             {/* Match Score Strip (If logged in and score exists) */}
             {isLoggedIn && matchScore && (
                 <div className="absolute top-0 start-0 bg-gold text-navy text-xs font-bold px-3 py-1 rounded-be-xl shadow-md z-10 flex items-center gap-1">
@@ -106,7 +106,7 @@ export function JobCard({ job, isLoggedIn = false, isSaved = false }: JobCardPro
                 <div className="flex flex-col sm:flex-row items-start gap-5">
                     
                     {/* Company Logo */}
-                    <div className="w-16 h-16 rounded-xl bg-navy flex items-center justify-center flex-shrink-0 border border-gold/15 group-hover:border-gold/30 transition-colors">
+                    <div className="w-16 h-16 rounded-2xl bg-navy/80 flex items-center justify-center flex-shrink-0 border border-gold/10 group-hover:border-gold/25 transition-all duration-300 shadow-inner">
                         {job.companies?.logo_url ? (
                             <img
                                 src={job.companies.logo_url}
@@ -182,7 +182,7 @@ export function JobCard({ job, isLoggedIn = false, isSaved = false }: JobCardPro
                                     </Link>
                                 </div>
 
-                                <div className="w-full bg-navy rounded-lg p-2.5 border border-gold/10">
+                                <div className="w-full bg-navy/60 rounded-xl p-2.5 border border-gold/8 backdrop-blur-sm">
                                     <div className="flex items-center justify-between text-xs text-cream-dark/40 mb-1.5">
                                         <span className="flex items-center gap-1">
                                             <Users className="h-3 w-3" />

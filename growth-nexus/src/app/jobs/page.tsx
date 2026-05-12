@@ -100,7 +100,9 @@ export default async function JobsPage({ searchParams }: Props) {
         <div className="min-h-screen bg-navy">
 
             {/* Hero Search Section */}
-            <section className="bg-gradient-to-br from-navy-light via-navy to-navy-light py-16 border-b border-gold/10">
+            <section className="bg-gradient-to-br from-navy-light/50 via-navy to-navy-light/30 py-20 border-b border-gold/8 relative overflow-hidden">
+                {/* Decorative orb */}
+                <div className="absolute top-0 right-1/4 w-96 h-96 bg-gold/5 rounded-full blur-[120px]" />
                 <div className="container mx-auto px-4">
                     <div className="text-center mb-8">
                         <h1 className="text-4xl md:text-5xl font-bold text-cream mb-4">
@@ -110,7 +112,7 @@ export default async function JobsPage({ searchParams }: Props) {
 
                     {/* Search Form */}
                     <form className="max-w-5xl mx-auto">
-                        <div className="flex flex-col md:flex-row gap-3 p-2 bg-navy-lighter/80 backdrop-blur-md rounded-2xl border border-gold/15 shadow-2xl shadow-gold/5">
+                        <div className="flex flex-col md:flex-row gap-3 p-2.5 bg-navy-lighter/60 backdrop-blur-lg rounded-2xl border border-gold/12 shadow-2xl shadow-navy/50">
                             <div className="flex-[1.5] relative">
                                 <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-cream-dark/40" />
                                 <Input
@@ -272,7 +274,7 @@ export default async function JobsPage({ searchParams }: Props) {
             </section>
 
             {/* Footer */}
-            <footer className="border-t border-gold/10 py-8 mt-12">
+            <footer className="border-t border-gold/8 py-10 mt-16 bg-navy-dark/20">
                 <div className="container mx-auto px-4 text-center text-cream-dark/40 text-sm">
                     © 2026 GrowthNexus. جميع الحقوق محفوظة.
                 </div>

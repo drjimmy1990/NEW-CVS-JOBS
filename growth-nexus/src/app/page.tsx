@@ -57,11 +57,11 @@ export default function HomePage() {
       <section className="relative overflow-hidden">
         {/* Background Effects */}
         <div className="absolute inset-0">
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-gold/10 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-gold/5 rounded-full blur-3xl" />
+          <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-gold/8 rounded-full blur-[120px] animate-pulse" />
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-success/5 rounded-full blur-[100px]" />
         </div>
 
-        <div className="container mx-auto px-4 py-24 md:py-32 relative">
+        <div className="container mx-auto px-4 py-28 md:py-36 relative">
           <div className="text-center max-w-4xl mx-auto">
             <Badge className="mb-6 bg-gold/10 text-gold border-gold/30">
               <Sparkles className="me-1 h-3 w-3" />
@@ -99,8 +99,8 @@ export default function HomePage() {
       </section>
 
       {/* Stats Section */}
-      <section className="border-y border-gold/10 bg-navy-light/30">
-        <div className="container mx-auto px-4 py-12">
+      <section className="border-y border-gold/10 bg-navy-light/20 backdrop-blur-sm">
+        <div className="container mx-auto px-4 py-16">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {[
               { value: '+10K', label: 'وظيفة نشطة' },
@@ -108,11 +108,11 @@ export default function HomePage() {
               { value: '+5K', label: 'شركة' },
               { value: '95%', label: 'نسبة النجاح' },
             ].map((stat, idx) => (
-              <div key={idx} className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-gold to-gold-light">
+              <div key={idx} className="text-center group">
+                <div className="text-3xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-gold to-gold-light group-hover:from-gold-light group-hover:to-gold transition-all duration-500">
                   {stat.value}
                 </div>
-                <div className="text-cream-dark/60 mt-1">{stat.label}</div>
+                <div className="text-cream-dark/50 mt-2 text-sm tracking-wide">{stat.label}</div>
               </div>
             ))}
           </div>
@@ -194,26 +194,29 @@ export default function HomePage() {
       </section>
 
       {/* Features Section */}
-      <section className="bg-navy-light/30 border-y border-gold/10 py-20">
+      <section className="bg-navy-light/20 border-y border-gold/8 py-24">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
+          <div className="text-center mb-16">
+            <Badge className="mb-4 bg-success/10 text-success border-success/30">
+              لماذا نحن
+            </Badge>
             <h2 className="text-3xl md:text-4xl font-bold text-cream mb-4">
               لماذا تختار GrowthNexus؟
             </h2>
-            <p className="text-cream-dark/60 text-lg max-w-2xl mx-auto">
+            <p className="text-cream-dark/50 text-lg max-w-2xl mx-auto">
               مدعوم بأحدث تقنيات الذكاء الاصطناعي لجعل التوظيف والبحث عن عمل أسهل
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((feature, idx) => (
-              <Card key={idx} className="bg-navy-light/50 border-gold/10 hover:border-gold/25 transition-colors">
-                <CardContent className="p-6">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gold/10 to-gold/5 flex items-center justify-center mb-4">
-                    <feature.icon className="h-6 w-6 text-gold" />
+              <Card key={idx} className="bg-navy-light/40 border-gold/8 hover:border-gold/25 hover:-translate-y-1 transition-all duration-300 group">
+                <CardContent className="p-7">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-gold/15 to-gold/5 flex items-center justify-center mb-5 group-hover:from-gold/25 group-hover:to-gold/10 transition-all duration-300">
+                    <feature.icon className="h-7 w-7 text-gold" />
                   </div>
                   <h3 className="text-lg font-semibold text-cream mb-2">{feature.title}</h3>
-                  <p className="text-cream-dark/50 text-sm">{feature.description}</p>
+                  <p className="text-cream-dark/45 text-sm leading-relaxed">{feature.description}</p>
                 </CardContent>
               </Card>
             ))}
@@ -222,27 +225,27 @@ export default function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="container mx-auto px-4 py-20">
-        <div className="relative rounded-3xl overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-gold to-gold-dark opacity-90" />
-          <div className="absolute inset-0 opacity-20" />
+      <section className="container mx-auto px-4 py-24">
+        <div className="relative rounded-3xl overflow-hidden shadow-2xl shadow-gold/10">
+          <div className="absolute inset-0 bg-gradient-to-br from-gold via-gold-light to-gold-dark" />
+          <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center opacity-10" />
 
-          <div className="relative px-8 py-16 md:py-20 text-center">
-            <h2 className="text-3xl md:text-4xl font-bold text-navy mb-4">
+          <div className="relative px-8 py-20 md:py-24 text-center">
+            <h2 className="text-3xl md:text-5xl font-bold text-navy mb-5">
               مستعد للبدء؟
             </h2>
-            <p className="text-navy/80 text-lg mb-8 max-w-xl mx-auto">
+            <p className="text-navy/70 text-lg mb-10 max-w-xl mx-auto">
               انضم إلى آلاف الشركات والمرشحين الذين يستخدمون GrowthNexus
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/jobs">
-                <Button size="lg" className="w-full sm:w-auto bg-navy text-cream hover:bg-navy-light">
+                <Button size="lg" className="w-full sm:w-auto bg-navy text-cream hover:bg-navy-light shadow-lg shadow-navy/30">
                   <Search className="me-2 h-5 w-5" />
                   ابحث عن وظائف
                 </Button>
               </Link>
               <Link href="/register">
-                <Button size="lg" variant="outline" className="w-full sm:w-auto border-navy text-navy hover:bg-navy/10">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto border-navy/30 text-navy hover:bg-navy/10 backdrop-blur-sm">
                   <Briefcase className="me-2 h-5 w-5" />
                   ابدأ التوظيف
                 </Button>
@@ -253,21 +256,21 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-gold/10 py-12">
+      <footer className="border-t border-gold/8 py-14 bg-navy-dark/30">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-gold to-gold-light flex items-center justify-center">
+              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-gold to-gold-light flex items-center justify-center shadow-md shadow-gold/15">
                 <span className="text-sm font-bold text-navy">G</span>
               </div>
-              <span className="font-bold text-cream">GrowthNexus</span>
+              <span className="font-bold text-cream tracking-tight">GrowthNexus</span>
             </div>
-            <div className="flex items-center gap-6 text-sm text-cream-dark/50">
+            <div className="flex items-center gap-8 text-sm text-cream-dark/40">
               <Link href="/jobs" className="hover:text-gold transition-colors">الوظائف</Link>
               <Link href="/register" className="hover:text-gold transition-colors">أنشر وظيفة</Link>
               <Link href="/login" className="hover:text-gold transition-colors">تسجيل الدخول</Link>
             </div>
-            <div className="text-sm text-cream-dark/40">
+            <div className="text-sm text-cream-dark/30">
               © 2026 GrowthNexus. جميع الحقوق محفوظة.
             </div>
           </div>

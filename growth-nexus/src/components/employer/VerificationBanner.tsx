@@ -62,7 +62,7 @@ export function VerificationBanner({ status, notes, isRecruitmentAgency }: Verif
     }
 
     return (
-        <div className={`mx-8 mt-6 mb-2 p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center gap-4 shadow-sm ${colorClass}`}>
+        <div className={`mx-8 mt-6 mb-2 p-5 rounded-2xl border border-l-4 flex flex-col sm:flex-row items-start sm:items-center gap-4 shadow-md ${colorClass}`}>
             <div className="p-2 rounded-full bg-white/5">
                 {icon}
             </div>

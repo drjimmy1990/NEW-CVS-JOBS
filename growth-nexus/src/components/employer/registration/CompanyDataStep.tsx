@@ -5,7 +5,7 @@ import { UAE_CITIES } from '@/lib/types'
 
 export function CompanyDataStep({ data, updateData }: any) {
     return (
-        <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+        <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
             <h2 className="text-xl font-bold text-cream mb-4 sticky top-0 bg-navy-dark pt-2 pb-4 z-10">بيانات الشركة</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
