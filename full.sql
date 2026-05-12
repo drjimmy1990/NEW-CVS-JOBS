@@ -2837,45 +2837,57 @@ ADD COLUMN IF NOT EXISTS credits_cv INTEGER DEFAULT 0;
 CREATE TABLE IF NOT EXISTS public.cv_sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-    
-    -- Session classification
-    session_type TEXT DEFAULT 'optimize' 
-      CHECK (session_type IN ('optimize', 'create', 'ats_convert')),
-    input_mode TEXT DEFAULT 'upload' 
-      CHECK (input_mode IN ('upload', 'form', 'paste')),
-    language TEXT DEFAULT 'en' 
-      CHECK (language IN ('en', 'ar', 'bilingual')),
-    
-    -- Status lifecycle
-    status TEXT DEFAULT 'active' 
-      CHECK (status IN ('active', 'processing', 'ready', 'downloaded', 'archived')),
-    
-    -- File URLs
-    original_pdf_url TEXT,
-    latest_draft_url TEXT,
-    final_pdf_url TEXT,
-    
-    -- Content
-    text_content TEXT,
-    form_data JSONB,
-    parsed_data JSONB,
-    
-    -- Profile linking (user-initiated, NOT automatic)
-    linked_to_profile BOOLEAN DEFAULT false,
-    linked_at TIMESTAMPTZ,
-    
-    -- Metadata
-    created_at TIMESTAMPTZ DEFAULT now()
-);
+
+-- Session classification
+session_type TEXT DEFAULT 'optimize' CHECK (
+    session_type IN (
+        'optimize',
+        'create',
+        'ats_convert'
+    )
+),
+input_mode TEXT DEFAULT 'upload' CHECK (
+    input_mode IN ('upload', 'form', 'paste')
+),
+language TEXT DEFAULT 'en' CHECK (
+    language IN ('en', 'ar', 'bilingual')
+),
+
+-- Status lifecycle
+status TEXT DEFAULT 'active' CHECK (
+    status IN (
+        'active',
+        'processing',
+        'ready',
+        'downloaded',
+        'archived'
+    )
+),
+
+-- File URLs
+original_pdf_url TEXT,
+latest_draft_url TEXT,
+final_pdf_url TEXT,
+
+-- Content
+text_content TEXT, form_data JSONB, parsed_data JSONB,
+
+-- Profile linking (user-initiated, NOT automatic)
+linked_to_profile BOOLEAN DEFAULT false, linked_at TIMESTAMPTZ,
+
+-- Metadata
+created_at TIMESTAMPTZ DEFAULT now() );
 
 -- ==========================================
 -- CV CHAT MESSAGES TABLE
 -- ==========================================
 
 CREATE TABLE IF NOT EXISTS public.cv_chat_messages (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    session_id UUID REFERENCES public.cv_sessions(id) ON DELETE CASCADE NOT NULL,
-    sender TEXT CHECK (sender IN ('user', 'ai', 'system')) NOT NULL,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
+    session_id UUID REFERENCES public.cv_sessions (id) ON DELETE CASCADE NOT NULL,
+    sender TEXT CHECK (
+        sender IN ('user', 'ai', 'system')
+    ) NOT NULL,
     content TEXT NOT NULL,
     metadata JSONB,
     created_at TIMESTAMPTZ DEFAULT now()
@@ -2885,50 +2897,78 @@ CREATE TABLE IF NOT EXISTS public.cv_chat_messages (
 -- INDEXES
 -- ==========================================
 
-CREATE INDEX IF NOT EXISTS idx_cv_sessions_user ON public.cv_sessions(user_id);
-CREATE INDEX IF NOT EXISTS idx_cv_sessions_status ON public.cv_sessions(status);
-CREATE INDEX IF NOT EXISTS idx_cv_chat_session ON public.cv_chat_messages(session_id);
-CREATE INDEX IF NOT EXISTS idx_cv_chat_created ON public.cv_chat_messages(created_at);
+CREATE INDEX IF NOT EXISTS idx_cv_sessions_user ON public.cv_sessions (user_id);
+
+CREATE INDEX IF NOT EXISTS idx_cv_sessions_status ON public.cv_sessions (status);
+
+CREATE INDEX IF NOT EXISTS idx_cv_chat_session ON public.cv_chat_messages (session_id);
+
+CREATE INDEX IF NOT EXISTS idx_cv_chat_created ON public.cv_chat_messages (created_at);
 
 -- ==========================================
 -- ROW LEVEL SECURITY
 -- ==========================================
 
 ALTER TABLE public.cv_sessions ENABLE ROW LEVEL SECURITY;
+
 ALTER TABLE public.cv_chat_messages ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view own cv sessions" ON public.cv_sessions 
-  FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can insert own cv sessions" ON public.cv_sessions 
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update own cv sessions" ON public.cv_sessions 
-  FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can view own cv sessions" ON public.cv_sessions FOR
+SELECT USING (auth.uid () = user_id);
 
-CREATE POLICY "Users can view own cv chat" ON public.cv_chat_messages 
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM public.cv_sessions 
-      WHERE cv_sessions.id = cv_chat_messages.session_id 
-      AND cv_sessions.user_id = auth.uid()
-    )
-  );
-CREATE POLICY "Users can insert own cv chat" ON public.cv_chat_messages 
-  FOR INSERT WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.cv_sessions 
-      WHERE cv_sessions.id = cv_chat_messages.session_id 
-      AND cv_sessions.user_id = auth.uid()
-    )
-  );
+CREATE POLICY "Users can insert own cv sessions" ON public.cv_sessions FOR
+INSERT
+WITH
+    CHECK (auth.uid () = user_id);
 
-CREATE POLICY "Admins can view all cv sessions" ON public.cv_sessions 
-  FOR SELECT USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-  );
-CREATE POLICY "Admins can view all cv chat" ON public.cv_chat_messages 
-  FOR SELECT USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-  );
+CREATE POLICY "Users can update own cv sessions" ON public.cv_sessions FOR
+UPDATE USING (auth.uid () = user_id);
+
+CREATE POLICY "Users can view own cv chat" ON public.cv_chat_messages FOR
+SELECT USING (
+        EXISTS (
+            SELECT 1
+            FROM public.cv_sessions
+            WHERE
+                cv_sessions.id = cv_chat_messages.session_id
+                AND cv_sessions.user_id = auth.uid ()
+        )
+    );
+
+CREATE POLICY "Users can insert own cv chat" ON public.cv_chat_messages FOR
+INSERT
+WITH
+    CHECK (
+        EXISTS (
+            SELECT 1
+            FROM public.cv_sessions
+            WHERE
+                cv_sessions.id = cv_chat_messages.session_id
+                AND cv_sessions.user_id = auth.uid ()
+        )
+    );
+
+CREATE POLICY "Admins can view all cv sessions" ON public.cv_sessions FOR
+SELECT USING (
+        EXISTS (
+            SELECT 1
+            FROM profiles
+            WHERE
+                id = auth.uid ()
+                AND role = 'admin'
+        )
+    );
+
+CREATE POLICY "Admins can view all cv chat" ON public.cv_chat_messages FOR
+SELECT USING (
+        EXISTS (
+            SELECT 1
+            FROM profiles
+            WHERE
+                id = auth.uid ()
+                AND role = 'admin'
+        )
+    );
 
 -- ==========================================
 -- LINK CV TO PROFILE (User-Initiated)
@@ -3020,12 +3060,80 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- SYSTEM CONFIG — CV Service Settings
 -- ==========================================
 
-INSERT INTO public.system_config (key, value, description, group_name) VALUES
-  ('cv_services_enabled', 'true', 'Master toggle for CV Builder/Optimizer', 'cv_services'),
-  ('cv_services_free_mode', 'true', 'If true, skip credit checks (for testing)', 'cv_services'),
-  ('cv_optimize_cost', '1', 'Credits per CV optimization session', 'cv_services'),
-  ('cv_create_cost', '1', 'Credits per CV creation', 'cv_services'),
-  ('cv_ats_convert_cost', '1', 'Credits per ATS conversion', 'cv_services')
-ON CONFLICT (key) DO NOTHING;
+INSERT INTO
+    public.system_config (
+        key,
+        value,
+        description,
+        group_name
+    )
+VALUES (
+        'cv_services_enabled',
+        'true',
+        'Master toggle for CV Builder/Optimizer',
+        'cv_services'
+    ),
+    (
+        'cv_services_free_mode',
+        'true',
+        'If true, skip credit checks (for testing)',
+        'cv_services'
+    ),
+    (
+        'cv_optimize_cost',
+        '1',
+        'Credits per CV optimization session',
+        'cv_services'
+    ),
+    (
+        'cv_create_cost',
+        '1',
+        'Credits per CV creation',
+        'cv_services'
+    ),
+    (
+        'cv_ats_convert_cost',
+        '1',
+        'Credits per ATS conversion',
+        'cv_services'
+    ) ON CONFLICT (key) DO NOTHING;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================
+-- GrowthNexus: Candidate Contracts RLS Policy
+-- Allows candidates to read/update their own contracts
+-- Run this in Supabase SQL Editor
+-- ============================================
+
+-- 1. Candidate can VIEW contracts linked to their applications
+CREATE POLICY "Candidates can view own contracts" ON public.contracts FOR
+SELECT USING (
+        application_id IN (
+            SELECT id
+            FROM public.applications
+            WHERE
+                candidate_id = auth.uid ()
+        )
+    );
+
+-- 2. Candidate can UPDATE contract status (sign/decline only)
+-- This allows the candidate to change status to 'viewed', 'signed', or 'declined'
+CREATE POLICY "Candidates can update own contract status" ON public.contracts FOR
+UPDATE USING (
+    application_id IN (
+        SELECT id
+        FROM public.applications
+        WHERE
+            candidate_id = auth.uid ()
+    )
+)
+WITH
+    CHECK (
+        -- Candidates can only set these specific statuses
+        status IN (
+            'viewed',
+            'signed',
+            'declined'
+        )
+    );

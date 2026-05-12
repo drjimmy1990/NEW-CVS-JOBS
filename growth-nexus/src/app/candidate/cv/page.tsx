@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import Link from 'next/link'
 import {
     Upload,
     FileText,
@@ -16,7 +17,11 @@ import {
     Sparkles,
     Download,
     Trash2,
-    Brain
+    Brain,
+    PenTool,
+    FileCheck,
+    ArrowLeft,
+    Zap,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -208,13 +213,53 @@ export default function CVPage() {
         )
     }
 
+    // --- CV Services Cards ---
+    const services = [
+        {
+            title: 'محسّن السيرة الذاتية',
+            description: 'حسّن سيرتك الذاتية عبر الدردشة مع مساعد الذكاء الاصطناعي. ارفع PDF وتحدث مع المساعد لتحسين المحتوى والتصميم.',
+            icon: Sparkles,
+            gradient: 'from-purple-500/20 to-gold/10',
+            borderColor: 'border-purple-500/30',
+            iconBg: 'bg-purple-500/20',
+            iconColor: 'text-purple-400',
+            href: '/candidate/cv/optimize',
+            cta: 'ابدأ التحسين',
+            badge: 'AI',
+        },
+        {
+            title: 'منشئ السيرة الذاتية',
+            description: 'أنشئ سيرة ذاتية احترافية من الصفر أو من ملف موجود. نموذج شامل مع كل الأقسام.',
+            icon: PenTool,
+            gradient: 'from-gold/15 to-gold/5',
+            borderColor: 'border-gold/30',
+            iconBg: 'bg-gold/20',
+            iconColor: 'text-gold',
+            href: '/candidate/cv/builder',
+            cta: 'أنشئ سيرة جديدة',
+            badge: null,
+        },
+        {
+            title: 'محوّل ATS',
+            description: 'حوّل سيرتك الذاتية لتكون متوافقة مع أنظمة تتبع المتقدمين. ارفع PDF أو الصق النص.',
+            icon: FileCheck,
+            gradient: 'from-emerald-500/15 to-emerald-500/5',
+            borderColor: 'border-emerald-500/30',
+            iconBg: 'bg-emerald-500/20',
+            iconColor: 'text-emerald-400',
+            href: '/candidate/cv/ats',
+            cta: 'حوّل الآن',
+            badge: 'ATS',
+        },
+    ]
+
     return (
         <div className="max-w-6xl mx-auto">
             {/* Header */}
             <div className="mb-8">
                 <h1 className="text-3xl font-bold text-cream">سيرتي الذاتية</h1>
                 <p className="text-cream-dark/50 mt-1">
-                    ارفع سيرتك الذاتية للاستخراج الذكي للمهارات وإدارة ملفك
+                    ارفع سيرتك الذاتية واستخدم أدوات الذكاء الاصطناعي لتحسينها
                 </p>
             </div>
 
@@ -227,7 +272,7 @@ export default function CVPage() {
                 <CardHeader>
                     <CardTitle className="text-cream flex items-center gap-2">
                         <FileText className="h-5 w-5 text-gold" />
-                        رفع السيرة الذاتية
+                        السيرة الذاتية الحالية
                     </CardTitle>
                     <CardDescription className="text-cream-dark/40">
                         ارفع ملف PDF (حد أقصى 10 ميجابايت). سيقوم الذكاء الاصطناعي باستخراج مهاراتك تلقائياً.
@@ -407,6 +452,38 @@ export default function CVPage() {
                     </CardContent>
                 </Card>
             )}
+
+            {/* AI Services Grid */}
+            <div>
+                <h2 className="text-lg font-bold text-cream mb-4 flex items-center gap-2">
+                    <Zap className="h-5 w-5 text-gold" />
+                    خدمات الذكاء الاصطناعي
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {services.map((service) => (
+                        <Link key={service.href} href={service.href}>
+                            <Card className={`bg-gradient-to-br ${service.gradient} ${service.borderColor} hover:border-gold/50 transition-all group cursor-pointer h-full`}>
+                                <CardContent className="p-5 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <div className={`p-2.5 rounded-xl ${service.iconBg}`}>
+                                            <service.icon className={`h-5 w-5 ${service.iconColor}`} />
+                                        </div>
+                                        {service.badge && (
+                                            <Badge className="bg-navy-lighter/80 text-cream-dark/60 text-xs">{service.badge}</Badge>
+                                        )}
+                                    </div>
+                                    <h3 className="font-semibold text-cream group-hover:text-gold transition-colors">{service.title}</h3>
+                                    <p className="text-xs text-cream-dark/40 leading-relaxed">{service.description}</p>
+                                    <span className="inline-flex items-center gap-1 text-sm text-gold/70 group-hover:text-gold transition-colors">
+                                        {service.cta}
+                                        <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-1 transition-transform" />
+                                    </span>
+                                </CardContent>
+                            </Card>
+                        </Link>
+                    ))}
+                </div>
+            </div>
 
             {/* Tips */}
             <Card className="bg-navy-light/50 border-gold/10">

@@ -1,9 +1,9 @@
 # 📋 GrowthNexus — Master Plan
 
-> **Last Updated:** 12 May 2026 — 09:10 PM
+> **Last Updated:** 12 May 2026 — 10:15 PM
 > **Current Phase: 10–11 (Integration + B2C Backend)**
-> **Completed: 9 of 12 phases + Phase 11 backend done (Phase 10 at ~70%, Phase 11 at ~40%)**
-> **Source of Truth:** `full.sql` + GitNexus (2304 symbols, 120 flows)
+> **Completed: 9 of 12 phases + Phase 11 backend done + Contract Pipeline Expansion (Phase 10 at ~75%, Phase 11 at ~40%)**
+> **Source of Truth:** `full.sql` + GitNexus (2504 symbols, 120 flows)
 
 ---
 
@@ -62,7 +62,7 @@ GrowthNexus is an **AI Recruitment Operating System** for the UAE market, servin
 - **PDF generation API** (Arabic font support via `/api/contracts/pdf/[id]`)
 - **Auto-expiry cron** via vercel.json (daily 06:00 UTC)
 - **Contract templates** (MOHRE standard + custom per company)
-- **N8N workflow blueprint** (`n8n-contract-notify-workflow.json`)
+- **N8N contract notifications** — 4 events merged into main `n8n workflow.json` (9 webhook paths total)
 - **Emiratisation module** (profile form, 6-tab dashboard, gauges, PDF export, audit log)
 - **Forecasting Engine** — live Supabase data: 7 KPIs from jobs + applications tables
 - **Team management** — `company_members` table, invite/remove, 4 roles (owner/admin/member/viewer)
@@ -135,10 +135,19 @@ GrowthNexus is an **AI Recruitment Operating System** for the UAE market, servin
 **Tasks Remaining:**
 - [ ] API: `GET /api/trust-score/:userId`
 
+### ✅ 10.4b Contract Workflow Expansion — COMPLETE (12 May 2026) 🆕
+
+**Delivered:**
+- [x] Applicant Kanban expanded from 4 to 7 columns (applied → reviewing → shortlisted → interview → offer → hired → rejected)
+- [x] Offer status interceptor → contract generation dialog (salary, start date, template selection)
+- [x] Candidate contracts RLS via `20260513100000_candidate_contracts_rls.sql`
+- [x] Contract notify merged into main `n8n workflow.json`
+- [x] Horizontal scrollable pipeline board for smaller screens
+
 ### 10.4 Remaining N8N Workflows
 | # | Workflow | Priority | Status | Description |
 |---|---------|----------|--------|-------------|
-| 12 | Contract Notifications | 🔴 High | ✅ **Published** | Workflow imported and active on n8n |
+| 12 | Contract Notifications | 🔴 High | ✅ **Merged** | 4 events via Switch + 4 email templates |
 | 13 | CV Parse | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-cv-parse` |
 | 14 | CV Optimize | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-cv-optimize` |
 | 15 | CV Create | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-cv-create` |

@@ -299,16 +299,46 @@ export default async function CandidateDashboard() {
                                     <Eye className="h-5 w-5 text-gold" />
                                     ظهور الملف الشخصي
                                 </div>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                  <input type="checkbox" className="sr-only peer" defaultChecked />
-                                  <div className="w-11 h-6 bg-navy-lighter peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:end-[2px] after:bg-white after:border-cream-dark/30 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-success"></div>
-                                </label>
+                                <div
+                                  style={{
+                                    width: 44,
+                                    height: 24,
+                                    borderRadius: 12,
+                                    backgroundColor: candidate?.is_public !== false ? '#22c55e' : '#334155',
+                                    position: 'relative',
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  <span style={{
+                                    position: 'absolute',
+                                    top: 2,
+                                    width: 20,
+                                    height: 20,
+                                    borderRadius: '50%',
+                                    backgroundColor: 'white',
+                                    transition: 'transform 0.2s',
+                                    ...(candidate?.is_public !== false
+                                      ? { left: 22 }
+                                      : { left: 2 }
+                                    ),
+                                  }} />
+                                </div>
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <p className="text-sm text-cream-dark/50">
-                                اسمح لأصحاب العمل والمجندين بالعثور على ملفك في قاعدة بيانات السير الذاتية.
+                                {candidate?.is_public !== false
+                                  ? 'ملفك مرئي لأصحاب العمل والمجندين في قاعدة بيانات السير الذاتية.'
+                                  : 'ملفك مخفي. لن يظهر في نتائج البحث.'
+                                }
                             </p>
+                            <Link
+                                href="/candidate/settings"
+                                className="inline-flex items-center gap-1.5 mt-3 text-xs text-gold hover:text-gold-light transition-colors"
+                            >
+                                تغيير من الإعدادات
+                                <ChevronLeft className="h-3 w-3" />
+                            </Link>
                         </CardContent>
                     </Card>
 

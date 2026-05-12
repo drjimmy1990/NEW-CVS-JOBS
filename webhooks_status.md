@@ -1,6 +1,6 @@
 # 🔌 GrowthNexus — N8N Webhooks Status
 
-> **Last Updated:** 12 May 2026 — 08:30 PM
+> **Last Updated:** 12 May 2026 — 10:15 PM
 
 ## Legend
 - ✅ **Done** = n8n workflow built + frontend code connected + tested
@@ -23,7 +23,7 @@
 | 9 | **Payment Verification** | `/gn-payment-verify` | ❌ Not Started | Verify Stripe/EdfaPay → fulfill subscription/credits |
 | 10 | **Company Verification** | `/gn-company-verify` | ✅ Done | Webhook → HTTP Download → Gemini OCR → Decision Engine (risk scoring) → 3× Supabase updates (company status, doc OCR data, audit log). Triggered by Supabase DB webhook on `company_documents` INSERT |
 | 11 | **Committee Summary** | `/gn-committee-summary` | ✅ Done | Webhook → Gemini → Code cleanup → Respond. Auto-triggers when 2+ evaluators submit |
-| 12 | **Contract Notifications** | Direct fetch via `contract-notify.ts` | ✅ Done | 4 events: created / sent / signed / declined. S2S auth via `N8N_WEBHOOK_SECRET`. Blueprint: `n8n-contract-notify-workflow.json`. |
+| 12 | **Contract Notifications** | `/gn-contract-notify` | ✅ Done | **Merged into main `n8n workflow.json`**. 4 events: created / sent / signed / declined. Switch node routes to 4 email templates. S2S auth via `N8N_WEBHOOK_SECRET`. |
 | 13 | **Contract Generation** | `/gn-contract-gen` | 🔧 Code Ready | API route at `/api/contracts/generate` works end-to-end. PDF via `/api/contracts/pdf/[id]`. **Optional: n8n workflow for HTML→PDF if needed** |
 | 14 | **External Jobs Import** | `/api/external-jobs` | 🔧 Code Ready | Upsert API for scraped jobs (LinkedIn/Bayt/Indeed). S2S auth via `N8N_WEBHOOK_SECRET`. Admin panel at `/admin/external-jobs`. **Needs: n8n scraper workflow** |
 
@@ -37,6 +37,15 @@
 | ⚠️ Partial / Code Ready | 3 |
 | ❌ Not Started | 3 |
 
+## n8n Workflow JSON Files
+
+| File | Contains | Status |
+|------|----------|--------|
+| `n8n workflow.json` | **Main workflow** — 9 webhook paths (CV Parser, AI Job Desc, Match Score, Interview Q/Eval, Committee, App Notify, Company Verify, **Contract Notify** 🆕) | ✅ Active |
+| `n8n-contract-notify-workflow.json` | ⚠️ **Legacy standalone** — superceded by contract notify nodes in main workflow | 🔄 Merged into main |
+
+> **Note:** Contract notification nodes (Webhook8, Code in JavaScript7, Switch, Send email1–4) are now integrated directly into the main `n8n workflow.json`. The separate `n8n-contract-notify-workflow.json` is no longer needed for import.
+
 ## Where Results Appear
 
 | Feature | Candidate Sees | Employer Sees |
@@ -46,9 +55,18 @@
 | **Interview** | `/candidate/interview/[id]` — questions + results. Button "عرض نتيجة المقابلة" on `/candidate/applications` | Badge "مقابلة 78%" on card + full report in detail modal |
 | **Notification** | — | 🔔 Bell icon in top bar with unread count + dropdown |
 | **Committee** | — | Summary auto-saved to `applications.committee_summary` after 2+ evaluators |
-| **Contract Notify** | Email on contract sent / reminder | Email on contract signed / declined |
+| **Contract Notify** | Email on contract created / sent | Email on contract signed / declined |
 | **External Jobs** | Blue badge on `/jobs` page, source attribution, redirect Apply | Admin panel at `/admin/external-jobs` for management |
 | **Contract PDF** | `/candidate/contracts/[id]` — download PDF | `/employer/contracts/track` — download PDF |
+
+## Contract Notification Events (in main workflow)
+
+| Event | Email To | Subject | Template Color |
+|-------|----------|---------|----------------|
+| `contract_created` | Candidate | عرض وظيفي جديد من {company} — {job} | Gold (#c4a035) |
+| `contract_sent` | Candidate | عقدك جاهز للمراجعة — {company} | Blue (#3b82f6) |
+| `contract_signed` | Employer | 🎉 {candidate} وقّع على العقد — {job} | Green (#22c55e) |
+| `contract_declined` | Employer | ❌ {candidate} رفض العقد — {job} | Red (#ef4444) |
 
 ## Next To Build (Priority Order)
 

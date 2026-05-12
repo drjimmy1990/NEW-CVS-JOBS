@@ -1,10 +1,10 @@
 # 📊 GrowthNexus — Progress Report
 
-> **Last Updated:** 12 May 2026 — 09:10 PM
-> **Overall Completion: ~95%** (core + verification + external jobs + CV services backend done, B2C UI + n8n wiring remaining)
+> **Last Updated:** 12 May 2026 — 10:15 PM
+> **Overall Completion: ~96%** (core + verification + external jobs + CV services backend + pipeline expansion + contract workflow done, B2C UI + n8n wiring remaining)
 > **Repo:** `https://github.com/drjimmy1990/NEW-CVS-JOBS`
 > **Live Site:** `https://jobs-test.uae4jobs.ae`
-> **GitNexus:** 2304 symbols, 120 execution flows (indexed at commit `202a73a`)
+> **GitNexus:** 2504 symbols, 120 execution flows
 
 ---
 
@@ -18,7 +18,7 @@
 | AI Automation | n8n Webhooks → Google Gemini |
 | Payments | Stripe (Checkout + Portal + Webhook) |
 | Deployment | aaPanel VPS + PM2 + Nginx Reverse Proxy |
-| Code Intelligence | GitNexus (2304 symbols, 120 execution flows) |
+| Code Intelligence | GitNexus (2504 symbols, 120 execution flows) |
 
 ---
 
@@ -60,11 +60,12 @@
 | **Companies** | 5 | ✅ Complete | Management, verification status gating, 7-step wizard |
 | **Verification** | 8 | ✅ Complete | Admin approval panel, `company_documents` bucket, audit log, **enforcement gating (11 files)** |
 | **Forecasting** | — | ✅ Complete | Live DB metrics, 7 KPIs, predictions widget |
-| **Contracts** | — | ✅ Complete | Generate, track, candidate portal, PDF, cron |
+| **Contracts** | — | ✅ Complete | Generate, track, candidate portal, PDF, cron, **candidate RLS** 🆕 |
 | **Notifications** | — | ✅ Complete | In-app bell, application notify, DB table |
 | **External Jobs** | — | ✅ Complete | Scraped jobs from LinkedIn/Bayt/Indeed, admin panel, merged feed, click tracking |
-| **CV Services** | — | 🔧 Backend Done | 7 API routes, 2 tables, 2 RPCs, 12 types, 6 n8n webhooks configured 🆕 |
-| **Email** | — | 🔧 Backend Done | Generic n8n SMTP sender, `/api/notifications/email` 🆕 |
+| **Pipeline** | — | ✅ Complete | 7-stage Kanban (applied → reviewing → shortlisted → interview → offer → hired → rejected), **offer interceptor → contract dialog** 🆕 |
+| **CV Services** | — | 🔧 Backend Done | 7 API routes, 2 tables, 2 RPCs, 12 types, 6 n8n webhooks configured |
+| **Email** | — | 🔧 Backend Done | Generic n8n SMTP sender, `/api/notifications/email` |
 
 ---
 
@@ -182,13 +183,14 @@
 | 9 | Payment Verification | ❌ Not Started | Stripe fulfillment |
 | 10 | Company Verification | ✅ Done | Webhook → Download → Gemini OCR → Decision Engine → 3× Supabase |
 | 11 | Committee Summary | ✅ Done | Gemini → Respond |
-| 12 | Contract Notifications | ✅ Done | Workflow imported and activated on n8n |
+| 12 | Contract Notifications | ✅ Done | **Merged into main `n8n workflow.json`** — 4 events with Switch + 4 email templates 🆕 |
 | 13 | Contract Generation | 🔧 Code Ready | API works, optional n8n PDF enhancement |
-| 14 | External Jobs Import | 🔧 Code Ready | API + admin + UI done. **n8n scraper workflow needed** 🆕 |
+| 14 | External Jobs Import | 🔧 Code Ready | API + admin + UI done. **n8n scraper workflow needed** |
 
 ### Summary: 8 Done, 3 Code Ready, 3 Not Started
 
 > **See `webhooks_status.md` for full details**
+> **Note:** Contract notify is now part of the main workflow JSON (9 webhook paths total). The standalone `n8n-contract-notify-workflow.json` is legacy.
 
 ---
 
@@ -278,8 +280,8 @@
 
 ## Database Schema (from full.sql — Source of Truth)
 
-### Tables (24)
-`profiles` · `companies` · `candidates` · `jobs` · `applications` · `saved_jobs` · `saved_candidates` · `conversations` · `messages` · `landing_pages` · `transactions` · `system_config` · `committee_evaluations` · `contract_templates` · `contracts` · `emiratisation_profiles` · `emiratisation_audit_log` · `company_members` · `notifications` · `cv_unlocks` · `company_documents` · `company_blacklist` · `company_verification_log` · `external_jobs` 🆕
+### Tables (26)
+`profiles` · `companies` · `candidates` · `jobs` · `applications` · `saved_jobs` · `saved_candidates` · `conversations` · `messages` · `landing_pages` · `transactions` · `system_config` · `committee_evaluations` · `contract_templates` · `contracts` · `emiratisation_profiles` · `emiratisation_audit_log` · `company_members` · `notifications` · `cv_unlocks` · `company_documents` · `company_blacklist` · `company_verification_log` · `external_jobs` · `cv_sessions` 🆕 · `cv_chat_messages` 🆕
 
 ### Enums (4)
 `user_role` (candidate/employer/admin) · `job_type` (5 values) · `job_status` (5 values incl. paused) · `app_status` (6 values incl. offer) · `candidate_type_enum` (emirati/resident) · `company_type_enum` (3 values)
@@ -290,7 +292,7 @@
 ### Functions/RPCs (14)
 `upsert_private_candidate` · `get_or_create_private_job` · `increment_landing_page_views` · `increment_candidate_views` · `increment_job_views` · `calculate_match_score` · `save_interview_result` · `get_user_company` · `create_notification` · `update_updated_at_column` · `update_unread_counts` · `update_job_applicants_count` · `increment_external_job_clicks` 🆕 · `increment_external_job_views` 🆕
 
-### Migrations (14 — ALL IN full.sql)
+### Migrations (19 — ALL IN full.sql)
 | Migration | Status |
 |-----------|--------|
 | `001_uae_schema_fixes.sql` | ✅ In full.sql |
@@ -307,11 +309,13 @@
 | `20260511000000_emiratisation_module.sql` | ✅ In full.sql |
 | `20260511100000_contracts_tracking.sql` | ✅ In full.sql |
 | `ai_analysis.sql` | ✅ In full.sql |
-| 15 | `20260512000000_enhanced_match_score.sql` | ✅ In full.sql 🆕 |
-| 16 | `20260512100000_external_jobs.sql` | ✅ In full.sql 🆕 |
+| `20260512000000_enhanced_match_score.sql` | ✅ In full.sql |
+| `20260512100000_external_jobs.sql` | ✅ In full.sql |
+| `20260513000000_cv_services.sql` | ✅ In full.sql 🆕 |
+| `20260513100000_candidate_contracts_rls.sql` | ✅ In full.sql 🆕 |
 | RLS infinite recursion fix | ✅ In full.sql (at end) |
 
-> **Note:** `full.sql` is the canonical source of truth. Every query the user has executed is recorded there. All 16 migration files + RLS fixes are included.
+> **Note:** `full.sql` is the canonical source of truth. Every query the user has executed is recorded there. All 19 migration files + RLS fixes are included.
 
 ---
 
@@ -326,7 +330,8 @@
 | Employer dashboard + KPIs | ✅ |
 | Candidate dashboard + profile completion | ✅ |
 | Job CRUD (create/edit/list/detail) | ✅ |
-| Application pipeline (7 statuses) | ✅ |
+| Application pipeline (7 statuses + Kanban board) | ✅ |
+| Applicant Kanban — 7 columns with offer interceptor | ✅ 🆕 |
 | AI interview wizard + scoring | ✅ |
 | Committee evaluation (multi-evaluator) | ✅ |
 | Stripe checkout + webhook + portal | ✅ |
@@ -343,13 +348,14 @@
 | Candidate contract portal | ✅ |
 | Landing pages (list + create + public apply) | ✅ |
 | Pricing page + 3-tier plans | ✅ |
-| 14 SQL migrations (ALL in full.sql) | ✅ |
+| 19 SQL migrations (ALL in full.sql) | ✅ |
 | 20+ shadcn/ui components | ✅ |
 | Responsive RTL design (Arabic-first) | ✅ |
-| 23 DB tables with RLS + indexes | ✅ |
-| 12 RPC functions | ✅ |
+| 26 DB tables with RLS + indexes | ✅ |
+| 16 RPC functions | ✅ |
 | Company Verification Engine | ✅ |
 | RLS infinite recursion fix | ✅ |
+| **Candidate Contracts RLS** (12 May 2026) | ✅ 🆕 |
 | **Verification Enforcement Gating** (12 May 2026) | ✅ |
 | — VerificationContext (shared state) | ✅ |
 | — VerificationLock + VerificationLockServer | ✅ |
@@ -369,6 +375,12 @@
 | — Merged into `/jobs` feed with source filter | ✅ |
 | — Job card blue badge + redirect Apply + premium lock | ✅ |
 | — Detail page: `/jobs/external/[slug]` | ✅ |
+| **Contract Workflow Expansion** (12 May 2026) | ✅ 🆕 |
+| — Contract notify merged into main n8n workflow | ✅ |
+| — Applicant pipeline expanded to 7 Kanban columns | ✅ |
+| — Offer status interceptor → contract generation dialog | ✅ |
+| — Candidate contracts RLS (SELECT + restricted UPDATE) | ✅ |
+| — `20260513100000_candidate_contracts_rls.sql` migration | ✅ |
 
 ### ⏳ Still Needed (~13%)
 
@@ -454,10 +466,11 @@ STRIPE_PRO_PRICE_ID=
 | Issue | Impact | Resolution |
 |-------|--------|------------|
 | `emiratisation_profiles` table empty | Compliance export returns 404 | Use `EmiratisationProfileForm.tsx` to seed data |
-| Contract notify not on n8n | Email notifications won't fire | ✅ Fixed — Workflow imported and active |
+| ~~Contract notify not on n8n~~ | ~~Email notifications won't fire~~ | ✅ Fixed — Merged into main `n8n workflow.json` |
 | `N8N_WEBHOOK_SECRET` = default | Security risk | Change to strong value before production |
 | `CRON_SECRET` not set | Anyone can trigger contract expiry | Set env var in Vercel dashboard |
-| ~~Smart candidate suggestions mock~~ | ~~Dashboard shows hardcoded names~~ | ~~Replace with real DB query~~ ✅ Fixed |
+| ~~Smart candidate suggestions mock~~ | ~~Dashboard shows hardcoded names~~ | ✅ Fixed — real DB query with Jaccard similarity |
+| ~~Candidate can't see contracts~~ | ~~RLS blocks candidate reads~~ | ✅ Fixed — `20260513100000_candidate_contracts_rls.sql` |
 | Multi-language not implemented | Arabic-only UI | Phase 12 work (next-intl) |
 | Stripe in test mode | No real payments | Switch to live keys for production |
-| No email service | Can't send emails | Integrate Resend or SendGrid |
+| No email service | Can't send emails | n8n SMTP configured for contract emails, needs expansion |

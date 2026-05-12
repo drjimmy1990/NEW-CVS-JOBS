@@ -93,12 +93,15 @@ export default async function ApplicantsPage({
     }
 
     // Group by status for kanban
-    const statuses = ['applied', 'reviewing', 'interview', 'shortlisted']
+    const statuses = ['applied', 'reviewing', 'shortlisted', 'interview', 'offer', 'hired', 'rejected']
     const statusConfig: Record<string, { title: string; color: string }> = {
-        applied: { title: 'تم التقديم', color: 'bg-cream-dark/40' },
+        applied: { title: 'لم التقديم', color: 'bg-cream-dark/40' },
         reviewing: { title: 'قيد المراجعة', color: 'bg-blue-500' },
-        interview: { title: 'مقابلة', color: 'bg-gold' },
-        shortlisted: { title: 'القائمة المختصرة', color: 'bg-success' },
+        shortlisted: { title: 'القائمة المختصرة', color: 'bg-emerald-500' },
+        interview: { title: 'مقابلة', color: 'bg-purple-500' },
+        offer: { title: 'عرض وظيفي', color: 'bg-gold' },
+        hired: { title: 'تم التعيين', color: 'bg-green-500' },
+        rejected: { title: 'مرفوض', color: 'bg-red-500' },
     }
 
     const groupedApplications = statuses.map(status => ({
@@ -148,9 +151,10 @@ export default async function ApplicantsPage({
             </div>
 
             {/* Kanban Board */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 min-h-[500px]">
+            <div className="overflow-x-auto pb-4">
+            <div className="flex gap-4 min-w-max">
                 {groupedApplications.map((column) => (
-                    <div key={column.id} className="space-y-4">
+                    <div key={column.id} className="w-[220px] space-y-4 flex-shrink-0">
                         {/* Column Header */}
                         <div className="flex items-center justify-between px-1">
                             <div className="flex items-center gap-2">
@@ -185,6 +189,7 @@ export default async function ApplicantsPage({
                         </div>
                     </div>
                 ))}
+            </div>
             </div>
         </div>
     )

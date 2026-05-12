@@ -1,7 +1,7 @@
 # 📋 GrowthNexus — Remaining TODO
 
 > **Created:** 12 May 2026
-> **Overall Completion: ~95%** — Core platform + verification + OCR + External Jobs + CV Services backend done
+> **Overall Completion: ~96%** — Core platform + verification + OCR + External Jobs + CV Services backend + Contract Pipeline Expansion done
 > **What Remains:** Phase 10 security (~20% left), Phase 11 UI + n8n wiring, Phase 12 (i18n/SEO/QA), Phase 13 (Enterprise)
 
 ---
@@ -19,12 +19,22 @@
 ### ~~10.4 Contract Notifications → Publish on n8n~~ ✅ DONE (12 May 2026)
 
 - [x] Import `n8n-contract-notify-workflow.json` into n8n.asra3.com
+- [x] **Merged contract notify nodes directly into main `n8n workflow.json`** (9 webhook paths total)
 - [x] Activate workflow and test all 4 lifecycle events:
   - [x] `contract_created` event
   - [x] `contract_sent` event
   - [x] `contract_signed` event
   - [x] `contract_declined` event
 - [x] Set `N8N_CONTRACT_NOTIFY_WEBHOOK` env var on server
+
+### ✅ 10.4b Contract Workflow Expansion — DONE (12 May 2026) 🆕
+
+- [x] Expand applicant pipeline from 4 to 7 Kanban columns (`applied` → `reviewing` → `shortlisted` → `interview` → `offer` → `hired` → `rejected`)
+- [x] Offer status interceptor → contract generation dialog (salary, start date, template)
+- [x] Candidate contracts RLS: `20260513100000_candidate_contracts_rls.sql`
+  - [x] SELECT policy: candidate sees own contracts via `application_id` → `auth.uid()`
+  - [x] UPDATE policy: candidate can only set status to `viewed`, `signed`, `declined`
+- [x] Horizontal scroll for pipeline board on smaller screens
 
 ### 10.5 Security Hardening
 - [ ] Change `N8N_WEBHOOK_SECRET` from default value to strong production key

@@ -1,7 +1,7 @@
 # 🔄 GrowthNexus — User Flow Testing Guide
 
-> **Last Updated:** 12 May 2026 — 08:30 PM
-> **Source of Truth:** GitNexus (2304 symbols, 120 flows) + `full.sql` (24 tables, 14 RPCs)
+> **Last Updated:** 12 May 2026 — 10:15 PM
+> **Source of Truth:** GitNexus (2504 symbols, 120 flows) + `full.sql` (26 tables, 16 RPCs)
 > **Instructions:** Test each flow in order. Mark ✅ for working, ❌ for broken.
 > Items marked 🔗 use **n8n webhooks** — they work with mock data if n8n is offline.
 > Items marked 🔒 require **company verification** — only verified employers can access.
@@ -117,16 +117,18 @@
 
 | # | Step | Route | Expected | Result |
 |---|------|-------|----------|--------|
-| 1 | Go to job applicants | `/employer/jobs/[id]/applicants` | Pipeline columns | |
-| 2 | View candidate cards | | Cards in "Applied" column | |
+| 1 | Go to job applicants | `/employer/jobs/[id]/applicants` | 7-column Kanban pipeline | |
+| 2 | View candidate cards | | Cards in "Applied" (تم التقديم) column | |
 | 3 | `applicants_count` auto-calculated | | Trigger updates job count | |
 | 4 | If interviewed, see score badge | | Score number on card | |
-| 5 | Move to "Reviewing" | | Card moves, status updated | |
-| 6 | Move to "Shortlisted" | | Card moves | |
-| 7 | Move to "Rejected" | | **Confirmation popup** | |
-| 8 | Select rejection reason + confirm | | Card moves, `rejection_reason` saved (7 options) | |
-| 9 | Move to "Offer" | | Card moves to offer column | |
-| 10 | Move to "Hired" | | Final status | |
+| 5 | Move to "قيد المراجعة" (Reviewing) | | Card moves, status updated | |
+| 6 | Move to "في القائمة القصيرة" (Shortlisted) | | Card moves | |
+| 7 | Move to "مقابلة" (Interview) | | Card moves | |
+| 8 | Move to "مرفوض" (Rejected) | | **Confirmation popup** | |
+| 9 | Select rejection reason + confirm | | Card moves, `rejection_reason` saved (7 options) | |
+| 10 | Move to "عرض وظيفي" (Offer) | | **Contract generation dialog opens** (salary, start date, template) 🆕 | |
+| 11 | Fill contract details + generate | | Contract created in `contracts` table | |
+| 12 | Move to "تم التعيين" (Hired) | | Final status | |
 
 ---
 
@@ -157,10 +159,10 @@
 | 1 | Move applicant to "Offer" status | | Contract generate button appears | |
 | 2 | Select template (MOHRE or custom) | | Template from `contract_templates` | |
 | 3 | Generate contract | | Contract created in `contracts` table | |
-| 4 | 🔗 `contract_created` n8n event fires | | Event fired ✅ |
+| 4 | 🔗 `contract_created` n8n event fires | | Event fired via main workflow Switch node ✅ |
 | 5 | Go to contract tracking | `/employer/contracts/track` | Contract list loads | |
 | 6 | Send contract to candidate | | Status → "sent", `sent_at` timestamp | |
-| 7 | 🔗 `contract_sent` n8n event fires | | Event fired ✅ |
+| 7 | 🔗 `contract_sent` n8n event fires | | Event fired via main workflow Switch node ✅ |
 | 8 | Download contract PDF | | PDF file downloads (Arabic fonts) | |
 
 ---
@@ -175,10 +177,10 @@
 | 4 | Download PDF | | PDF downloads via `/api/contracts/pdf/[id]` | |
 | 5 | Click "Accept & Sign" | | Confirmation modal | |
 | 6 | Confirm signature | | Status → "signed", `signed_at` set | |
-| 7 | 🔗 `contract_signed` n8n event fires | | Event fired ✅ |
+| 7 | 🔗 `contract_signed` n8n event fires | | Event fired via main workflow Switch node ✅ |
 | 8 | **OR** Click "Decline" | | Reason modal | |
 | 9 | Enter reason + confirm | | Status → "declined", `decline_reason` saved | |
-| 10 | 🔗 `contract_declined` n8n event fires | | Event fired ✅ |
+| 10 | 🔗 `contract_declined` n8n event fires | | Event fired via main workflow Switch node ✅ |
 
 ---
 
@@ -334,6 +336,7 @@ UPDATE profiles SET role = 'admin' WHERE email = 'your@email.com';
 | 14 | External Jobs Import | `/api/external-jobs` | Scraped job import | 🔧 Code Ready 🆕 |
 
 > **Note:** All webhooks work with mock/fallback data when n8n is offline.
+> **Contract notify is now merged into the main `n8n workflow.json`** (9 webhook paths total). The standalone `n8n-contract-notify-workflow.json` is legacy.
 
 ---
 
@@ -440,7 +443,7 @@ Dashboard server query:
 | `system_config` | Non-secret = public | key-value pairs (pricing, cities, nationalities, rejections) |
 | `committee_evaluations` | Evaluator own + employer | scores (JSONB), total_score |
 | `contract_templates` | System + own | html_content, MOHRE default |
-| `contracts` | Company members | status (6 states), salary, sent/signed/declined timestamps |
+| `contracts` | Company members + **candidate RLS** 🆕 | status (6 states), salary, sent/signed/declined timestamps. Candidate: SELECT own + UPDATE to viewed/signed/declined |
 | `emiratisation_profiles` | Company owner/members | 7 workforce fields, MOHRE registration |
 | `emiratisation_audit_log` | Company owner/members | field_name, old_value, new_value |
 | `company_members` | Own rows + owner | role (4 values), status, invited_email |
@@ -449,7 +452,9 @@ Dashboard server query:
 | `company_documents` | Employer own + admin | trade licenses, status |
 | `company_verification_log`| Employer read + admin | tracking admin approvals and status changes |
 | `company_blacklist` | Admin only | blocked domains and licenses |
-| `external_jobs` | Anon(public) + Auth(all levels) | scraped jobs, source_platform, access_level, clicks/views 🆕 |
+| `external_jobs` | Anon(public) + Auth(all levels) | scraped jobs, source_platform, access_level, clicks/views |
+| `cv_sessions` | User own | CV session tracking, session_type, language, linked_to_profile 🆕 |
+| `cv_chat_messages` | User own | CV optimizer chat history, sender (user/ai/system) 🆕 |
 
 ---
 

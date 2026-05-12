@@ -989,6 +989,247 @@
           "name": "cv new website"
         }
       }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gn-contract-notify",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        1792,
+        5216
+      ],
+      "id": "6b72b23e-42ca-44f8-9401-1c8eb7ebe107",
+      "name": "Webhook8",
+      "webhookId": "13018bf6-e4ef-45eb-a11f-fdfbfd4c40e8"
+    },
+    {
+      "parameters": {
+        "jsCode": "const secret = $input.first().headers['x-webhook-secret'];\n// قم بتغيير هذه القيمة إلى كلمة السر القوية الخاصة بك\nconst expected = 'my_growthnexus_secret_2026';\n\nif (secret !== expected) {\n  throw new Error('Invalid webhook secret');\n}\n\nconst body = $input.first().json.body || $input.first().json;\n\nreturn [{\n  json: {\n    event_type: body.event_type,\n    contract_id: body.contract_id,\n    candidate_name: body.candidate_name,\n    candidate_email: body.candidate_email || '',\n    company_name: body.company_name,\n    employer_email: body.employer_email || '',\n    job_title: body.job_title,\n    salary: body.salary,\n    currency: body.currency || 'AED',\n    start_date: body.start_date,\n    decline_reason: body.decline_reason || '',\n    contract_url: body.contract_url || ''\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2624,
+        5232
+      ],
+      "id": "d21ccf3a-fcce-41b5-b8fd-d6915bf83fec",
+      "name": "Code in JavaScript7"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event_type }}",
+                    "rightValue": "contract_created",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "fbd940eb-d184-46fc-a2b9-937f1f4eaaa6"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "contract_created"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "14ccfb62-a616-4308-8263-ab6ccc5a48ca",
+                    "leftValue": "={{ $json.event_type }}",
+                    "rightValue": "contract_sent",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "contract_sent"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "18228be6-9528-410e-ba94-7cb4b9617802",
+                    "leftValue": "={{ $json.event_type }}",
+                    "rightValue": "contract_signed",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "contract_signed"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "9ff358db-44a4-4fd5-a1ed-9067b78fa4d7",
+                    "leftValue": "={{ $json.event_type }}",
+                    "rightValue": "contract_declined",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "contract_declined"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        3264,
+        5168
+      ],
+      "id": "bdcfa165-edb6-4464-8657-f5630db49ec7",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@growthnexus.ae",
+        "toEmail": "={{ $json.candidate_email }}",
+        "subject": "= عرض وظيفي جديد من {{ $json.company_name }} — {{ $json.job_title }}",
+        "html": "=<div dir='rtl' style='font-family: Segoe UI, Tahoma, sans-serif; max-width: 600px; margin: 0 auto;'><div style='background: linear-gradient(135deg, #c4a035, #d4b13f); padding: 30px; text-align: center; border-radius: 12px 12px 0 0;'><h1 style='color: #0c1222; margin: 0; font-size: 24px;'>عرض وظيفي جديد! 🎉</h1></div><div style='background: #fff; padding: 30px; border: 1px solid #eee; border-radius: 0 0 12px 12px;'><p style='font-size: 16px; color: #333;'>مرحباً <strong>{{ $json.candidate_name }}</strong>,</p><p style='color: #555;'>لقد تلقيت عرضاً وظيفياً جديداً:</p><table style='width: 100%; border-collapse: collapse; margin: 20px 0;'><tr><td style='padding: 10px; border-bottom: 1px solid #eee; color: #888;'>الشركة</td><td style='padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{{ $json.company_name }}</td></tr><tr><td style='padding: 10px; border-bottom: 1px solid #eee; color: #888;'>المسمى الوظيفي</td><td style='padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{{ $json.job_title }}</td></tr><tr><td style='padding: 10px; border-bottom: 1px solid #eee; color: #888;'>الراتب</td><td style='padding: 10px; border-bottom: 1px solid #eee; font-weight: bold; color: #c4a035;'>{{ $json.salary }} {{ $json.currency }}</td></tr><tr><td style='padding: 10px; color: #888;'>تاريخ المباشرة</td><td style='padding: 10px; font-weight: bold;'>{{ $json.start_date }}</td></tr></table><a href='{{ $json.contract_url }}' style='display: inline-block; background: #c4a035; color: #0c1222; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;'>عرض العقد</a></div></div>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        4128,
+        4992
+      ],
+      "id": "3b4c3bd8-2c59-436a-a990-a3f7febd6eaa",
+      "name": "Send email1",
+      "webhookId": "676af4bf-dd23-44e8-a97d-9fbec5dd4d3d",
+      "credentials": {
+        "smtp": {
+          "id": "UJq7VA6EGQgVwRUd",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@growthnexus.ae",
+        "toEmail": "={{ $json.candidate_email }}",
+        "subject": "=`عقدك جاهز للمراجعة — {{ $json.company_name }}`",
+        "html": "=<div dir='rtl' style='font-family: Segoe UI, Tahoma, sans-serif; max-width: 600px; margin: 0 auto;'><div style='background: #3b82f6; padding: 25px; text-align: center; border-radius: 12px 12px 0 0;'><h1 style='color: #fff; margin: 0;'>📋 عقدك جاهز للمراجعة</h1></div><div style='background: #fff; padding: 30px; border: 1px solid #eee; border-radius: 0 0 12px 12px;'><p>مرحباً <strong>{{ $json.candidate_name }}</strong>,</p><p>عقد العمل الخاص بك لوظيفة <strong>{{ $json.job_title }}</strong> في <strong>{{ $json.company_name }}</strong> جاهز للمراجعة والتوقيع.</p><a href='{{ $json.contract_url }}' style='display: inline-block; background: #3b82f6; color: #fff; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: bold;'>مراجعة وتوقيع العقد</a></div></div>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        4112,
+        5216
+      ],
+      "id": "2398616c-e0dd-4d40-af5d-0f948c5d7b8c",
+      "name": "Send email2",
+      "webhookId": "676af4bf-dd23-44e8-a97d-9fbec5dd4d3d",
+      "credentials": {
+        "smtp": {
+          "id": "UJq7VA6EGQgVwRUd",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@growthnexus.ae",
+        "toEmail": "={{ $json.employer_email }}",
+        "subject": "=`🎉 {{ $json.candidate_name }} وقّع على العقد — {{ $json.job_title }}`",
+        "html": "=<div dir='rtl' style='font-family: Segoe UI, Tahoma, sans-serif; max-width: 600px; margin: 0 auto;'><div style='background: #22c55e; padding: 25px; text-align: center; border-radius: 12px 12px 0 0;'><h1 style='color: #fff; margin: 0;'>✅ تم التوقيع بنجاح!</h1></div><div style='background: #fff; padding: 30px; border: 1px solid #eee; border-radius: 0 0 12px 12px;'><p>أخبار سارة!</p><p>المرشح <strong>{{ $json.candidate_name }}</strong> وقّع على عقد العمل لوظيفة <strong>{{ $json.job_title }}</strong>.</p><p>تاريخ المباشرة: <strong>{{ $json.start_date }}</strong></p><p style='color: #888; font-size: 13px;'>تم تحديث حالة الطلب تلقائياً إلى \"تم التوظيف\".</p></div></div>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        4128,
+        5424
+      ],
+      "id": "42b7b83f-9a0c-41f3-b645-1256c495df8a",
+      "name": "Send email3",
+      "webhookId": "676af4bf-dd23-44e8-a97d-9fbec5dd4d3d",
+      "credentials": {
+        "smtp": {
+          "id": "UJq7VA6EGQgVwRUd",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@growthnexus.ae",
+        "toEmail": "={{ $json.employer_email }}",
+        "subject": "=❌ {{ $json.candidate_name }} رفض العقد — {{ $json.job_title }}",
+        "html": "=<div dir='rtl' style='font-family: Segoe UI, Tahoma, sans-serif; max-width: 600px; margin: 0 auto;'><div style='background: #ef4444; padding: 25px; text-align: center; border-radius: 12px 12px 0 0;'><h1 style='color: #fff; margin: 0;'>تم رفض العقد</h1></div><div style='background: #fff; padding: 30px; border: 1px solid #eee; border-radius: 0 0 12px 12px;'><p>المرشح <strong>{{ $json.candidate_name }}</strong> رفض عقد العمل لوظيفة <strong>{{ $json.job_title }}</strong>.</p><div style='background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 15px; margin: 15px 0;'><p style='margin: 0; color: #991b1b;'><strong>سبب الرفض:</strong></p><p style='margin: 5px 0 0; color: #b91c1c;'>{{ $json.decline_reason }}</p></div></div></div>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        4128,
+        5696
+      ],
+      "id": "a93e12d3-381f-48ab-b3d1-bb1938f2f87b",
+      "name": "Send email4",
+      "webhookId": "676af4bf-dd23-44e8-a97d-9fbec5dd4d3d",
+      "credentials": {
+        "smtp": {
+          "id": "UJq7VA6EGQgVwRUd",
+          "name": "SMTP account"
+        }
+      }
     }
   ],
   "connections": {
@@ -1408,6 +1649,60 @@
         [
           {
             "node": "Decision Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook8": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript7": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Send email1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send email2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send email3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send email4",
             "type": "main",
             "index": 0
           }
