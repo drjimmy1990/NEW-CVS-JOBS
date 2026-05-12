@@ -81,7 +81,7 @@ export function CompanyDataStep({ data, updateData }: any) {
                         >
                             <option value="" disabled>اختر الإمارة</option>
                             {UAE_CITIES.map((city) => (
-                                <option key={city} value={city}>{city}</option>
+                                <option key={city.value} value={city.value}>{city.labelAr}</option>
                             ))}
                         </select>
                     </div>

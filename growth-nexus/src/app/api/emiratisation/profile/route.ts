@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { UAE_CITIES } from '@/lib/types'
 
 /**
  * GET /api/emiratisation/profile
@@ -37,21 +38,14 @@ export async function GET() {
         }
 
         // Map sub-cities to parent emirate (UAE_CITIES → UAE_EMIRATES)
-        const cityToEmirate: Record<string, string> = {
-            'أبوظبي': 'أبوظبي',
-            'دبي': 'دبي',
-            'الشارقة': 'الشارقة',
-            'عجمان': 'عجمان',
-            'أم القيوين': 'أم القيوين',
-            'رأس الخيمة': 'رأس الخيمة',
-            'الفجيرة': 'الفجيرة',
-            // Sub-cities mapping
-            'العين': 'أبوظبي',
-            'الظفرة': 'أبوظبي',
-            'الرويس': 'أبوظبي',
-            'كلباء': 'الشارقة',
-            'حتا': 'دبي',
-        }
+        // Handles legacy Arabic names and new object values
+        const cityToEmirate: Record<string, string> = {}
+        UAE_CITIES.forEach(city => {
+            const parent = city.emirateValue || city.value
+            cityToEmirate[city.value] = parent
+            cityToEmirate[city.labelAr] = parent
+            cityToEmirate[city.labelEn] = parent
+        })
 
         // Map registration industry (English key) → emiratisation economic_sector (Arabic)
         const industryToSector: Record<string, string> = {

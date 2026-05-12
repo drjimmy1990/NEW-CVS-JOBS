@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Users, MapPin, Briefcase, Loader2, Search, UserCheck } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { UAE_EMIRATES } from '@/lib/emiratisation-engine'
+import { UAE_EMIRATES } from '@/lib/types'
 
 interface EmiratiCandidate {
     id: string
@@ -61,7 +61,7 @@ export function EmiratiCandidatesList() {
                         <SelectContent className="bg-navy-light border-gold/15">
                             <SelectItem value="all" className="text-cream hover:bg-navy-lighter">جميع الإمارات</SelectItem>
                             {UAE_EMIRATES.map(e => (
-                                <SelectItem key={e} value={e} className="text-cream hover:bg-navy-lighter">{e}</SelectItem>
+                                <SelectItem key={e.value} value={e.value} className="text-cream hover:bg-navy-lighter">{e.labelAr}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>

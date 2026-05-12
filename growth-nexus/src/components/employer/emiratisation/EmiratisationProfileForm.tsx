@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import { Loader2, Save, Building2, Users } from 'lucide-react'
 import { toast } from 'sonner'
-import { UAE_ECONOMIC_SECTORS, UAE_EMIRATES, type EmiratisationProfile } from '@/lib/emiratisation-engine'
+import { UAE_ECONOMIC_SECTORS, type EmiratisationProfile } from '@/lib/emiratisation-engine'
+import { UAE_EMIRATES } from '@/lib/types'
 
 interface Props {
     profile: Partial<EmiratisationProfile> | null
@@ -116,7 +117,7 @@ export function EmiratisationProfileForm({ profile, companyId, companyDefaults, 
                                 </SelectTrigger>
                                 <SelectContent className="bg-navy-light border-gold/15">
                                     {UAE_EMIRATES.map(e => (
-                                        <SelectItem key={e} value={e} className="text-cream hover:bg-navy-lighter">{e}</SelectItem>
+                                        <SelectItem key={e.value} value={e.value} className="text-cream hover:bg-navy-lighter">{e.labelAr}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>

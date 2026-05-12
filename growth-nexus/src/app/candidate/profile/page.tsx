@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
+import { UAE_EMIRATES, UAE_CITIES } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -358,13 +359,9 @@ export default function CandidateProfilePage() {
                                                 value={formData.residence_emirate}
                                                 onChange={(e) => setFormData({...formData, residence_emirate: e.target.value})}
                                             >
-                                                <option>دبي</option>
-                                                <option>أبوظبي</option>
-                                                <option>الشارقة</option>
-                                                <option>عجمان</option>
-                                                <option>رأس الخيمة</option>
-                                                <option>الفجيرة</option>
-                                                <option>أم القيوين</option>
+                                                {UAE_EMIRATES.map(emirate => (
+                                                    <option key={emirate.value} value={emirate.value}>{emirate.labelAr}</option>
+                                                ))}
                                             </select>
                                         </div>
 
@@ -376,13 +373,9 @@ export default function CandidateProfilePage() {
                                                     value={formData.family_book_emirate}
                                                     onChange={(e) => setFormData({...formData, family_book_emirate: e.target.value})}
                                                 >
-                                                    <option>أبوظبي</option>
-                                                    <option>دبي</option>
-                                                    <option>الشارقة</option>
-                                                    <option>عجمان</option>
-                                                    <option>رأس الخيمة</option>
-                                                    <option>الفجيرة</option>
-                                                    <option>أم القيوين</option>
+                                                    {UAE_EMIRATES.map(emirate => (
+                                                        <option key={emirate.value} value={emirate.value}>{emirate.labelAr}</option>
+                                                    ))}
                                                 </select>
                                             </div>
                                         ) : (
@@ -743,12 +736,10 @@ export default function CandidateProfilePage() {
                                                 value={preferences.preferred_location}
                                                 onChange={(e) => setPreferences({...preferences, preferred_location: e.target.value})}
                                             >
-                                                <option>دبي</option>
-                                                <option>أبوظبي</option>
-                                                <option>الشارقة</option>
-                                                <option>عجمان</option>
-                                                <option>رأس الخيمة</option>
-                                                <option>أي مكان في الإمارات</option>
+                                                <option value="all">أي مكان في الإمارات</option>
+                                                {UAE_CITIES.map(city => (
+                                                    <option key={city.value} value={city.value}>{city.labelAr}</option>
+                                                ))}
                                             </select>
                                         </div>
                                         <div className="space-y-2">

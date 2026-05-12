@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
+import { UAE_CITIES } from '@/lib/types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,15 +34,7 @@ const companySizes = [
     { value: '500+', label: '+500 موظف' },
 ]
 
-const emirates = [
-    { value: 'Abu Dhabi', label: 'أبوظبي' },
-    { value: 'Dubai', label: 'دبي' },
-    { value: 'Sharjah', label: 'الشارقة' },
-    { value: 'Ajman', label: 'عجمان' },
-    { value: 'RAK', label: 'رأس الخيمة' },
-    { value: 'Fujairah', label: 'الفجيرة' },
-    { value: 'UAQ', label: 'أم القيوين' },
-]
+
 
 const entityTypes = [
     { value: 'government', label: 'جهة حكومية' },
@@ -293,9 +286,9 @@ export default function CompanySettingsPage() {
                                         <SelectValue placeholder="اختر الإمارة" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-navy-light border-gold/15">
-                                        {emirates.map((em) => (
+                                        {UAE_CITIES.map((em) => (
                                             <SelectItem key={em.value} value={em.value} className="text-cream hover:bg-navy-lighter">
-                                                {em.label}
+                                                {em.labelAr}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>

@@ -27,21 +27,36 @@ export type DocumentType = 'trade_license' | 'official_document' | 'proof_of_act
 
 export type OcrStatus = 'pending' | 'processing' | 'completed' | 'failed'
 
+// UAE Locations with i18n support
+export interface LocationOption {
+    value: string;
+    labelAr: string;
+    labelEn: string;
+    emirateValue?: string;
+}
+
+export const UAE_EMIRATES: readonly LocationOption[] = [
+    { value: 'abu_dhabi', labelAr: 'أبوظبي', labelEn: 'Abu Dhabi' },
+    { value: 'dubai', labelAr: 'دبي', labelEn: 'Dubai' },
+    { value: 'sharjah', labelAr: 'الشارقة', labelEn: 'Sharjah' },
+    { value: 'ajman', labelAr: 'عجمان', labelEn: 'Ajman' },
+    { value: 'umm_al_quwain', labelAr: 'أم القيوين', labelEn: 'Umm Al Quwain' },
+    { value: 'ras_al_khaimah', labelAr: 'رأس الخيمة', labelEn: 'Ras Al Khaimah' },
+    { value: 'fujairah', labelAr: 'الفجيرة', labelEn: 'Fujairah' }
+] as const;
+
 // UAE Cities constant for dropdowns
-export const UAE_CITIES = [
-    'أبوظبي',
-    'دبي',
-    'الشارقة',
-    'عجمان',
-    'أم القيوين',
-    'رأس الخيمة',
-    'الفجيرة',
-    'العين',
-    'كلباء',
-    'حتا',
-    'الظفرة',
-    'الرويس',
-] as const
+export const UAE_CITIES: readonly LocationOption[] = [
+    ...UAE_EMIRATES,
+    { value: 'al_ain', labelAr: 'العين', labelEn: 'Al Ain', emirateValue: 'abu_dhabi' },
+    { value: 'kalba', labelAr: 'كلباء', labelEn: 'Kalba', emirateValue: 'sharjah' },
+    { value: 'hatta', labelAr: 'حتا', labelEn: 'Hatta', emirateValue: 'dubai' },
+    { value: 'al_dhafra', labelAr: 'الظفرة', labelEn: 'Al Dhafra', emirateValue: 'abu_dhabi' },
+    { value: 'ruwais', labelAr: 'الرويس', labelEn: 'Ruwais', emirateValue: 'abu_dhabi' },
+    { value: 'khor_fakkan', labelAr: 'خورفكان', labelEn: 'Khor Fakkan', emirateValue: 'sharjah' },
+    { value: 'dibba', labelAr: 'دبا', labelEn: 'Dibba', emirateValue: 'fujairah' },
+    { value: 'jebel_ali', labelAr: 'جبل علي', labelEn: 'Jebel Ali', emirateValue: 'dubai' },
+] as const;
 
 // Nationality options for job posting
 export const NATIONALITY_OPTIONS = [

@@ -103,15 +103,7 @@ export const UAE_ECONOMIC_SECTORS = [
     'خدمات أخرى',
 ] as const
 
-export const UAE_EMIRATES = [
-    'أبوظبي',
-    'دبي',
-    'الشارقة',
-    'عجمان',
-    'أم القيوين',
-    'رأس الخيمة',
-    'الفجيرة',
-] as const
+import { UAE_EMIRATES } from './types'
 
 /** Roles suitable for Emiratisation (used in Opportunity Detection) */
 export const EMIRATISABLE_ROLES = [

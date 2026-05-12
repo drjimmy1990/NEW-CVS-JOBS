@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { UAE_CITIES } from '@/lib/types'
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -178,13 +179,9 @@ export default async function JobsPage({ searchParams }: Props) {
                                 className="w-full h-11 px-3 bg-navy border border-gold/15 rounded-xl text-cream-dark/60 focus-visible:ring-1 focus-visible:ring-gold outline-none appearance-none"
                             >
                                 <option value="">جميع المواقع</option>
-                                <option value="دبي">دبي</option>
-                                <option value="أبوظبي">أبوظبي</option>
-                                <option value="الشارقة">الشارقة</option>
-                                <option value="عجمان">عجمان</option>
-                                <option value="رأس الخيمة">رأس الخيمة</option>
-                                <option value="أم القيوين">أم القيوين</option>
-                                <option value="الفجيرة">الفجيرة</option>
+                                {UAE_CITIES.map(city => (
+                                    <option key={city.value} value={city.value}>{city.labelAr}</option>
+                                ))}
                             </select>
                         </div>
 

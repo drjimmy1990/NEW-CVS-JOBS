@@ -261,7 +261,7 @@ export default function NewJobPage() {
                                 <Select value={formData.location} onValueChange={(v) => updateField('location', v)}>
                                     <SelectTrigger className="bg-navy-lighter border-gold/10 text-cream"><SelectValue placeholder="اختر المدينة" /></SelectTrigger>
                                     <SelectContent className="bg-navy-light border-gold/10">
-                                        {UAE_CITIES.map((city) => (<SelectItem key={city} value={city} className="text-cream">{city}</SelectItem>))}
+                                        {UAE_CITIES.map((city) => (<SelectItem key={city.value} value={city.value} className="text-cream">{city.labelAr}</SelectItem>))}
                                     </SelectContent>
                                 </Select>
                             </div>

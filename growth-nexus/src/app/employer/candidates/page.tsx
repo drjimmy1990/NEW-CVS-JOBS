@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { UAE_CITIES } from '@/lib/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -118,9 +119,9 @@ export default async function CandidateSearchPage({
                                 className="flex h-10 rounded-md border border-gold/10 bg-navy px-3 py-2 text-sm text-cream focus:outline-none focus:ring-2 focus:ring-gold min-w-[140px]"
                             >
                                 <option value="">جميع المواقع</option>
-                                <option value="دبي">دبي</option>
-                                <option value="أبوظبي">أبوظبي</option>
-                                <option value="الشارقة">الشارقة</option>
+                                {UAE_CITIES.map(city => (
+                                    <option key={city.value} value={city.value}>{city.labelAr}</option>
+                                ))}
                             </select>
                             <select 
                                 name="experience"
