@@ -1,6 +1,6 @@
 # 🔄 GrowthNexus — User Flow Testing Guide
 
-> **Last Updated:** 13 May 2026 — 04:30 AM
+> **Last Updated:** 13 May 2026 — 07:50 AM
 > **Source of Truth:** GitNexus (2731 symbols, 130 flows) + `full.sql` (26 tables, 16 RPCs)
 > **Instructions:** Test each flow in order. Mark ✅ for working, ❌ for broken.
 > Items marked 🔗 use **n8n webhooks** — they work with mock data if n8n is offline.
@@ -336,9 +336,10 @@ UPDATE profiles SET role = 'admin' WHERE email = 'your@email.com';
 | 14 | External Jobs Import | `/api/external-jobs` | Scraped job import | 🔧 Code Ready |
 | 15 | CV Parse (Optimizer) | `/webhook/gn-cv-parse` | CV Optimizer upload | ✅ 🆕 |
 | 16 | CV Optimize | `/webhook/gn-cv-optimize` | AI chat + CV rewrite | ✅ 🆕 |
+| 17 | CV ATS Convert | `/webhook/gn-cv-ats-convert` | PDF/Text → ATS-ready CV | ✅ 🆕 |
 
 > **Note:** All webhooks work with mock/fallback data when n8n is offline.
-> **CV Parse (#15) and CV Optimize (#16) are separate dedicated workflow files.**
+> **CV Parse (#15), CV Optimize (#16), and CV ATS Convert (#17) are separate dedicated workflow files.**
 
 ---
 
@@ -556,9 +557,10 @@ Dashboard server query:
 | # | Step | Route | Expected | Result |
 |---|------|-------|----------|--------|
 | 1 | Session history table visible | | Table below chat/PDF shows all user's sessions | |
-| 2 | Latest session marked as linked | | "ارتبطت بالملف" badge on latest linked session | |
-| 3 | Other sessions show different badge | | Non-linked sessions have different indicator | |
-| 4 | Click on old session | | Session loads in viewer (view-only or resume) | |
+| 2 | Resume any session (any status) | | Click "استئناف" → session loads in viewer (works for active, ready, downloaded, archived) | |
+| 3 | Switch between sessions | | Previous session returns to table automatically (no disappearing) | |
+| 4 | Delete stale session | | Click "حذف" → inline confirm ("تأكيد الحذف" / "إلغاء") → session removed from DB + UI | |
+| 5 | RLS DELETE policy | | `20260513043300` migration: users can only delete own sessions | |
 
 ### 21.4 Finalize & Link
 
@@ -589,4 +591,37 @@ Dashboard server query:
 - **PDF Engine:** Gotenberg (HTML → PDF conversion)
 - **Language:** CV content always English, chat replies in user's language
 - **Credits:** `deduct_cv_credits()` RPC with dual-balance fallback
-- **Migrations:** `20260513035100` (status fix + chat_history), `20260513041200` (cleanup), `20260513043200` (dedup linked)
+- **Migrations:** `20260513035100` (status fix + chat_history), `20260513041200` (cleanup), `20260513043200` (dedup linked), `20260513043300` (DELETE RLS policy)
+
+---
+
+## Flow 22: CV Builder → ATS Convert → Optimizer Flow 🔄
+
+> **Added:** 13 May 2026 — Tests the direct generation flow from CV Builder to AI Optimizer
+
+### 22.1 ATS Conversion
+
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|---------|
+| 1 | Navigate to CV Builder | `/candidate/cv/builder` | Page loads with upload tab | |
+| 2 | Upload PDF or paste text | | Content sent to n8n `/gn-cv-ats-convert` | |
+| 3 | 🔗 n8n ATS Convert fires | | Gemini reformat → Gotenberg PDF → Supabase Storage upload | |
+| 4 | Success view shows download + optimize buttons | | Two CTAs: “تحميل” and “تحسين بالذكاء الاصطناعي” | |
+
+### 22.2 Direct-to-Optimizer Flow
+
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|---------|
+| 1 | Click “تحسين بالذكاء الاصطناعي” | `/candidate/cv/optimize?sourceSessionId=xxx` | Auto-navigates to optimizer with session ID | |
+| 2 | Server-side PDF fetch (CORS bypass) | | Backend fetches PDF from n8n storage via `parseCvFromUrl` | |
+| 3 | Auto-trigger parse | | `handleUseExisting()` fires automatically, no manual button click needed | |
+| 4 | CV loads in optimizer | | PDF viewer shows ATS-converted CV, AI chat ready | |
+| 5 | Old sessions NOT auto-resumed | | Fresh `sourceSessionId` takes priority over any stale session | |
+
+### Key Details
+
+- **n8n Workflow:** `gn-cv-ats-convert` — separate dedicated workflow file
+- **Filename Convention:** `CV_{userId}.pdf` for consistent naming in Supabase storage
+- **CORS Solution:** Server-side PDF fetch via `/api/cv/parse` with `sourceUrl` parameter
+- **Session Linking:** `sourceSessionId` query param connects builder output to optimizer input
+- **RLS:** DELETE policy added via `20260513043300` migration

@@ -1,7 +1,7 @@
 # 📊 GrowthNexus — Progress Report
 
-> **Last Updated:** 13 May 2026 — 04:30 AM
-> **Overall Completion: ~97%** (core + verification + external jobs + CV services backend + **CV Optimizer frontend + 2 n8n workflows** + pipeline expansion + contract workflow done, remaining B2C UI + n8n wiring)
+> **Last Updated:** 13 May 2026 — 07:50 AM
+> **Overall Completion: ~97%** (core + verification + external jobs + CV services backend + **CV Optimizer frontend + ATS Convert + 3 n8n workflows** + pipeline expansion + contract workflow done, remaining B2C UI + n8n wiring)
 > **Repo:** `https://github.com/drjimmy1990/NEW-CVS-JOBS`
 > **Live Site:** `https://jobs-test.uae4jobs.ae`
 > **GitNexus:** 2731 symbols, 130 execution flows
@@ -64,7 +64,7 @@
 | **Notifications** | — | ✅ Complete | In-app bell, application notify, DB table |
 | **External Jobs** | — | ✅ Complete | Scraped jobs from LinkedIn/Bayt/Indeed, admin panel, merged feed, click tracking |
 | **Pipeline** | — | ✅ Complete | 7-stage Kanban (applied → reviewing → shortlisted → interview → offer → hired → rejected), **offer interceptor → contract dialog** 🆕 |
-| **CV Services** | — | 🔧 Partially Complete | 7 API routes, 2 tables, 2 RPCs, 12 types. **CV Optimizer: frontend + 2 n8n workflows DONE** 🆕. CV Builder UI pending |
+| **CV Services** | — | 🔧 Partially Complete | 7 API routes, 2 tables, 2 RPCs, 12 types. **CV Optimizer: frontend + 3 n8n workflows DONE (parse + optimize + ATS convert)** 🆕. Session delete + resume all statuses. CV Builder UI pending |
 | **Email** | — | 🔧 Backend Done | Generic n8n SMTP sender, `/api/notifications/email` |
 
 ---
@@ -193,8 +193,9 @@
 | 14 | External Jobs Import | 🔧 Code Ready | API + admin + UI done. **n8n scraper workflow needed** |
 | 15 | **CV Parse (Optimizer)** | ✅ Done 🆕 | Separate workflow: PDF download → text extraction → Gemini → cv_session creation |
 | 16 | **CV Optimize** | ✅ Done 🆕 | Separate workflow: credit check → Gemini LLM (chat/modify) → Gotenberg PDF → session update |
+| 17 | **CV ATS Convert** | ✅ Done 🆕 | Separate workflow: Gemini reformat → Gotenberg PDF → Supabase Storage upload |
 
-### Summary: 10 Done, 3 Code Ready, 3 Not Started
+### Summary: 11 Done, 2 Code Ready, 3 Not Started
 
 > **See `webhooks_status.md` for full details**
 > **Note:** CV Parse (#15) and CV Optimize (#16) are separate dedicated workflow JSON files.
@@ -407,6 +408,17 @@
 | — `20260513035100_add_chat_history.sql` migration | ✅ |
 | — `20260513041200_cleanup_old_sessions.sql` migration | ✅ |
 | — `20260513043200_fix_duplicate_linked_sessions.sql` migration | ✅ |
+| — `20260513043300_add_cv_session_delete_policy.sql` migration | ✅ |
+| **CV Optimizer Session Management** (13 May 2026) | ✅ 🆕 |
+| — Inline session delete with confirm/cancel (تأكيد الحذف / إلغاء) | ✅ |
+| — Resume any session (all statuses, not just active/ready) | ✅ |
+| — Session switching without disappearing from list | ✅ |
+| — RLS DELETE policy for cv_sessions | ✅ |
+| **CV ATS Convert Workflow** (13 May 2026) | ✅ 🆕 |
+| — n8n `/gn-cv-ats-convert`: Gemini reformat → Gotenberg PDF → Supabase | ✅ |
+| — Direct-to-Optimizer flow (builder → optimize with sourceSessionId) | ✅ |
+| — Server-side PDF fetch to bypass CORS (`parseCvFromUrl`) | ✅ |
+| — Auto-trigger CV loading when arriving from builder | ✅ |
 
 ### ⏳ Still Needed (~10%)
 
@@ -501,6 +513,8 @@ STRIPE_PRO_PRICE_ID=
 | ~~CV Optimizer shows old CV after link~~ | ~~Page refresh resets to original~~ | ✅ Fixed — latest session correctly loaded on refresh |
 | ~~Chat history not persisted~~ | ~~Messages lost on page reload~~ | ✅ Fixed — chat_history JSONB column on cv_sessions |
 | ~~Duplicate linked sessions~~ | ~~Multiple sessions marked as linked~~ | ✅ Fixed — `20260513043200` cleanup migration |
+| ~~Session delete not working~~ | ~~RLS blocks delete~~ | ✅ Fixed — `20260513043300` DELETE policy added |
+| ~~Sessions disappear on resume~~ | ~~Can't switch between sessions~~ | ✅ Fixed — stopped removing from list, table filter handles it |
 | Multi-language not implemented | Arabic-only UI | Phase 12 work (next-intl) |
 | Stripe in test mode | No real payments | Switch to live keys for production |
 | No email service | Can't send emails | n8n SMTP configured for contract emails, needs expansion |

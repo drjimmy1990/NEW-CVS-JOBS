@@ -1,6 +1,6 @@
 # 🔌 GrowthNexus — N8N Webhooks Status
 
-> **Last Updated:** 13 May 2026 — 04:30 AM
+> **Last Updated:** 13 May 2026 — 07:50 AM
 
 ## Legend
 - ✅ **Done** = n8n workflow built + frontend code connected + tested
@@ -28,6 +28,7 @@
 | 14 | **External Jobs Import** | `/api/external-jobs` | 🔧 Code Ready | Upsert API for scraped jobs (LinkedIn/Bayt/Indeed). S2S auth via `N8N_WEBHOOK_SECRET`. Admin panel at `/admin/external-jobs`. **Needs: n8n scraper workflow** |
 | 15 | **CV Parse (GrowthNexus)** | `/gn-cv-parse` | ✅ Done 🆕 | Webhook → HTTP Download PDF → Extract Text → Gemini Parse → Create cv_session → Respond. Separate workflow from #1, dedicated to CV Optimizer feature |
 | 16 | **CV Optimize** | `/gn-cv-optimize` | ✅ Done 🆕 | Webhook → Load session + config → Credit check → Gemini LLM (chat vs modification) → Gotenberg HTML→PDF → Supabase session update → Respond. Full AI chat + CV rewrite engine |
+| 17 | **CV ATS Convert** | `/gn-cv-ats-convert` | ✅ Done 🆕 | Webhook → Gemini reformat CV → Gotenberg HTML→PDF → Supabase Storage upload → Respond with download URL. Supports PDF upload + raw text input |
 
 ---
 
@@ -35,8 +36,8 @@
 
 | Status | Count |
 |--------|-------|
-| ✅ Done | 10 |
-| ⚠️ Partial / Code Ready | 3 |
+| ✅ Done | 11 |
+| ⚠️ Partial / Code Ready | 2 |
 | ❌ Not Started | 3 |
 
 ## n8n Workflow JSON Files
@@ -47,6 +48,7 @@
 | `n8n-contract-notify-workflow.json` | ⚠️ **Legacy standalone** — superceded by contract notify nodes in main workflow | 🔄 Merged into main |
 | `n8n-cv-parse-workflow.json` | **CV Parse workflow** 🆕 — `/gn-cv-parse` webhook for CV Optimizer feature. PDF download → text extraction → Gemini parse → session creation | ✅ Active |
 | `n8n-cv-optimize-workflow.json` | **CV Optimize workflow** 🆕 — `/gn-cv-optimize` webhook for AI chat + CV rewrite. Credit system → Gemini LLM → Gotenberg PDF → session update | ✅ Active |
+| `n8n-cv-ats-convert-workflow.json` | **CV ATS Convert workflow** 🆕 — `/gn-cv-ats-convert` webhook for ATS-ready CV conversion. Upload/Paste → Gemini reformat → Gotenberg PDF → Supabase | ✅ Active |
 
 > **Note:** Contract notification nodes are integrated directly into the main `n8n workflow.json`. The CV Parse and CV Optimize workflows are **separate** dedicated workflow files.
 

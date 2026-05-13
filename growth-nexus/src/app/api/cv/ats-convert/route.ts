@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json()
-        const { inputType, pdfBase64, rawText, language = 'en' } = body
+        const { inputType, pdfBase64, rawText, language = 'en', fileName } = body
 
         // Validate input
         if (!inputType || !['pdf', 'text'].includes(inputType)) {
@@ -58,6 +58,7 @@ export async function POST(req: NextRequest) {
                 rawText: inputType === 'text' ? rawText : undefined,
                 userId: user.id,
                 language,
+                fileName: inputType === 'pdf' ? fileName : undefined,
             }),
         })
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Upload, Loader2, FileText, CheckCircle2, History, Eye, RotateCcw, Download } from 'lucide-react'
+import { Upload, Loader2, FileText, CheckCircle2, History, Eye, RotateCcw, Download, Trash2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,7 @@ import { createClient } from '@/utils/supabase/client'
 import CvSessionHeader from '@/components/candidate/cv/CvSessionHeader'
 import CvPdfViewer from '@/components/candidate/cv/CvPdfViewer'
 import CvChatPanel from '@/components/candidate/cv/CvChatPanel'
-import { parseCv, optimizeCv, finalizeCv, linkCvToProfile } from '@/lib/cv-api'
+import { parseCv, parseCvFromUrl, optimizeCv, finalizeCv, linkCvToProfile } from '@/lib/cv-api'
 import type { CvChatMessage, CvLanguage, CvSessionStatus } from '@/types/cv'
 
 export default function CvOptimizePage() {
@@ -56,62 +56,92 @@ export default function CvOptimizePage() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        // Fetch candidate profile for existing CV
-        const { data: candidate } = await supabase
-          .from('candidates')
-          .select('cv_url, updated_at')
-          .eq('id', user.id)
-          .single()
-        if (candidate?.cv_url) {
-          setExistingCvUrl(candidate.cv_url)
-          setExistingCvDate(candidate.updated_at)
+        let cvUrlToUse: string | null = null;
+        let cvDateToUse: string | null = null;
+        
+        const params = new URLSearchParams(window.location.search);
+        const sourceSessionId = params.get('sourceSessionId');
+        
+        if (sourceSessionId) {
+          const { data: sourceSession } = await supabase
+            .from('cv_sessions')
+            .select('final_pdf_url, created_at')
+            .eq('id', sourceSessionId)
+            .single()
+          
+          if (sourceSession?.final_pdf_url) {
+            cvUrlToUse = sourceSession.final_pdf_url;
+            cvDateToUse = sourceSession.created_at;
+          }
+        }
+        
+        if (!cvUrlToUse) {
+          // Fetch candidate profile for existing CV
+          const { data: candidate } = await supabase
+            .from('candidates')
+            .select('cv_url, updated_at')
+            .eq('id', user.id)
+            .single()
+          
+          if (candidate?.cv_url) {
+            cvUrlToUse = candidate.cv_url;
+            cvDateToUse = candidate.updated_at;
+          }
         }
 
-        // Fetch active session to resume (also fetch ready sessions)
-        const { data: activeSession } = await supabase
-          .from('cv_sessions')
-          .select('id, original_pdf_url, latest_draft_url, final_pdf_url, status, chat_history, linked_to_profile')
-          .eq('user_id', user.id)
-          .eq('session_type', 'optimize')
-          .in('status', ['active', 'ready'])
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single()
+        if (cvUrlToUse) {
+          setExistingCvUrl(cvUrlToUse)
+          setExistingCvDate(cvDateToUse)
+        }
 
-        if (activeSession) {
-          setSessionId(activeSession.id)
-          if (activeSession.status === 'ready') {
-            setSessionStatus('ready')
-          }
-          // Priority: latest draft > final PDF > original PDF
-          const resumePdfUrl = activeSession.latest_draft_url
-            || activeSession.final_pdf_url
-            || activeSession.original_pdf_url
-          if (resumePdfUrl) {
-            setPdfUrl(resumePdfUrl)
-          }
-          // Restore chat history from DB
-          // Handle both string (old bug) and array (correct) formats
-          let chatData = activeSession.chat_history
-          if (typeof chatData === 'string') {
-            try { chatData = JSON.parse(chatData) } catch { chatData = [] }
-          }
-          if (Array.isArray(chatData) && chatData.length > 0) {
-            const restored = (chatData as Array<{id: string; sender: string; content: string; timestamp: string}>).map(msg => ({
-              ...msg,
-              sender: msg.sender as 'user' | 'ai' | 'system',
-              timestamp: new Date(msg.timestamp),
-            }))
-            setMessages(restored)
-            setHasOptimized(true)
-          }
-          // If there's a latest_draft_url, optimization has happened
-          if (activeSession.latest_draft_url) {
-            setHasOptimized(true)
-          }
-          // Restore linked state
-          if (activeSession.linked_to_profile) {
-            setIsLinked(true)
+        // Only resume old sessions if we're NOT coming from the builder with a fresh CV
+        if (!sourceSessionId) {
+          // Fetch active session to resume (also fetch ready sessions)
+          const { data: activeSession } = await supabase
+            .from('cv_sessions')
+            .select('id, original_pdf_url, latest_draft_url, final_pdf_url, status, chat_history, linked_to_profile')
+            .eq('user_id', user.id)
+            .eq('session_type', 'optimize')
+            .in('status', ['active', 'ready'])
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single()
+
+          if (activeSession) {
+            setSessionId(activeSession.id)
+            if (activeSession.status === 'ready') {
+              setSessionStatus('ready')
+            }
+            // Priority: latest draft > final PDF > original PDF
+            const resumePdfUrl = activeSession.latest_draft_url
+              || activeSession.final_pdf_url
+              || activeSession.original_pdf_url
+            if (resumePdfUrl) {
+              setPdfUrl(resumePdfUrl)
+            }
+            // Restore chat history from DB
+            // Handle both string (old bug) and array (correct) formats
+            let chatData = activeSession.chat_history
+            if (typeof chatData === 'string') {
+              try { chatData = JSON.parse(chatData) } catch { chatData = [] }
+            }
+            if (Array.isArray(chatData) && chatData.length > 0) {
+              const restored = (chatData as Array<{id: string; sender: string; content: string; timestamp: string}>).map(msg => ({
+                ...msg,
+                sender: msg.sender as 'user' | 'ai' | 'system',
+                timestamp: new Date(msg.timestamp),
+              }))
+              setMessages(restored)
+              setHasOptimized(true)
+            }
+            // If there's a latest_draft_url, optimization has happened
+            if (activeSession.latest_draft_url) {
+              setHasOptimized(true)
+            }
+            // Restore linked state
+            if (activeSession.linked_to_profile) {
+              setIsLinked(true)
+            }
           }
         }
       }
@@ -134,18 +164,14 @@ export default function CvOptimizePage() {
     fetchExistingCv()
   }, [])
 
-  // --- Use Existing CV Handler ---
+   // --- Use Existing CV Handler ---
   const handleUseExisting = async () => {
     if (!existingCvUrl) return
     setUsingExisting(true)
 
     try {
-      // Fetch the existing PDF and send it to the parse API
-      const response = await fetch(existingCvUrl)
-      const blob = await response.blob()
-      const file = new File([blob], 'existing-cv.pdf', { type: 'application/pdf' })
-
-      const result = await parseCv(file, language)
+      // Use server-side fetch to avoid CORS issues with external PDF URLs
+      const result = await parseCvFromUrl(existingCvUrl, language)
 
       if (result.success && result.sessionId) {
         setSessionId(result.sessionId)
@@ -170,6 +196,20 @@ export default function CvOptimizePage() {
 
     setUsingExisting(false)
   }
+
+  // Auto-trigger "Use this CV" when coming from builder with sourceSessionId
+  const autoTriggered = useRef(false)
+  useEffect(() => {
+    if (autoTriggered.current) return
+    if (loadingExisting) return
+    if (!existingCvUrl) return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('sourceSessionId')) {
+      autoTriggered.current = true
+      handleUseExisting()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadingExisting, existingCvUrl])
 
   // --- Upload Handler ---
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -346,7 +386,7 @@ export default function CvOptimizePage() {
     } else {
       setMessages([])
     }
-    setPastSessions(prev => prev.filter(ps => ps.id !== s.id))
+    // Don't remove from pastSessions — the table already hides the active session via sessionId filter
   }
 
   // --- Status badge helper ---
@@ -363,6 +403,30 @@ export default function CvOptimizePage() {
   }
 
   // --- Past Sessions Table Component ---
+  // --- Delete Session Handler ---
+  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null)
+  
+  const handleDeleteSession = async (targetId: string) => {
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('cv_sessions')
+        .delete()
+        .eq('id', targetId)
+      if (error) {
+        console.error('Delete session error:', error)
+        toast.error('فشل حذف الجلسة: ' + error.message)
+        return
+      }
+      setPastSessions(prev => prev.filter(s => s.id !== targetId))
+      setDeletingSessionId(null)
+      toast.success('تم حذف الجلسة بنجاح')
+    } catch (err) {
+      console.error('Delete catch error:', err)
+      toast.error('فشل حذف الجلسة')
+    }
+  }
+
   const SessionsHistoryTable = () => {
     const filtered = pastSessions.filter(s => s.id !== sessionId)
     if (filtered.length === 0) return null
@@ -418,12 +482,10 @@ export default function CvOptimizePage() {
                             عرض
                           </Button>
                         )}
-                        {(s.status === 'active' || s.status === 'ready') && (
-                          <Button size="sm" variant="ghost" className="h-7 px-2 text-cream-dark/60 hover:text-gold" onClick={() => handleResumeSession(s)}>
-                            <RotateCcw className="h-3.5 w-3.5 me-1" />
-                            استئناف
-                          </Button>
-                        )}
+                        <Button size="sm" variant="ghost" className="h-7 px-2 text-cream-dark/60 hover:text-gold" onClick={() => handleResumeSession(s)}>
+                          <RotateCcw className="h-3.5 w-3.5 me-1" />
+                          استئناف
+                        </Button>
                         {s.latest_draft_url && (
                           <Button size="sm" variant="ghost" className="h-7 px-2 text-cream-dark/60 hover:text-success" onClick={() => {
                             const a = document.createElement('a')
@@ -433,6 +495,21 @@ export default function CvOptimizePage() {
                           }}>
                             <Download className="h-3.5 w-3.5 me-1" />
                             تحميل
+                          </Button>
+                        )}
+                        {deletingSessionId === s.id ? (
+                          <>
+                            <Button size="sm" variant="ghost" className="h-7 px-2 text-error hover:bg-error/10 font-bold" onClick={() => handleDeleteSession(s.id)}>
+                              تأكيد الحذف
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-7 px-2 text-cream-dark/60 hover:text-cream" onClick={() => setDeletingSessionId(null)}>
+                              إلغاء
+                            </Button>
+                          </>
+                        ) : (
+                          <Button size="sm" variant="ghost" className="h-7 px-2 text-cream-dark/60 hover:text-error" onClick={() => setDeletingSessionId(s.id)}>
+                            <Trash2 className="h-3.5 w-3.5 me-1" />
+                            حذف
                           </Button>
                         )}
                       </div>
@@ -485,7 +562,7 @@ export default function CvOptimizePage() {
                 </div>
                 <div>
                   <p className="text-cream font-medium flex items-center gap-2">
-                    لديك سيرة ذاتية مرفوعة مسبقاً
+                    سيرة ذاتية متاحة للتحسين
                     <CheckCircle2 className="h-4 w-4 text-success" />
                   </p>
                   {existingCvDate && (

@@ -3,16 +3,16 @@
 import { useState, useRef } from 'react'
 import { Upload, FileText, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
-import { parseCv } from '@/lib/cv-api'
+import { atsConvertCv } from '@/lib/cv-api'
 import type { CvLanguage, CvData } from '@/types/cv'
 
 interface CvUploadTabProps {
   language: CvLanguage
-  onParsed: (data: Partial<CvData>, sessionId: string) => void
+  onSuccess: (downloadUrl: string, sessionId: string) => void
   onError: (message: string) => void
 }
 
-export default function CvUploadTab({ language, onParsed, onError }: CvUploadTabProps) {
+export default function CvUploadTab({ language, onSuccess, onError }: CvUploadTabProps) {
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadedFile, setUploadedFile] = useState<string | null>(null)
@@ -39,15 +39,14 @@ export default function CvUploadTab({ language, onParsed, onError }: CvUploadTab
       setUploadProgress(prev => Math.min(prev + 8, 85))
     }, 300)
 
-    const result = await parseCv(file, language)
+    const result = await atsConvertCv(file, language)
     clearInterval(progressInterval)
 
-    if (result.success && result.sessionId) {
+    if (result.success && result.result) {
       setUploadProgress(100)
       setUploadedFile(file.name)
-      // The parsed data will come back from the API in a structured format
-      // For now, pass an empty object — the optimize/create flow will use the session
-      onParsed({}, result.sessionId)
+      
+      onSuccess(result.result.downloadUrl, result.result.sessionId)
     } else {
       onError(result.error || 'فشل رفع الملف')
     }

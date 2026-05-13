@@ -41,6 +41,27 @@ export async function parseCv(
   }
 }
 
+// --- Parse CV from URL (server fetches PDF, avoids CORS) ---
+
+export async function parseCvFromUrl(
+  sourceUrl: string,
+  language: CvLanguage = 'en'
+): Promise<ParseCvResponse> {
+  try {
+    const res = await fetch('/api/cv/parse', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sourceUrl, language }),
+    })
+
+    const data = await res.json()
+    if (!res.ok) return { success: false, error: data.error || 'فشل تحليل السيرة الذاتية' }
+    return { success: true, sessionId: data.sessionId, text: data.text }
+  } catch {
+    return { success: false, error: 'خطأ في الاتصال بالخادم' }
+  }
+}
+
 // --- Optimize CV (AI chat loop) ---
 
 export interface OptimizeCvResponse {
@@ -87,7 +108,7 @@ export async function createCv(
     const res = await fetch('/api/cv/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ formData, language }),
+      body: JSON.stringify({ cvData: formData, language }),
     })
 
     const data = await res.json()
@@ -111,20 +132,33 @@ export async function atsConvertCv(
   language: CvLanguage = 'en'
 ): Promise<AtsConvertResponse> {
   try {
-    let res: Response
+    const payload: any = { language }
 
     if (input instanceof File) {
-      const formData = new FormData()
-      formData.append('file', input)
-      formData.append('language', language)
-      res = await fetch('/api/cv/ats-convert', { method: 'POST', body: formData })
-    } else {
-      res = await fetch('/api/cv/ats-convert', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: input, language }),
+      // Convert File to base64 string
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.readAsDataURL(input)
+        reader.onload = () => {
+          const result = reader.result as string
+          resolve(result.split(',')[1]) // Remove data:application/pdf;base64, prefix
+        }
+        reader.onerror = error => reject(error)
       })
+
+      payload.inputType = 'pdf'
+      payload.pdfBase64 = base64
+      payload.fileName = input.name
+    } else {
+      payload.inputType = 'text'
+      payload.rawText = input
     }
+
+    const res = await fetch('/api/cv/ats-convert', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
 
     const data = await res.json()
     if (!res.ok) return { success: false, error: data.error || 'فشل تحويل ATS' }

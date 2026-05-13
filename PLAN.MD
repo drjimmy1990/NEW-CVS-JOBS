@@ -1,8 +1,8 @@
 # 📋 GrowthNexus — Master Plan
 
-> **Last Updated:** 13 May 2026 — 04:30 AM
+> **Last Updated:** 13 May 2026 — 07:50 AM
 > **Current Phase: 10–11 (Integration + B2C)**
-> **Completed: 9 of 12 phases + Phase 11 backend done + CV Optimizer frontend + 2 n8n workflows + Contract Pipeline Expansion (Phase 10 at ~75%, Phase 11 at ~55%)**
+> **Completed: 9 of 12 phases + Phase 11 backend done + CV Optimizer frontend + ATS Convert + 3 n8n workflows + Contract Pipeline Expansion (Phase 10 at ~75%, Phase 11 at ~60%)**
 > **Source of Truth:** `full.sql` + GitNexus (2731 symbols, 130 flows)
 
 ---
@@ -151,7 +151,7 @@ GrowthNexus is an **AI Recruitment Operating System** for the UAE market, servin
 | 13 | CV Parse | ~~🔴 High~~ | ✅ **DONE** (13 May) 🆕 | `/gn-cv-parse` — PDF → text → Gemini → session |
 | 14 | CV Optimize | ~~🔴 High~~ | ✅ **DONE** (13 May) 🆕 | `/gn-cv-optimize` — credit check → Gemini → Gotenberg PDF |
 | 15 | CV Create | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-cv-create` |
-| 16 | CV ATS Convert | 🔴 High | API ✅ / n8n pending | **BUILD NEW** → `gn-cv-ats-convert` |
+| 16 | CV ATS Convert | ~~🔴 High~~ | ✅ **DONE** (13 May) 🆕 | `/gn-cv-ats-convert` — Gemini reformat → Gotenberg PDF → Supabase |
 | 17 | CV Finalize | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-cv-finalize` |
 | 18 | Email Send | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-email-send` |
 | 19 | External Jobs Scraper | 🟡 Medium | API ✅ / n8n pending | LinkedIn/Bayt/Indeed scraper |
@@ -224,6 +224,13 @@ Based on the business strategy doc (منصة التوظيف), launch in order:
 | `20260513035100_add_chat_history.sql` | Migration | ✅ Status constraint fix + chat_history column |
 | `20260513041200_cleanup_old_sessions.sql` | Migration | ✅ Clean stale sessions |
 | `20260513043200_fix_duplicate_linked_sessions.sql` | Migration | ✅ Dedup linked sessions |
+| `20260513043300_add_cv_session_delete_policy.sql` | Migration | ✅ RLS DELETE policy for cv_sessions |
+| Session delete (inline confirm) | Feature | ✅ تأكيد الحذف / إلغاء buttons |
+| Resume any session (all statuses) | Feature | ✅ Works for active, ready, downloaded, archived |
+| Session switching | Feature | ✅ Previous session returns to table automatically |
+| Direct-to-Optimizer flow | Feature | ✅ Builder → optimize with `sourceSessionId` query param |
+| Server-side PDF fetch (CORS fix) | Feature | ✅ `parseCvFromUrl` → `/api/cv/parse` with `sourceUrl` |
+| n8n `/gn-cv-ats-convert` | Workflow | ✅ Gemini reformat → Gotenberg PDF → Supabase Storage |
 
 ### Phase 11.1b — Remaining CV Services Frontend (Pending)
 | Service | Route | Status | Details |
@@ -447,10 +454,11 @@ All critical columns indexed: job status, company, applications, candidates, sea
 5. ~~10.6 (AI enhancement / mock replacement)~~ ✅ Done (12 May)
 6. ~~10.6b (External Jobs Aggregator)~~ ✅ Done (12 May) — n8n scraper workflow still needed
 7. ~~11.1a (CV Optimizer frontend + n8n)~~ ✅ Done (13 May) 🆕
-8. 10.7 (Stripe production) — monetization
-9. 10.3b (Company verification OCR) — trust & compliance
-10. 12.x (i18n + SEO + testing) — launch polish
-11. 11.x remaining (B2C services) — revenue expansion
+8. ~~11.1b (CV ATS Convert + session management)~~ ✅ Done (13 May) 🆕
+9. 10.7 (Stripe production) — monetization
+10. 10.3b (Company verification OCR) — trust & compliance
+11. 12.x (i18n + SEO + testing) — launch polish
+12. 11.x remaining (B2C services) — revenue expansion
 
 ---
 

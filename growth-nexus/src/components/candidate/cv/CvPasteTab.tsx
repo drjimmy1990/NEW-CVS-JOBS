@@ -8,11 +8,11 @@ import type { CvLanguage, CvData } from '@/types/cv'
 
 interface CvPasteTabProps {
   language: CvLanguage
-  onParsed: (data: Partial<CvData>, sessionId: string) => void
+  onSuccess: (downloadUrl: string, sessionId: string) => void
   onError: (message: string) => void
 }
 
-export default function CvPasteTab({ language, onParsed, onError }: CvPasteTabProps) {
+export default function CvPasteTab({ language, onSuccess, onError }: CvPasteTabProps) {
   const [text, setText] = useState('')
   const [processing, setProcessing] = useState(false)
 
@@ -31,32 +31,7 @@ export default function CvPasteTab({ language, onParsed, onError }: CvPasteTabPr
     const result = await atsConvertCv(text, language)
 
     if (result.success && result.result) {
-      const parsed = result.result.parsedData
-      const partial: Partial<CvData> = {
-        fullName: parsed?.fullName || '',
-        email: parsed?.email || '',
-        phone: parsed?.phone || '',
-        jobTitle: parsed?.currentTitle || '',
-        summary: parsed?.summary || '',
-        skills: (parsed?.skills || []).map(s => ({ name: s })),
-        experience: (parsed?.experience || []).map(exp => ({
-          title: exp.title,
-          company: exp.company,
-          location: '',
-          startDate: '',
-          endDate: '',
-          current: false,
-          description: exp.duration,
-        })),
-        education: (parsed?.education || []).map(edu => ({
-          institution: edu.institution,
-          degree: edu.degree,
-          field: '',
-          gradDate: edu.year,
-          gpa: '',
-        })),
-      }
-      onParsed(partial, result.result.sessionId)
+      onSuccess(result.result.downloadUrl, result.result.sessionId)
     } else {
       onError(result.error || 'فشل استخراج البيانات')
     }

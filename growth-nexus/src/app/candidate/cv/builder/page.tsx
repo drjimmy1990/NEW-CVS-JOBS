@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -20,6 +21,7 @@ const emptyForm: CvData = {
 }
 
 export default function CvBuilderPage() {
+  const router = useRouter()
   const [language, setLanguage] = useState<CvLanguage>('en')
   const [formData, setFormData] = useState<CvData>(emptyForm)
   const [activeTab, setActiveTab] = useState('form')
@@ -28,11 +30,10 @@ export default function CvBuilderPage() {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
   const [isLinked, setIsLinked] = useState(false)
 
-  const handleParsed = useCallback((data: Partial<CvData>, sid: string) => {
-    setFormData((prev) => ({ ...prev, ...data }))
+  const handleAtsSuccess = useCallback((url: string, sid: string) => {
+    setDownloadUrl(url)
     setSessionId(sid)
-    setActiveTab('form')
-    toast.success('تم استخراج البيانات — راجع النموذج وأكمل التفاصيل')
+    toast.success('تم إنشاء السيرة الذاتية بنجاح!')
   }, [])
 
   const handleCreate = async () => {
@@ -74,10 +75,13 @@ export default function CvBuilderPage() {
           </div>
           <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto">
             <Button onClick={() => window.open(downloadUrl, '_blank')} className="bg-success hover:bg-success/80 text-white font-bold flex-1">تحميل السيرة الذاتية</Button>
+            <Button onClick={() => router.push(`/candidate/cv/optimize?sourceSessionId=${sessionId}`)} className="bg-gold hover:bg-gold-dark text-navy font-bold flex-1">تحسين بالذكاء الاصطناعي</Button>
+          </div>
+          <div className="flex justify-center max-w-md mx-auto">
             {!isLinked ? (
-              <Button onClick={handleLinkProfile} variant="outline" className="border-gold/30 text-gold hover:bg-gold/10 flex-1">استخدم في ملفي الشخصي</Button>
+              <Button onClick={handleLinkProfile} variant="outline" className="border-gold/30 text-gold hover:bg-gold/10 w-full">استخدم في ملفي الشخصي</Button>
             ) : (
-              <span className="flex items-center justify-center gap-1.5 text-sm text-success py-2">✓ تم الربط بملفك</span>
+              <span className="flex items-center justify-center gap-1.5 text-sm text-success py-2 w-full">✓ تم الربط بملفك</span>
             )}
           </div>
           <Button variant="ghost" onClick={() => { setDownloadUrl(null); setFormData(emptyForm); setSessionId(null); setIsLinked(false) }} className="text-cream-dark/40 hover:text-cream">إنشاء سيرة جديدة</Button>
@@ -112,8 +116,8 @@ export default function CvBuilderPage() {
             </Button>
           </div>
         </TabsContent>
-        <TabsContent value="upload"><CvUploadTab language={language} onParsed={handleParsed} onError={(msg) => toast.error(msg)} /></TabsContent>
-        <TabsContent value="paste"><CvPasteTab language={language} onParsed={handleParsed} onError={(msg) => toast.error(msg)} /></TabsContent>
+        <TabsContent value="upload"><CvUploadTab language={language} onSuccess={handleAtsSuccess} onError={(msg) => toast.error(msg)} /></TabsContent>
+        <TabsContent value="paste"><CvPasteTab language={language} onSuccess={handleAtsSuccess} onError={(msg) => toast.error(msg)} /></TabsContent>
       </Tabs>
     </div>
   )

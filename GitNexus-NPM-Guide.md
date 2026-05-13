@@ -118,3 +118,68 @@ You can now use all commands natively in any project folder:
 *   **`gitnexus wiki .`** - Auto-generate documentation. 
     *(To use Ollama locally: `gitnexus wiki . --base-url http://localhost:11434/v1 --model llama3 --api-key ollama --provider openai`)*
 *   **`gitnexus clean`** - Wipe the index if you ever need to reset.
+
+
+---
+
+## Wiki Generation Commands
+
+### Using OpenRouter (paid model — recommended, ~$0.05)
+```bash
+npx gitnexus wiki --base-url https://openrouter.ai/api/v1 --api-key YOUR_OPENROUTER_KEY --model google/gemini-2.5-flash
+```
+
+### Using OpenRouter (free model — needs timeout fix below)
+```bash
+npx gitnexus wiki --base-url https://openrouter.ai/api/v1 --api-key YOUR_OPENROUTER_KEY --model nvidia/nemotron-3-super-120b-a12b:free --concurrency 1
+```
+> ⚠️ Free models are slow (15-60s per call). Use `--concurrency 1` to avoid rate limits.
+
+### Using Ollama (local, free, no timeout issues)
+```bash
+npx gitnexus wiki --base-url http://localhost:11434/v1 --api-key ollama --model gemma4:31b-cloud
+```
+
+### Using Google AI Studio (free tier, faster than OpenRouter free)
+```bash
+npx gitnexus wiki --base-url https://generativelanguage.googleapis.com/v1beta/openai --api-key YOUR_GOOGLE_KEY --model gemini-2.5-flash
+```
+
+---
+
+## ⚠️ Fixing Timeout for Slow/Free Models
+
+GitNexus has a **hardcoded 60-second timeout** per LLM call. Free models on OpenRouter often exceed this. To increase it:
+
+### File to edit:
+```
+C:\Users\LOQ\AppData\Roaming\npm\node_modules\gitnexus\dist\core\wiki\llm-client.js
+```
+
+### Find (line ~174):
+```js
+signal: AbortSignal.timeout(60_000),
+```
+
+### Replace with (5 minutes):
+```js
+signal: AbortSignal.timeout(300_000),
+```
+
+> **Note:** This change is inside `node_modules` — it resets if you reinstall/update gitnexus. Re-apply after any `npm install -g gitnexus` or `npm update -g gitnexus`.
+
+---
+
+## Wiki Command Flags Reference
+
+| Flag | Example | Purpose |
+|------|---------|---------|
+| `--base-url` | `https://openrouter.ai/api/v1` | LLM API endpoint |
+| `--api-key` | `sk-or-v1-xxx` | API key (saved to `~/.gitnexus/config.json`) |
+| `--model` | `google/gemini-2.5-flash` | Model name |
+| `--concurrency` | `1` | Parallel LLM calls (default: 3, use 1 for free models) |
+| `--force` | | Regenerate even if wiki exists |
+| `--gist` | | Publish as GitHub Gist |
+| `--review` | | Stop after grouping to review modules before generating |
+| `--verbose` | | Show LLM commands and responses |
+| `--reasoning-model` | | For o1/o3/o4-mini models (strips temperature) |

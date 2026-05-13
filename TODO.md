@@ -1,7 +1,7 @@
 # 📋 GrowthNexus — Remaining TODO
 
 > **Created:** 12 May 2026
-> **Overall Completion: ~97%** — Core platform + verification + OCR + External Jobs + CV Services backend + **CV Optimizer frontend + 2 n8n workflows** + Contract Pipeline Expansion done
+> **Overall Completion: ~97%** — Core platform + verification + OCR + External Jobs + CV Services backend + **CV Optimizer frontend + ATS Convert + 3 n8n workflows** + Contract Pipeline Expansion done
 > **What Remains:** Phase 10 security (~20% left), Phase 11 remaining UI (CV Builder improvements), Phase 12 (i18n/SEO/QA), Phase 13 (Enterprise)
 
 ---
@@ -125,7 +125,7 @@
 | 13 | CV Parse | ~~🔴 High~~ | ✅ **DONE** (13 May) 🆕 | `/gn-cv-parse` — PDF → text → Gemini → session |
 | 14 | CV Optimize | ~~🔴 High~~ | ✅ **DONE** (13 May) 🆕 | `/gn-cv-optimize` — credit check → Gemini → Gotenberg PDF |
 | 15 | CV Create | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-cv-create` |
-| 16 | CV ATS Convert | 🔴 High | API ✅ / n8n pending | **BUILD NEW** → `gn-cv-ats-convert` |
+| 16 | CV ATS Convert | ~~🔴 High~~ | ✅ **DONE** (13 May) 🆕 | n8n workflow built: Gemini reformat → Gotenberg PDF → Supabase |
 | 17 | CV Finalize | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-cv-finalize` |
 | 18 | Email Send | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-email-send` |
 | 19 | External Jobs Scraper | 🟡 Medium | Pending | LinkedIn/Bayt/Indeed → `/api/external-jobs` |
@@ -163,6 +163,13 @@
   - [x] "إنهاء وتحميل" finalize + download button
   - [x] Session history table below chat/PDF viewer
   - [x] Latest session auto-marked as linked (ارتبطت بالملف)
+  - [x] Resume any session (all statuses, not just active/ready)
+  - [x] Inline session delete with confirm/cancel (تأكيد الحذف / إلغاء)
+  - [x] Session switching without disappearing from list
+  - [x] RLS DELETE policy (`20260513043300` migration)
+  - [x] Direct-to-Optimizer flow from CV Builder (تحسين بالذكاء الاصطناعي button)
+  - [x] Server-side PDF fetch to bypass CORS (`parseCvFromUrl`)
+  - [x] Auto-trigger CV loading when arriving from builder
 
 - [ ] **CV Builder** Page: `/candidate/cv/builder`
   - [ ] **Tab 1: Build from Scratch** — Dynamic form (CvData)
@@ -295,6 +302,7 @@
 | ~~Chat history not persisted~~ | ~~Messages lost on reload~~ | ✅ Fixed (13 May) — chat_history JSONB column |
 | ~~CV Optimizer shows old CV after link~~ | ~~Page refresh resets to original~~ | ✅ Fixed (13 May) — latest session loaded on refresh |
 | ~~Duplicate linked sessions~~ | ~~Multiple sessions linked~~ | ✅ Fixed (13 May) — `20260513043200` cleanup migration |
+| ~~Session delete not working~~ | ~~RLS blocks delete~~ | ✅ Fixed (13 May) — `20260513043300` DELETE policy added |
 | Multi-language not implemented | Arabic-only UI | Phase 12 work (next-intl) |
 | Stripe in test mode | No real payments | Switch to live keys for production |
 | No email service | Can't send emails | Integrate Resend or SendGrid |
