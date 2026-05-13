@@ -1,7 +1,8 @@
 # 📊 GrowthNexus — Progress Report
 
-> **Last Updated:** 13 May 2026 — 07:50 AM
-> **Overall Completion: ~97%** (core + verification + external jobs + CV services backend + **CV Optimizer frontend + ATS Convert + 3 n8n workflows** + pipeline expansion + contract workflow done, remaining B2C UI + n8n wiring)
+> **Last Updated:** 14 May 2026 — 01:24 AM
+> **Overall Completion: ~98%** (Core + Verification + External Jobs + CV Services complete + **13 n8n workflows** + Contract Pipeline + **Interview Self-Practice** done)
+> **Detailed Roadmap:** See `ROADMAP.md` for sprint execution plan
 > **Repo:** `https://github.com/drjimmy1990/NEW-CVS-JOBS`
 > **Live Site:** `https://jobs-test.uae4jobs.ae`
 > **GitNexus:** 2731 symbols, 130 execution flows
@@ -37,7 +38,7 @@
 | 8 | Stripe + Interview AI + Committee Evaluation | ✅ Done | 100% |
 | 9 | Contract, Compliance & Team | ✅ Done | 100% |
 | 10 | Integration, Security & Launch | 🔧 In Progress | ~75% |
-| 11 | B2C Candidate Services | 🔧 In Progress | ~55% (backend done, CV Optimizer UI + n8n done, remaining UI pending) |
+| 11 | B2C Candidate Services | 🔧 In Progress | ~60% (backend done, CV Services + Interview Practice done, 5 B2C remaining) |
 | 12 | i18n, SEO & Launch Polish | ❌ Not Started | 0% |
 
 ---
@@ -65,6 +66,7 @@
 | **External Jobs** | — | ✅ Complete | Scraped jobs from LinkedIn/Bayt/Indeed, admin panel, merged feed, click tracking |
 | **Pipeline** | — | ✅ Complete | 7-stage Kanban (applied → reviewing → shortlisted → interview → offer → hired → rejected), **offer interceptor → contract dialog** 🆕 |
 | **CV Services** | — | 🔧 Partially Complete | 7 API routes, 2 tables, 2 RPCs, 12 types. **CV Optimizer: frontend + 3 n8n workflows DONE (parse + optimize + ATS convert)** 🆕. Session delete + resume all statuses. CV Builder UI pending |
+| **Interview Practice** | — | ✅ Complete | Standalone self-practice module: SearchableSelect combobox, 3 API routes, `interview_practice_sessions` table, dual-credit RPC, session detail view, history 🆕 |
 | **Email** | — | 🔧 Backend Done | Generic n8n SMTP sender, `/api/notifications/email` |
 
 ---
@@ -107,6 +109,14 @@
 |------|-------|--------|
 | Career Path | `/candidate/career-path` | ❌ Phase 11 |
 | Job Alerts | `/candidate/job-alerts` | ❌ Phase 11 |
+| Rejection Analyzer | `/candidate/rejection-analyzer` | ❌ Phase 11 |
+| Skill Gap | `/candidate/skill-gap` | ❌ Phase 11 |
+| Auto Apply | `/candidate/auto-apply` | ❌ Phase 11 |
+
+### Candidate — Interview Practice ✅ (14 May 2026)
+| Page | Route | Status |
+|------|-------|--------|
+| Interview Practice | `/candidate/interview-practice` | ✅ 🆕 (SearchableSelect combobox, 3-phase wizard, history detail view) |
 
 ### Employer Dashboard (16 pages)
 | Page | Route | Status |
@@ -188,17 +198,19 @@
 | 9 | Payment Verification | ❌ Not Started | Stripe fulfillment |
 | 10 | Company Verification | ✅ Done | Webhook → Download → Gemini OCR → Decision Engine → 3× Supabase |
 | 11 | Committee Summary | ✅ Done | Gemini → Respond |
-| 12 | Contract Notifications | ✅ Done | **Merged into main `n8n workflow.json`** — 4 events with Switch + 4 email templates |
+| 12 | Contract Notifications | ✅ Done | 4 events with Switch + 4 email templates |
 | 13 | Contract Generation | 🔧 Code Ready | API works, optional n8n PDF enhancement |
 | 14 | External Jobs Import | 🔧 Code Ready | API + admin + UI done. **n8n scraper workflow needed** |
-| 15 | **CV Parse (Optimizer)** | ✅ Done 🆕 | Separate workflow: PDF download → text extraction → Gemini → cv_session creation |
-| 16 | **CV Optimize** | ✅ Done 🆕 | Separate workflow: credit check → Gemini LLM (chat/modify) → Gotenberg PDF → session update |
-| 17 | **CV ATS Convert** | ✅ Done 🆕 | Separate workflow: Gemini reformat → Gotenberg PDF → Supabase Storage upload |
+| 15 | **CV Parse (Optimizer)** | ✅ Done 🆕 | In main JSON: PDF download → text extraction → Gemini → cv_session creation |
+| 16 | **CV Optimize** | ✅ Done 🆕 | In main JSON: credit check → Gemini LLM (chat/modify) → Gotenberg PDF → session update |
+| 17 | **CV ATS Convert** | ✅ Done 🆕 | In main JSON: IF PDF → extract text → Gemini reformat → Gotenberg PDF → Supabase Storage |
+| 18 | **CV Create (Builder)** | ✅ Done 🆕 | In main JSON: Load profile → Gemini LLM → Gotenberg HTML→PDF → Supabase Storage → cv_session |
 
-### Summary: 11 Done, 2 Code Ready, 3 Not Started
+### Summary: 14 Done, 2 Code Ready, 3 Not Started
+### n8n workflow.json: Single file — 13 webhook paths — 136 nodes total
 
 > **See `webhooks_status.md` for full details**
-> **Note:** CV Parse (#15) and CV Optimize (#16) are separate dedicated workflow JSON files.
+> **Note:** ALL workflows are in a single `n8n workflow.json`. CV Finalize works locally without n8n.
 
 ---
 
@@ -415,37 +427,44 @@
 | — Session switching without disappearing from list | ✅ |
 | — RLS DELETE policy for cv_sessions | ✅ |
 | **CV ATS Convert Workflow** (13 May 2026) | ✅ 🆕 |
-| — n8n `/gn-cv-ats-convert`: Gemini reformat → Gotenberg PDF → Supabase | ✅ |
+| — n8n `/gn-cv-ats-convert`: IF PDF → extract text → Gemini reformat → Gotenberg PDF → Supabase | ✅ |
 | — Direct-to-Optimizer flow (builder → optimize with sourceSessionId) | ✅ |
 | — Server-side PDF fetch to bypass CORS (`parseCvFromUrl`) | ✅ |
 | — Auto-trigger CV loading when arriving from builder | ✅ |
+| **CV Create (Builder) Workflow** (14 May 2026) | ✅ 🆕 |
+| — n8n `/gn-cv-create`: form data → profile load → Gemini LLM → Gotenberg PDF → Supabase | ✅ |
+| — All 13 n8n workflows now in single `n8n workflow.json` (136 nodes) | ✅ |
+| **CV Builder Frontend** (14 May 2026) | ✅ 🆕 |
+| — `/candidate/cv/builder` page: 3 tabs (نموذج / رفع PDF / لصق نص) | ✅ |
+| — `CvFormSteps.tsx` (24KB) dynamic form with all CvData fields | ✅ |
+| — `CvUploadTab.tsx` + `CvPasteTab.tsx` → `gn-cv-ats-convert` | ✅ |
+| — EN/AR/Bilingual language selector | ✅ |
+| — Link to profile + download + optimize CTAs on success | ✅ |
 
-### ⏳ Still Needed (~10%)
+### ⏳ Still Needed — Sprint Order (see `ROADMAP.md`)
 
-| Feature | Priority | Phase |
-|---------|----------|-------|
+| Feature | Priority | Sprint |
+|---------|----------|--------|
 | ~~**Contract notify → publish on n8n**~~ | ~~🔴 High~~ | ~~10~~ ✅ Done |
 | ~~Emiratisation data seeding~~ | ~~🔴 High~~ | ~~10~~ ✅ Done (12 May) |
-| **Security hardening** (secrets, Zod, rate limiting) | 🔴 High | 10 |
 | ~~Company verification enforcement~~ | ~~🟡 Medium~~ | ~~10~~ ✅ Done (12 May) |
 | ~~**Smart candidate suggestions (replace mocks)**~~ | ~~🟡 Medium~~ | ~~10~~ ✅ Done |
 | ~~**AI match score enhancement**~~ | ~~🟡 Medium~~ | ~~10~~ ✅ Done |
-| **Landing page builder (full CRUD)** | 🟡 Medium | 10 |
-| **Stripe production readiness** | 🟡 Medium | 10 |
-| **Company verification OCR (n8n workflow)** | 🟡 Medium | 10 |
-| **Email service integration** | 🟡 Medium | 10 |
-| **Landing page builder (full CRUD)** | 🟡 Medium | 10 |
-| **Stripe production readiness** | 🟡 Medium | 10 |
-| **CV Builder** | 🟠 Phase 11 | 11 |
-| **CV Analyzer (paid)** | 🟠 Phase 11 | 11 |
-| **Career Path Generator** | 🟠 Phase 11 | 11 |
-| **Job Alerts** | 🟠 Phase 11 | 11 |
-| **Auto-Apply Service** | 🟠 Phase 11 | 11 |
-| **i18n (`next-intl`)** | 🟠 Phase 12 | 12 |
-| **SEO (sitemap, OG, structured data)** | 🟠 Phase 12 | 12 |
-| **E2E tests (Playwright)** | 🟠 Phase 12 | 12 |
-| **n8n remaining workflows (4)** | 🟢 Low | 10 |
-| **n8n external jobs scraper** | 🔴 High | 10 |
+| ~~**CV Builder**~~ | ~~🟠 Phase 11~~ | ~~11~~ ✅ Done (14 May) |
+| **Interview Self-Practice** (39 AED/mo) | 🔴 High | Sprint 1 |
+| **Rejection Analyzer** (29 AED) | 🔴 High | Sprint 1 |
+| **Career Path Generator** (29 AED/mo) | 🟡 Medium | Sprint 1 |
+| **Skill Gap Analyzer** (25 AED) | 🟡 Medium | Sprint 1 |
+| **Smart Job Alert** (19 AED/mo) | 🟡 Medium | Sprint 1 |
+| **Auto Apply** (49–149 AED/mo) | 🟠 Lower | Sprint 1 |
+| **n8n External Jobs Scraper** | 🔴 High | Sprint 2 |
+| **n8n Email Send** (`gn-email-send`) | 🟡 Medium | Sprint 2 |
+| **Security hardening** (secrets, Zod, rate limiting) | 🔴 High | Sprint 3 |
+| **Deploy to VPS** (build + PM2 + n8n activate) | 🔴 High | Sprint 3 |
+| **Stripe production readiness** | 🟡 Medium | Sprint 3 |
+| **i18n (`next-intl`)** | 🟠 Phase 12 | Sprint 4 |
+| **SEO (sitemap, OG, structured data)** | 🟠 Phase 12 | Sprint 4 |
+| **E2E tests (Playwright)** | 🟠 Phase 12 | Sprint 4 |
 
 ---
 
@@ -457,7 +476,7 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 
-# N8N (7 active webhooks)
+# N8N (13 active webhooks in single workflow)
 NEXT_PUBLIC_N8N_CV_PARSER_WEBHOOK=
 N8N_AI_JOB_DESC_WEBHOOK=
 N8N_MATCH_SCORE_WEBHOOK=
@@ -481,6 +500,14 @@ STRIPE_WEBHOOK_SECRET=
 STRIPE_STARTER_PRICE_ID=
 STRIPE_GROWTH_PRICE_ID=
 STRIPE_PRO_PRICE_ID=
+
+# CV Services (all in main n8n workflow.json)
+N8N_CV_PARSE_WEBHOOK=
+N8N_CV_OPTIMIZE_WEBHOOK=
+N8N_CV_CREATE_WEBHOOK=
+N8N_CV_ATS_CONVERT_WEBHOOK=
+# N8N_CV_FINALIZE_WEBHOOK=      # NOT NEEDED — API handles locally
+N8N_EMAIL_SEND_WEBHOOK=          # ⚠️ Still pending workflow
 ```
 
 ---
@@ -517,4 +544,4 @@ STRIPE_PRO_PRICE_ID=
 | ~~Sessions disappear on resume~~ | ~~Can't switch between sessions~~ | ✅ Fixed — stopped removing from list, table filter handles it |
 | Multi-language not implemented | Arabic-only UI | Phase 12 work (next-intl) |
 | Stripe in test mode | No real payments | Switch to live keys for production |
-| No email service | Can't send emails | n8n SMTP configured for contract emails, needs expansion |
+| No email service | Can't send generic emails | n8n SMTP configured for contract lifecycle; `gn-email-send` workflow still needed |

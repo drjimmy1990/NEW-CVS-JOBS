@@ -1,8 +1,9 @@
 # 📋 GrowthNexus — Remaining TODO
 
 > **Created:** 12 May 2026
-> **Overall Completion: ~97%** — Core platform + verification + OCR + External Jobs + CV Services backend + **CV Optimizer frontend + ATS Convert + 3 n8n workflows** + Contract Pipeline Expansion done
-> **What Remains:** Phase 10 security (~20% left), Phase 11 remaining UI (CV Builder improvements), Phase 12 (i18n/SEO/QA), Phase 13 (Enterprise)
+> **Overall Completion: ~98%** — Core platform + verification + OCR + External Jobs + CV Services (Optimizer + Builder + ATS Convert) + **13 n8n workflows** + Contract Pipeline + **Interview Self-Practice** done
+> **What Remains:** Sprint 1: B2C Services (5 remaining) → Sprint 2: n8n wiring → Sprint 3: Deploy + Security → Sprint 4: i18n/SEO/QA
+> **Detailed Roadmap:** See `ROADMAP.md` for full sprint plan
 
 ---
 
@@ -122,12 +123,12 @@
 ### Remaining n8n Workflows
 | # | Workflow | Priority | Status | Description |
 |---|---------|----------|--------|-------------|
-| 13 | CV Parse | ~~🔴 High~~ | ✅ **DONE** (13 May) 🆕 | `/gn-cv-parse` — PDF → text → Gemini → session |
-| 14 | CV Optimize | ~~🔴 High~~ | ✅ **DONE** (13 May) 🆕 | `/gn-cv-optimize` — credit check → Gemini → Gotenberg PDF |
-| 15 | CV Create | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-cv-create` |
-| 16 | CV ATS Convert | ~~🔴 High~~ | ✅ **DONE** (13 May) 🆕 | n8n workflow built: Gemini reformat → Gotenberg PDF → Supabase |
-| 17 | CV Finalize | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-cv-finalize` |
-| 18 | Email Send | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-email-send` |
+| 13 | CV Parse | ~~🔴 High~~ | ✅ **DONE** (13 May) 🆕 | In main `n8n workflow.json` — `/gn-cv-parse` |
+| 14 | CV Optimize | ~~🔴 High~~ | ✅ **DONE** (13 May) 🆕 | In main `n8n workflow.json` — `/gn-cv-optimize` |
+| 15 | CV Create | ~~🔴 High~~ | ✅ **DONE** (14 May) 🆕 | In main `n8n workflow.json` — `/gn-cv-create` (form data → Gemini → Gotenberg PDF) |
+| 16 | CV ATS Convert | ~~🔴 High~~ | ✅ **DONE** (14 May) 🆕 | In main `n8n workflow.json` — `/gn-cv-ats-convert` |
+| 17 | CV Finalize | ~~🔴 High~~ | ✅ **NOT NEEDED** | API route works **locally** without n8n (built-in fallback) |
+| 18 | Email Send | 🔴 High | API ✅ / n8n pending | Generic SMTP sender → `gn-email-send` |
 | 19 | External Jobs Scraper | 🟡 Medium | Pending | LinkedIn/Bayt/Indeed → `/api/external-jobs` |
 | 7 | Smart Matching | 🟡 Medium | Pending | AI ranks best candidates from talent pool |
 | 8 | Message Notification | 🟢 Low | Pending | Chat message push notifications |
@@ -171,48 +172,66 @@
   - [x] Server-side PDF fetch to bypass CORS (`parseCvFromUrl`)
   - [x] Auto-trigger CV loading when arriving from builder
 
-- [ ] **CV Builder** Page: `/candidate/cv/builder`
-  - [ ] **Tab 1: Build from Scratch** — Dynamic form (CvData)
-  - [ ] **Tab 2: Upload & Convert** — Upload PDF → ATS-ready (gn-cv-ats-convert)
-  - [ ] **Tab 3: Paste & Convert** — Paste text → ATS-ready (gn-cv-ats-convert)
-  - [ ] Shared language selector: EN / AR / Bilingual
-  - [ ] "Use this CV on my profile" button
-  - [ ] CV history panel (past sessions)
+- [x] **CV Builder** Page: `/candidate/cv/builder` ✅ DONE (14 May 2026)
+  - [x] **Tab 1: Build from Scratch** — Dynamic form (CvData) → `CvFormSteps.tsx` (24KB)
+  - [x] **Tab 2: Upload & Convert** — Upload PDF → ATS-ready (`CvUploadTab.tsx` → `gn-cv-ats-convert`)
+  - [x] **Tab 3: Paste & Convert** — Paste text → ATS-ready (`CvPasteTab.tsx` → `gn-cv-ats-convert`)
+  - [x] Shared language selector: EN / AR / Bilingual
+  - [x] "Use this CV on my profile" button (`linkCvToProfile()`)
+  - [x] Success view: Download + Optimize + Link to profile CTAs
+  - [x] n8n `gn-cv-create` workflow (in main JSON)
 
-- [ ] **Interview AI (Candidate Self-Practice)** (39 AED/month)
-  - [ ] Adapt existing employer interview flow for candidate self-service
-  - [ ] Practice by job role / industry
-  - [ ] AI feedback on answers
-  - [ ] Subscription gate
+- [x] **Interview AI (Candidate Self-Practice)** (39 AED/month) — ✅ **DONE (14 May 2026)** 🆕
+  - [x] Standalone `/candidate/interview-practice` page (SearchableSelect combobox)
+  - [x] Job role/industry selector (searchable — pick from list or type custom)
+  - [x] Practice mode API (`/api/interview/practice` + `/submit` + `/history`)
+  - [x] Practice history table + `interview_practice_sessions` DB table
+  - [x] Session detail view (click history → review Q&A + AI evaluation)
+  - [x] Dual-credit gate: `deduct_interview_credits()` RPC (subscription allowance + credits)
+  - [x] Sidebar nav link: "تدريب المقابلات" (Brain icon)
+  - [x] `interview_practice_free_mode` system config toggle
+  - [x] RLS policies on `interview_practice_sessions`
+  - [x] `interview_allowance` column on profiles table
 
-### 11.2 Growth Pack
+### 11.2 Growth Pack — **SPRINT 1**
 - [ ] **Rejection Analyzer** (29 AED)
-  - [ ] AI analysis of why candidate was rejected
-  - [ ] Improvement tips based on rejection reasons
-  - [ ] Comparison with successful candidates (anonymized)
+  - [ ] `/candidate/rejection-analyzer` page
+  - [ ] AI analysis API (`/api/ai/rejection-analysis`)
+  - [ ] n8n workflow `gn-rejection-analyze`
+  - [ ] Results UI: reasons + improvements + skills + recommended jobs
+  - [ ] Credit deduction
 
 - [ ] **Career Path Generator** (29 AED/month)
-  - [ ] Input current skills + career goals
-  - [ ] AI generates growth trajectory
-  - [ ] Skill gap identification
-  - [ ] Training/certification recommendations
+  - [ ] `/candidate/career-path` page
+  - [ ] Career path API (`/api/ai/career-path`)
+  - [ ] n8n workflow `gn-career-path`
+  - [ ] Visual roadmap (timeline/flowchart)
+  - [ ] Skill gap integration + training recommendations
+  - [ ] `career_paths` DB table
 
 - [ ] **Skill Gap Analyzer** (25 AED)
-  - [ ] Compare current skills vs target job requirements
-  - [ ] Priority ranking of skills to develop
-  - [ ] Course/resource recommendations
+  - [ ] `/candidate/skill-gap` page
+  - [ ] Skill comparison API (`/api/ai/skill-gap`)
+  - [ ] n8n workflow `gn-skill-gap`
+  - [ ] Visual gap chart (radar/bar)
+  - [ ] Priority ranking + course recommendations
 
 - [ ] **Smart Job Alert** (19 AED/month)
-  - [ ] Configurable matching criteria
-  - [ ] Email/push for matching jobs
-  - [ ] Daily/weekly digest via n8n
-  - [ ] Page: `/candidate/job-alerts`
+  - [ ] `/candidate/job-alerts` page
+  - [ ] `job_alert_preferences` DB table
+  - [ ] Alert preferences API (`/api/job-alerts` CRUD)
+  - [ ] n8n cron workflow `gn-job-alerts` (daily/weekly digest)
+  - [ ] Email template for matching jobs
+  - [ ] Subscription gate
 
-### 11.3 Pro Pack
+### 11.3 Pro Pack — **SPRINT 1**
 - [ ] **Auto Apply** (49–149 AED/month)
-  - [ ] n8n workflow: match → auto-submit → track
-  - [ ] 50 applications/month limit
-  - [ ] Detailed tracking dashboard
+  - [ ] `/candidate/auto-apply` page
+  - [ ] `auto_apply_settings` DB table
+  - [ ] Matching engine API (`/api/auto-apply/match`)
+  - [ ] n8n workflow `gn-auto-apply` (match → apply → track)
+  - [ ] Tracking dashboard
+  - [ ] Monthly limit enforcement (50/100/200 tiers)
 
 - [ ] **Voice Interview Analysis** (in Pro tier)
   - [ ] Audio recording during practice
@@ -305,7 +324,7 @@
 | ~~Session delete not working~~ | ~~RLS blocks delete~~ | ✅ Fixed (13 May) — `20260513043300` DELETE policy added |
 | Multi-language not implemented | Arabic-only UI | Phase 12 work (next-intl) |
 | Stripe in test mode | No real payments | Switch to live keys for production |
-| No email service | Can't send emails | Integrate Resend or SendGrid |
+| No email service | Can't send generic emails | n8n SMTP configured for contract lifecycle; `gn-email-send` workflow still needed |
 | No monitoring | No error tracking | Add Sentry before launch |
 
 ---

@@ -1,6 +1,7 @@
 # 🔌 GrowthNexus — N8N Webhooks Status
 
-> **Last Updated:** 13 May 2026 — 07:50 AM
+> **Last Updated:** 14 May 2026 — 01:24 AM
+> **Roadmap:** See `ROADMAP.md` for sprint execution plan
 
 ## Legend
 - ✅ **Done** = n8n workflow built + frontend code connected + tested
@@ -28,7 +29,9 @@
 | 14 | **External Jobs Import** | `/api/external-jobs` | 🔧 Code Ready | Upsert API for scraped jobs (LinkedIn/Bayt/Indeed). S2S auth via `N8N_WEBHOOK_SECRET`. Admin panel at `/admin/external-jobs`. **Needs: n8n scraper workflow** |
 | 15 | **CV Parse (GrowthNexus)** | `/gn-cv-parse` | ✅ Done 🆕 | Webhook → HTTP Download PDF → Extract Text → Gemini Parse → Create cv_session → Respond. Separate workflow from #1, dedicated to CV Optimizer feature |
 | 16 | **CV Optimize** | `/gn-cv-optimize` | ✅ Done 🆕 | Webhook → Load session + config → Credit check → Gemini LLM (chat vs modification) → Gotenberg HTML→PDF → Supabase session update → Respond. Full AI chat + CV rewrite engine |
-| 17 | **CV ATS Convert** | `/gn-cv-ats-convert` | ✅ Done 🆕 | Webhook → Gemini reformat CV → Gotenberg HTML→PDF → Supabase Storage upload → Respond with download URL. Supports PDF upload + raw text input |
+| 17 | **CV ATS Convert** | `/gn-cv-ats-convert` | ✅ Done 🆕 | In main `n8n workflow.json`. Webhook → IF PDF → Extract text → Gemini reformat → Gotenberg PDF → Supabase Storage → Create cv_session → Respond. Supports PDF upload + raw text input |
+| 18 | **CV Create (Builder)** | `/gn-cv-create` | ✅ Done 🆕 | In main `n8n workflow.json`. Webhook → Load profile + config → Gemini LLM → Gotenberg HTML→PDF → Supabase Storage → Create cv_session → Respond. Form data → professional PDF |
+| — | **CV Finalize** | `/api/cv/finalize` | ✅ No n8n needed | API route works **locally** — marks session `ready`, returns best download URL. n8n webhook is optional fallback (commented out in .env) |
 
 ---
 
@@ -36,7 +39,7 @@
 
 | Status | Count |
 |--------|-------|
-| ✅ Done | 11 |
+| ✅ Done / No n8n needed | 14 |
 | ⚠️ Partial / Code Ready | 2 |
 | ❌ Not Started | 3 |
 
@@ -44,13 +47,10 @@
 
 | File | Contains | Status |
 |------|----------|--------|
-| `n8n workflow.json` | **Main workflow** — 9 webhook paths (CV Parser, AI Job Desc, Match Score, Interview Q/Eval, Committee, App Notify, Company Verify, **Contract Notify**) | ✅ Active |
+| `n8n workflow.json` | **Single main workflow** — **13 webhook paths** (136 nodes total). Contains ALL workflows: CV Parser, AI Job Desc, Match Score, Interview Q/Eval, Committee, App Notify, Company Verify, Contract Notify, CV Parse, CV Optimize, CV ATS Convert, CV Create | ✅ Active |
 | `n8n-contract-notify-workflow.json` | ⚠️ **Legacy standalone** — superceded by contract notify nodes in main workflow | 🔄 Merged into main |
-| `n8n-cv-parse-workflow.json` | **CV Parse workflow** 🆕 — `/gn-cv-parse` webhook for CV Optimizer feature. PDF download → text extraction → Gemini parse → session creation | ✅ Active |
-| `n8n-cv-optimize-workflow.json` | **CV Optimize workflow** 🆕 — `/gn-cv-optimize` webhook for AI chat + CV rewrite. Credit system → Gemini LLM → Gotenberg PDF → session update | ✅ Active |
-| `n8n-cv-ats-convert-workflow.json` | **CV ATS Convert workflow** 🆕 — `/gn-cv-ats-convert` webhook for ATS-ready CV conversion. Upload/Paste → Gemini reformat → Gotenberg PDF → Supabase | ✅ Active |
 
-> **Note:** Contract notification nodes are integrated directly into the main `n8n workflow.json`. The CV Parse and CV Optimize workflows are **separate** dedicated workflow files.
+> **Note:** ALL 13 workflows are inside a **single** `n8n workflow.json` file (136 nodes). **CV Finalize does NOT need an n8n workflow** — the API route handles everything locally.
 
 ## CV Optimizer Workflow Details (New — 13 May 2026) 🆕
 
@@ -108,21 +108,52 @@ Webhook (prompt, sessionId, language, chatHistory)
 
 ## Next To Build (Priority Order)
 
-### 1. External Jobs Scraper (#14) — HIGH VALUE
+### ~~1. CV Create~~ ✅ DONE (14 May 2026)
+~~n8n workflow for CV Builder form data → PDF.~~
+
+### ~~2. CV ATS Convert~~ ✅ DONE (14 May 2026)
+~~n8n workflow for ATS-ready CV conversion.~~
+
+### 3. External Jobs Scraper (#14) — HIGH VALUE
 Build n8n scraper workflow for LinkedIn/Bayt/Indeed → `/api/external-jobs`.
 See: `N8N_EXTERNAL_JOBS_WORKFLOW_GUIDE.md`
 
-### 2. Smart Candidate Matching (#7) — HIGH VALUE
+### 4. Smart Candidate Matching (#7) — HIGH VALUE
 Employer can search their candidate pool and AI ranks best matches for a job.
 
-### ~~3. Company Verification (#10)~~ ✅ DONE
+### ~~5. Company Verification (#10)~~ ✅ DONE
 ~~OCR trade license, extract company data, calculate trust score.~~
 
-### 4. Payment Verification (#9) — MONETIZATION
+### 6. Payment Verification (#9) — MONETIZATION
 Stripe/EdfaPay webhook to fulfill subscriptions and credits.
 
-### 5. Application Notification (#6) — FINISH
+### 7. Application Notification (#6) — FINISH
 Add Email/Telegram send node in existing n8n workflow.
 
-### 6. Message Notification (#8) — NICE TO HAVE
+### 8. Message Notification (#8) — NICE TO HAVE
 Chat message notifications.
+
+### ~~9. CV Finalize~~ — ✅ NOT NEEDED
+~~API route works locally without n8n workflow.~~
+
+---
+
+## 📅 Sprint 1 — Upcoming B2C Webhooks (Not Yet Built)
+
+> These n8n workflows will be built during Sprint 1 (B2C Revenue Services).
+> Each needs: Webhook node + Gemini LLM + Supabase read/write + Respond node.
+
+| # | Webhook | Path | Service | Price |
+|---|---------|------|---------|-------|
+| 19 | Interview Practice | `/webhook/gn-interview-practice` | Self-practice questions + eval | 39 AED/mo |
+| 20 | Rejection Analyzer | `/webhook/gn-rejection-analyze` | AI analysis of rejections | 29 AED |
+| 21 | Career Path | `/webhook/gn-career-path` | AI career trajectory | 29 AED/mo |
+| 22 | Skill Gap | `/webhook/gn-skill-gap` | Skill comparison analysis | 25 AED |
+| 23 | Job Alerts (cron) | `/webhook/gn-job-alerts` | Daily/weekly job digest | 19 AED/mo |
+| 24 | Auto Apply | `/webhook/gn-auto-apply` | Auto-submit applications | 49–149 AED/mo |
+
+### Sprint 2 — Infrastructure Webhooks
+| # | Webhook | Path | Service | Status |
+|---|---------|------|---------|--------|
+| 25 | External Jobs Scraper | Schedule trigger | LinkedIn/Bayt/Indeed scraper | 🔧 Guide ready |
+| 26 | Email Send | `/webhook/gn-email-send` | Generic SMTP sender | 🔧 API ready |

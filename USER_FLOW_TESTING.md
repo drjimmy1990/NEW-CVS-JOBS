@@ -1,7 +1,8 @@
 # 🔄 GrowthNexus — User Flow Testing Guide
 
-> **Last Updated:** 13 May 2026 — 07:50 AM
-> **Source of Truth:** GitNexus (2731 symbols, 130 flows) + `full.sql` (26 tables, 16 RPCs)
+> **Last Updated:** 14 May 2026 — 01:24 AM
+> **Source of Truth:** GitNexus (2810 symbols, 131 flows) + `full.sql` (26 tables, 16 RPCs)
+> **Roadmap:** See `ROADMAP.md` for sprint execution plan
 > **Instructions:** Test each flow in order. Mark ✅ for working, ❌ for broken.
 > Items marked 🔗 use **n8n webhooks** — they work with mock data if n8n is offline.
 > Items marked 🔒 require **company verification** — only verified employers can access.
@@ -331,15 +332,16 @@ UPDATE profiles SET role = 'admin' WHERE email = 'your@email.com';
 | 9 | Payment Verification | `/webhook/gn-payment-verify` | Payment fulfillment | ❌ |
 | 10 | Company Verification | `/webhook/gn-company-verify` | Trade license OCR | ✅ |
 | 11 | Committee Summary | `/webhook/gn-committee-summary` | Panel evaluation | ✅ |
-| 12 | Contract Notifications | (direct fetch) | Contract lifecycle | ✅ |
+| 12 | Contract Notifications | `/webhook/gn-contract-notify` | Contract lifecycle | ✅ |
 | 13 | Contract Generation | `/webhook/gn-contract-gen` | Contract PDF | 🔧 Code Ready |
 | 14 | External Jobs Import | `/api/external-jobs` | Scraped job import | 🔧 Code Ready |
 | 15 | CV Parse (Optimizer) | `/webhook/gn-cv-parse` | CV Optimizer upload | ✅ 🆕 |
 | 16 | CV Optimize | `/webhook/gn-cv-optimize` | AI chat + CV rewrite | ✅ 🆕 |
 | 17 | CV ATS Convert | `/webhook/gn-cv-ats-convert` | PDF/Text → ATS-ready CV | ✅ 🆕 |
+| 18 | CV Create (Builder) | `/webhook/gn-cv-create` | Form data → professional PDF | ✅ 🆕 |
 
 > **Note:** All webhooks work with mock/fallback data when n8n is offline.
-> **CV Parse (#15), CV Optimize (#16), and CV ATS Convert (#17) are separate dedicated workflow files.**
+> **All 13 n8n workflows are in a single `n8n workflow.json` file (136 nodes).** CV Finalize works locally without n8n.
 
 ---
 
@@ -620,8 +622,65 @@ Dashboard server query:
 
 ### Key Details
 
-- **n8n Workflow:** `gn-cv-ats-convert` — separate dedicated workflow file
+- **n8n Workflow:** `gn-cv-ats-convert` — in main `n8n workflow.json` (not separate file)
 - **Filename Convention:** `CV_{userId}.pdf` for consistent naming in Supabase storage
 - **CORS Solution:** Server-side PDF fetch via `/api/cv/parse` with `sourceUrl` parameter
 - **Session Linking:** `sourceSessionId` query param connects builder output to optimizer input
 - **RLS:** DELETE policy added via `20260513043300` migration
+
+---
+
+## Flow 23: Interview AI Self-Practice 🆕
+
+> **Added:** 14 May 2026 — Tests the candidate self-service interview practice module
+
+### 23.1 Setup Phase
+
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|---------|
+| 1 | Navigate to Interview Practice | `/candidate/interview-practice` | Page loads with setup form | |
+| 2 | See credit balance card | | Shows "رصيدك" with current balance + allowance | |
+| 3 | Type in Job Role combobox | | Filters predefined list OR accepts custom text | |
+| 4 | Type in Industry combobox | | Filters predefined list OR accepts custom text | |
+| 5 | Select language (Arabic/English) | | Toggle between AR/EN | |
+| 6 | "ابدأ التدريب" button enables | | Button only active when both fields have text | |
+
+### 23.2 Interview Phase
+
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|---------|
+| 1 | Click "ابدأ التدريب" | | 🔗 API calls `/api/interview/practice` → n8n `gn-interview-questions` | |
+| 2 | 5 questions generated | | Progress bar shows 1/5, question card displayed | |
+| 3 | Type answer (20+ chars) | | Textarea accepts input, "Next" button enables | |
+| 4 | Navigate through questions | | Progress updates, answers persist when going back | |
+| 5 | Click "إرسال الإجابات" on last question | | 🔗 API calls `/api/interview/practice/submit` → n8n `gn-interview-eval` | |
+
+### 23.3 Result Phase
+
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|---------|
+| 1 | Score card appears | | Shows overall score (%), recommendation text | |
+| 2 | Per-question breakdown | | Each question shows score/max + feedback + tips | |
+| 3 | General improvement tips | | Bullet list of tips from AI | |
+| 4 | Click "تدريب جديد" | | Returns to setup phase | |
+| 5 | Click "سجل التدريبات" | | Returns to setup with history expanded | |
+
+### 23.4 History & Detail View
+
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|---------|
+| 1 | Expand "سجل التدريبات" accordion | | Shows list of past sessions with scores | |
+| 2 | Click on a completed session | | Opens detail view with full Q&A + AI evaluation | |
+| 3 | Detail view shows questions with answers | | Each card: question + user's answer + AI feedback + score | |
+| 4 | Click "العودة للسجل" | | Returns to setup with history visible | |
+| 5 | Eye icon visible on hover | | Each history row shows Eye icon on hover | |
+
+### Key Details
+
+- **APIs:** `/api/interview/practice` (start), `/api/interview/practice/submit` (evaluate), `/api/interview/practice/history` (list + detail)
+- **DB Table:** `interview_practice_sessions` (user_id, job_role, industry, questions, answers, score, report, status)
+- **Credit RPC:** `deduct_interview_credits()` — checks `interview_allowance` first, falls back to `credits_balance`
+- **Free Mode:** `system_config.interview_practice_free_mode = 'true'` (bypass credits in testing)
+- **n8n Workflows:** Reuses existing `gn-interview-questions` + `gn-interview-eval` webhooks
+- **SearchableSelect:** Custom combobox component — type to filter or enter free-text custom values
+- **Session Data:** Questions, answers, and full AI report stored as JSONB for history review

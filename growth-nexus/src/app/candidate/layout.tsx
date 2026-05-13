@@ -12,7 +12,8 @@ import {
     UserCircle,
     Heart,
     MessageSquare,
-    FileSignature
+    FileSignature,
+    Brain
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -25,6 +26,7 @@ const sidebarLinks = [
     { href: '/candidate/cv', label: 'سيرتي الذاتية', icon: FileText },
     { href: '/candidate/applications', label: 'طلباتي', icon: Briefcase },
     { href: '/candidate/contracts', label: 'العقود', icon: FileSignature },
+    { href: '/candidate/interview-practice', label: 'تدريب المقابلات', icon: Brain },
     { href: '/candidate/saved-jobs', label: 'الوظائف المحفوظة', icon: Heart },
     { href: '/candidate/messages', label: 'الرسائل', icon: MessageSquare },
     { href: '/candidate/settings', label: 'الإعدادات', icon: Settings },

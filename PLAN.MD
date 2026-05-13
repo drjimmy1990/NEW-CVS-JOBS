@@ -1,9 +1,10 @@
 # 📋 GrowthNexus — Master Plan
 
-> **Last Updated:** 13 May 2026 — 07:50 AM
+> **Last Updated:** 14 May 2026 — 01:24 AM
 > **Current Phase: 10–11 (Integration + B2C)**
-> **Completed: 9 of 12 phases + Phase 11 backend done + CV Optimizer frontend + ATS Convert + 3 n8n workflows + Contract Pipeline Expansion (Phase 10 at ~75%, Phase 11 at ~60%)**
-> **Source of Truth:** `full.sql` + GitNexus (2731 symbols, 130 flows)
+> **Completed: 9 of 12 phases + Phase 11 CV Services + Interview Self-Practice + Contract Pipeline Expansion**
+> **Source of Truth:** `full.sql` + GitNexus (2810 symbols, 131 flows)
+> **Detailed Roadmap:** See `ROADMAP.md` for sprint execution plan
 
 ---
 
@@ -62,7 +63,7 @@ GrowthNexus is an **AI Recruitment Operating System** for the UAE market, servin
 - **PDF generation API** (Arabic font support via `/api/contracts/pdf/[id]`)
 - **Auto-expiry cron** via vercel.json (daily 06:00 UTC)
 - **Contract templates** (MOHRE standard + custom per company)
-- **N8N contract notifications** — 4 events merged into main `n8n workflow.json` (9 webhook paths total)
+- **N8N contract notifications** — 4 events merged into main `n8n workflow.json` (13 webhook paths total)
 - **Emiratisation module** (profile form, 6-tab dashboard, gauges, PDF export, audit log)
 - **Forecasting Engine** — live Supabase data: 7 KPIs from jobs + applications tables
 - **Team management** — `company_members` table, invite/remove, 4 roles (owner/admin/member/viewer)
@@ -148,12 +149,12 @@ GrowthNexus is an **AI Recruitment Operating System** for the UAE market, servin
 | # | Workflow | Priority | Status | Description |
 |---|---------|----------|--------|-------------|
 | 12 | Contract Notifications | ~~🔴 High~~ | ✅ **Merged** | 4 events via Switch + 4 email templates |
-| 13 | CV Parse | ~~🔴 High~~ | ✅ **DONE** (13 May) 🆕 | `/gn-cv-parse` — PDF → text → Gemini → session |
-| 14 | CV Optimize | ~~🔴 High~~ | ✅ **DONE** (13 May) 🆕 | `/gn-cv-optimize` — credit check → Gemini → Gotenberg PDF |
-| 15 | CV Create | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-cv-create` |
-| 16 | CV ATS Convert | ~~🔴 High~~ | ✅ **DONE** (13 May) 🆕 | `/gn-cv-ats-convert` — Gemini reformat → Gotenberg PDF → Supabase |
-| 17 | CV Finalize | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-cv-finalize` |
-| 18 | Email Send | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-email-send` |
+| 13 | CV Parse | ~~🔴 High~~ | ✅ **DONE** (13 May) 🆕 | In main JSON — `/gn-cv-parse` |
+| 14 | CV Optimize | ~~🔴 High~~ | ✅ **DONE** (13 May) 🆕 | In main JSON — `/gn-cv-optimize` |
+| 15 | CV Create | ~~🔴 High~~ | ✅ **DONE** (14 May) 🆕 | In main JSON — `/gn-cv-create` (form data → Gemini → Gotenberg PDF) |
+| 16 | CV ATS Convert | ~~🔴 High~~ | ✅ **DONE** (14 May) 🆕 | In main JSON — `/gn-cv-ats-convert` |
+| 17 | CV Finalize | ~~🔴 High~~ | ✅ **NOT NEEDED** | API route works locally without n8n |
+| 18 | Email Send | 🔴 High | API ✅ / n8n pending | Generic SMTP sender → `gn-email-send` |
 | 19 | External Jobs Scraper | 🟡 Medium | API ✅ / n8n pending | LinkedIn/Bayt/Indeed scraper |
 | 7 | Smart Matching | 🟡 Medium | Pending | AI ranks best candidates |
 | 8 | Message Notification | 🟢 Low | Pending | Chat message notifications |
@@ -230,13 +231,34 @@ Based on the business strategy doc (منصة التوظيف), launch in order:
 | Session switching | Feature | ✅ Previous session returns to table automatically |
 | Direct-to-Optimizer flow | Feature | ✅ Builder → optimize with `sourceSessionId` query param |
 | Server-side PDF fetch (CORS fix) | Feature | ✅ `parseCvFromUrl` → `/api/cv/parse` with `sourceUrl` |
-| n8n `/gn-cv-ats-convert` | Workflow | ✅ Gemini reformat → Gotenberg PDF → Supabase Storage |
+| n8n `/gn-cv-ats-convert` | Workflow | ✅ In main `n8n workflow.json` — Gemini reformat → Gotenberg PDF → Supabase Storage |
+| n8n `/gn-cv-create` | Workflow | ✅ In main `n8n workflow.json` — form data → Gemini → Gotenberg PDF → cv_session (14 May) 🆕 |
 
-### Phase 11.1b — Remaining CV Services Frontend (Pending)
-| Service | Route | Status | Details |
-|---------|-------|--------|---------|
-| CV Builder | `/candidate/cv/builder` | ❌ UI pending (API ready) | 3 tabs: Build from Scratch / Upload ATS / Paste ATS |
-| Interview AI (Candidate) | TBD | ❌ Not Started | Adapt employer interview flow for self-practice |
+### ✅ Phase 11.1b — CV Builder Frontend (DONE 14 May 2026) 🆕
+| Artifact | Type | Status |
+|----------|------|--------|
+| `/candidate/cv/builder` | Page | ✅ 3 tabs: نموذج / رفع PDF / لصق نص |
+| `CvFormSteps.tsx` | Component | ✅ 24KB dynamic form with all CvData fields |
+| `CvUploadTab.tsx` | Component | ✅ Upload PDF → `gn-cv-ats-convert` |
+| `CvPasteTab.tsx` | Component | ✅ Paste text → `gn-cv-ats-convert` |
+| Language selector | UI | ✅ EN / AR / Bilingual toggle |
+| Link to profile | Feature | ✅ `linkCvToProfile()` on success view |
+| Success CTAs | UI | ✅ Download + Optimize + Link to profile |
+
+### ✅ Phase 11.1c — Interview Self-Practice (DONE 14 May 2026) 🆕
+| Artifact | Type | Status |
+|----------|------|--------|
+| `/candidate/interview-practice` | Page | ✅ Standalone practice module (SearchableSelect combobox UI) |
+| `/api/interview/practice` | API | ✅ Start session — credit check + n8n `gn-interview-questions` proxy |
+| `/api/interview/practice/submit` | API | ✅ Evaluate answers — n8n `gn-interview-eval` proxy + save results |
+| `/api/interview/practice/history` | API | ✅ List sessions + credit balance + full Q&A detail |
+| `interview_practice_sessions` | DB Table | ✅ user_id, job_role, industry, questions, answers, score, report, status |
+| `deduct_interview_credits()` | RPC | ✅ SECURITY DEFINER — checks `interview_allowance` first, then `credits_balance` |
+| SearchableSelect combobox | Component | ✅ Type to filter OR enter custom job role/industry |
+| Session detail view | Feature | ✅ Click history item → full Q&A + AI evaluation review |
+| Sidebar nav link | UI | ✅ "تدريب المقابلات" with Brain icon |
+| `interview_practice_free_mode` | Config | ✅ `system_config` toggle for testing |
+| RLS policies | DB | ✅ INSERT/SELECT/UPDATE on `interview_practice_sessions` |
 
 ### Phase 11.2 — Growth Pack
 | Service | Price | Status | Details |
@@ -446,19 +468,40 @@ All critical columns indexed: job status, company, applications, candidates, sea
 | **Low Effort** | 10.1 Emiratisation seeding, 10.5 Security | 12.2 SEO basics |
 | **High Effort** | 10.3 Company Verification, 10.4 n8n wiring | 11.x B2C Services |
 
-**Recommended execution order:**
-1. ~~10.3a (Verification enforcement)~~ ✅ Done (12 May)
-2. 10.1 (Emiratisation seeding) — unblocks compliance
-3. ~~10.4 (Contract notify n8n publish)~~ ✅ Done
-4. 10.5 (Security hardening) — production requirement
-5. ~~10.6 (AI enhancement / mock replacement)~~ ✅ Done (12 May)
-6. ~~10.6b (External Jobs Aggregator)~~ ✅ Done (12 May) — n8n scraper workflow still needed
-7. ~~11.1a (CV Optimizer frontend + n8n)~~ ✅ Done (13 May) 🆕
-8. ~~11.1b (CV ATS Convert + session management)~~ ✅ Done (13 May) 🆕
-9. 10.7 (Stripe production) — monetization
-10. 10.3b (Company verification OCR) — trust & compliance
-11. 12.x (i18n + SEO + testing) — launch polish
-12. 11.x remaining (B2C services) — revenue expansion
+**Execution order (see `ROADMAP.md` for full details):**
+
+**Sprint 1 — B2C Revenue Services:**
+1. Interview Self-Practice (39 AED/mo)
+2. Rejection Analyzer (29 AED)
+3. Career Path Generator (29 AED/mo)
+4. Skill Gap Analyzer (25 AED)
+5. Smart Job Alert (19 AED/mo)
+6. Auto Apply (49–149 AED/mo)
+
+**Sprint 2 — n8n Infrastructure:**
+7. External Jobs Scraper workflow
+8. Email Send workflow (`gn-email-send`)
+
+**Sprint 3 — Deploy + Security:**
+9. VPS production build + PM2 restart
+10. n8n workflow activation on `n8n.asra3.com`
+11. Security hardening (secrets, Zod, CORS, rate limiting)
+12. Stripe live keys
+
+**Sprint 4 — Polish:**
+13. i18n (next-intl)
+14. SEO (sitemap, structured data, OG)
+15. E2E tests (Playwright)
+
+**Previously completed:**
+- ~~10.3a (Verification enforcement)~~ ✅ Done (12 May)
+- ~~10.4 (Contract notify n8n publish)~~ ✅ Done
+- ~~10.6 (AI enhancement / mock replacement)~~ ✅ Done (12 May)
+- ~~10.6b (External Jobs Aggregator)~~ ✅ Done (12 May)
+- ~~11.1a (CV Optimizer frontend + n8n)~~ ✅ Done (13 May)
+- ~~11.1b (CV ATS Convert + session management)~~ ✅ Done (13 May)
+- ~~11.1c (CV Create n8n workflow)~~ ✅ Done (14 May)
+- ~~11.1d (CV Builder frontend)~~ ✅ Done (14 May)
 
 ---
 
@@ -471,5 +514,5 @@ All critical columns indexed: job status, company, applications, candidates, sea
 | Arabic RTL edge cases | Test all components with long Arabic text strings |
 | Supabase RLS bypass | Audit all RPC functions and service role usage |
 | No email provider | Integrate Resend or SendGrid before launch |
-| Contract notify not on n8n | ✅ Fixed — Workflow imported and activated |
+| No email provider | Integrate Resend or SendGrid | n8n SMTP configured for contract lifecycle; `gn-email-send` workflow still needed |
 | CRON_SECRET not set | Anyone can call `/api/cron/contract-expiry` — set in Vercel dashboard |
