@@ -52,13 +52,14 @@ export interface OptimizeCvResponse {
 export async function optimizeCv(
   sessionId: string,
   message: string,
-  language: CvLanguage = 'en'
+  language: CvLanguage = 'en',
+  chatHistory: Array<{ id: string; sender: string; content: string; timestamp: string }> = []
 ): Promise<OptimizeCvResponse> {
   try {
     const res = await fetch('/api/cv/optimize', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId, message, language }),
+      body: JSON.stringify({ sessionId, message, language, chatHistory }),
     })
 
     const data = await res.json()

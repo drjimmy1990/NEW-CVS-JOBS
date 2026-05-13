@@ -1,10 +1,10 @@
 # 📊 GrowthNexus — Progress Report
 
-> **Last Updated:** 12 May 2026 — 10:15 PM
-> **Overall Completion: ~96%** (core + verification + external jobs + CV services backend + pipeline expansion + contract workflow done, B2C UI + n8n wiring remaining)
+> **Last Updated:** 13 May 2026 — 04:30 AM
+> **Overall Completion: ~97%** (core + verification + external jobs + CV services backend + **CV Optimizer frontend + 2 n8n workflows** + pipeline expansion + contract workflow done, remaining B2C UI + n8n wiring)
 > **Repo:** `https://github.com/drjimmy1990/NEW-CVS-JOBS`
 > **Live Site:** `https://jobs-test.uae4jobs.ae`
-> **GitNexus:** 2504 symbols, 120 execution flows
+> **GitNexus:** 2731 symbols, 130 execution flows
 
 ---
 
@@ -36,8 +36,8 @@
 | 7 | n8n Guides & AI APIs | ✅ Done | 100% |
 | 8 | Stripe + Interview AI + Committee Evaluation | ✅ Done | 100% |
 | 9 | Contract, Compliance & Team | ✅ Done | 100% |
-| 10 | Integration, Security & Launch | 🔧 In Progress | ~70% |
-| 11 | B2C Candidate Services | 🔧 In Progress | ~40% (backend done, UI pending) |
+| 10 | Integration, Security & Launch | 🔧 In Progress | ~75% |
+| 11 | B2C Candidate Services | 🔧 In Progress | ~55% (backend done, CV Optimizer UI + n8n done, remaining UI pending) |
 | 12 | i18n, SEO & Launch Polish | ❌ Not Started | 0% |
 
 ---
@@ -64,7 +64,7 @@
 | **Notifications** | — | ✅ Complete | In-app bell, application notify, DB table |
 | **External Jobs** | — | ✅ Complete | Scraped jobs from LinkedIn/Bayt/Indeed, admin panel, merged feed, click tracking |
 | **Pipeline** | — | ✅ Complete | 7-stage Kanban (applied → reviewing → shortlisted → interview → offer → hired → rejected), **offer interceptor → contract dialog** 🆕 |
-| **CV Services** | — | 🔧 Backend Done | 7 API routes, 2 tables, 2 RPCs, 12 types, 6 n8n webhooks configured |
+| **CV Services** | — | 🔧 Partially Complete | 7 API routes, 2 tables, 2 RPCs, 12 types. **CV Optimizer: frontend + 2 n8n workflows DONE** 🆕. CV Builder UI pending |
 | **Email** | — | 🔧 Backend Done | Generic n8n SMTP sender, `/api/notifications/email` |
 
 ---
@@ -95,11 +95,16 @@
 | Contracts List | `/candidate/contracts` | ✅ |
 | Contract View/Sign | `/candidate/contracts/[id]` | ✅ |
 
+### Candidate — CV Optimizer ✅ (13 May 2026)
+| Page | Route | Status |
+|------|-------|--------|
+| CV Optimizer | `/candidate/cv/optimize` | ✅ 🆕 (split-screen: PDF viewer + AI chat + sessions table) |
+| CV ATS Converter | `/candidate/cv/ats` | ✅ 🆕 |
+| CV Builder | `/candidate/cv/builder` | ✅ 🆕 |
+
 ### Candidate — Not Built Yet (Phase 11)
 | Page | Route | Status |
 |------|-------|--------|
-| CV Optimizer | `/candidate/cv-optimizer` | ❌ Phase 11 (API ready ✅) |
-| CV Builder | `/candidate/cv-builder` | ❌ Phase 11 (API ready ✅) |
 | Career Path | `/candidate/career-path` | ❌ Phase 11 |
 | Job Alerts | `/candidate/job-alerts` | ❌ Phase 11 |
 
@@ -183,14 +188,16 @@
 | 9 | Payment Verification | ❌ Not Started | Stripe fulfillment |
 | 10 | Company Verification | ✅ Done | Webhook → Download → Gemini OCR → Decision Engine → 3× Supabase |
 | 11 | Committee Summary | ✅ Done | Gemini → Respond |
-| 12 | Contract Notifications | ✅ Done | **Merged into main `n8n workflow.json`** — 4 events with Switch + 4 email templates 🆕 |
+| 12 | Contract Notifications | ✅ Done | **Merged into main `n8n workflow.json`** — 4 events with Switch + 4 email templates |
 | 13 | Contract Generation | 🔧 Code Ready | API works, optional n8n PDF enhancement |
 | 14 | External Jobs Import | 🔧 Code Ready | API + admin + UI done. **n8n scraper workflow needed** |
+| 15 | **CV Parse (Optimizer)** | ✅ Done 🆕 | Separate workflow: PDF download → text extraction → Gemini → cv_session creation |
+| 16 | **CV Optimize** | ✅ Done 🆕 | Separate workflow: credit check → Gemini LLM (chat/modify) → Gotenberg PDF → session update |
 
-### Summary: 8 Done, 3 Code Ready, 3 Not Started
+### Summary: 10 Done, 3 Code Ready, 3 Not Started
 
 > **See `webhooks_status.md` for full details**
-> **Note:** Contract notify is now part of the main workflow JSON (9 webhook paths total). The standalone `n8n-contract-notify-workflow.json` is legacy.
+> **Note:** CV Parse (#15) and CV Optimize (#16) are separate dedicated workflow JSON files.
 
 ---
 
@@ -281,7 +288,7 @@
 ## Database Schema (from full.sql — Source of Truth)
 
 ### Tables (26)
-`profiles` · `companies` · `candidates` · `jobs` · `applications` · `saved_jobs` · `saved_candidates` · `conversations` · `messages` · `landing_pages` · `transactions` · `system_config` · `committee_evaluations` · `contract_templates` · `contracts` · `emiratisation_profiles` · `emiratisation_audit_log` · `company_members` · `notifications` · `cv_unlocks` · `company_documents` · `company_blacklist` · `company_verification_log` · `external_jobs` · `cv_sessions` 🆕 · `cv_chat_messages` 🆕
+`profiles` · `companies` · `candidates` · `jobs` · `applications` · `saved_jobs` · `saved_candidates` · `conversations` · `messages` · `landing_pages` · `transactions` · `system_config` · `committee_evaluations` · `contract_templates` · `contracts` · `emiratisation_profiles` · `emiratisation_audit_log` · `company_members` · `notifications` · `cv_unlocks` · `company_documents` · `company_blacklist` · `company_verification_log` · `external_jobs` · `cv_sessions` · `cv_chat_messages`
 
 ### Enums (4)
 `user_role` (candidate/employer/admin) · `job_type` (5 values) · `job_status` (5 values incl. paused) · `app_status` (6 values incl. offer) · `candidate_type_enum` (emirati/resident) · `company_type_enum` (3 values)
@@ -289,10 +296,10 @@
 ### Views (1)
 `public_jobs_view` — Secure view with Arabic confidentiality labels (جهة حكومية / شبه حكومية / خاصة)
 
-### Functions/RPCs (14)
-`upsert_private_candidate` · `get_or_create_private_job` · `increment_landing_page_views` · `increment_candidate_views` · `increment_job_views` · `calculate_match_score` · `save_interview_result` · `get_user_company` · `create_notification` · `update_updated_at_column` · `update_unread_counts` · `update_job_applicants_count` · `increment_external_job_clicks` 🆕 · `increment_external_job_views` 🆕
+### Functions/RPCs (16)
+`upsert_private_candidate` · `get_or_create_private_job` · `increment_landing_page_views` · `increment_candidate_views` · `increment_job_views` · `calculate_match_score` · `save_interview_result` · `get_user_company` · `create_notification` · `update_updated_at_column` · `update_unread_counts` · `update_job_applicants_count` · `increment_external_job_clicks` · `increment_external_job_views` · `cv_link_to_profile()` · `deduct_cv_credits()`
 
-### Migrations (19 — ALL IN full.sql)
+### Migrations (22 — ALL IN full.sql)
 | Migration | Status |
 |-----------|--------|
 | `001_uae_schema_fixes.sql` | ✅ In full.sql |
@@ -308,14 +315,18 @@
 | `20260429030000_notifications_system.sql` | ✅ In full.sql |
 | `20260511000000_emiratisation_module.sql` | ✅ In full.sql |
 | `20260511100000_contracts_tracking.sql` | ✅ In full.sql |
+| `20260511200000_company_verification_system.sql` | ✅ In full.sql |
 | `ai_analysis.sql` | ✅ In full.sql |
 | `20260512000000_enhanced_match_score.sql` | ✅ In full.sql |
 | `20260512100000_external_jobs.sql` | ✅ In full.sql |
-| `20260513000000_cv_services.sql` | ✅ In full.sql 🆕 |
-| `20260513100000_candidate_contracts_rls.sql` | ✅ In full.sql 🆕 |
+| `20260513000000_cv_services.sql` | ✅ In full.sql |
+| `20260513035100_add_chat_history.sql` | ✅ Applied 🆕 |
+| `20260513041200_cleanup_old_sessions.sql` | ✅ Applied 🆕 |
+| `20260513043200_fix_duplicate_linked_sessions.sql` | ✅ Applied 🆕 |
+| `20260513100000_candidate_contracts_rls.sql` | ✅ In full.sql |
 | RLS infinite recursion fix | ✅ In full.sql (at end) |
 
-> **Note:** `full.sql` is the canonical source of truth. Every query the user has executed is recorded there. All 19 migration files + RLS fixes are included.
+> **Note:** `full.sql` is the canonical source of truth. Migrations 035100, 041200, 043200 were applied directly to fix cv_sessions status constraint, add chat_history JSONB column, and clean up duplicate linked sessions.
 
 ---
 
@@ -381,8 +392,23 @@
 | — Offer status interceptor → contract generation dialog | ✅ |
 | — Candidate contracts RLS (SELECT + restricted UPDATE) | ✅ |
 | — `20260513100000_candidate_contracts_rls.sql` migration | ✅ |
+| **CV Optimizer Frontend** (13 May 2026) | ✅ 🆕 |
+| — Split-screen page: PDF viewer (left) + AI chat (right) | ✅ |
+| — Chat history persistence (chat_history JSONB on cv_sessions) | ✅ |
+| — "استخدم هذه السيرة في ملفي" button (link CV to profile) | ✅ |
+| — "إنهاء وتحميل" finalize + download button | ✅ |
+| — Session history table below chat/PDF viewer | ✅ |
+| — Latest session auto-marked as linked (ارتبطت بالملف) | ✅ |
+| — Language selector (EN/AR) | ✅ |
+| **CV Optimizer n8n Workflows** (13 May 2026) | ✅ 🆕 |
+| — `/gn-cv-parse`: PDF → text → Gemini → session creation | ✅ |
+| — `/gn-cv-optimize`: credit check → Gemini → Gotenberg PDF → session update | ✅ |
+| — cv_sessions status constraint fix (added 'upload' value) | ✅ |
+| — `20260513035100_add_chat_history.sql` migration | ✅ |
+| — `20260513041200_cleanup_old_sessions.sql` migration | ✅ |
+| — `20260513043200_fix_duplicate_linked_sessions.sql` migration | ✅ |
 
-### ⏳ Still Needed (~13%)
+### ⏳ Still Needed (~10%)
 
 | Feature | Priority | Phase |
 |---------|----------|-------|
@@ -471,6 +497,10 @@ STRIPE_PRO_PRICE_ID=
 | `CRON_SECRET` not set | Anyone can trigger contract expiry | Set env var in Vercel dashboard |
 | ~~Smart candidate suggestions mock~~ | ~~Dashboard shows hardcoded names~~ | ✅ Fixed — real DB query with Jaccard similarity |
 | ~~Candidate can't see contracts~~ | ~~RLS blocks candidate reads~~ | ✅ Fixed — `20260513100000_candidate_contracts_rls.sql` |
+| ~~cv_sessions status constraint~~ | ~~'upload' not in check constraint~~ | ✅ Fixed — `20260513035100` added 'upload' + chat_history column |
+| ~~CV Optimizer shows old CV after link~~ | ~~Page refresh resets to original~~ | ✅ Fixed — latest session correctly loaded on refresh |
+| ~~Chat history not persisted~~ | ~~Messages lost on page reload~~ | ✅ Fixed — chat_history JSONB column on cv_sessions |
+| ~~Duplicate linked sessions~~ | ~~Multiple sessions marked as linked~~ | ✅ Fixed — `20260513043200` cleanup migration |
 | Multi-language not implemented | Arabic-only UI | Phase 12 work (next-intl) |
 | Stripe in test mode | No real payments | Switch to live keys for production |
 | No email service | Can't send emails | n8n SMTP configured for contract emails, needs expansion |

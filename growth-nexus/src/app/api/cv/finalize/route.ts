@@ -3,8 +3,8 @@ import { createClient } from '@/utils/supabase/server'
 
 // ==========================================
 // POST — Finalize CV session
-// Marks session as downloaded, returns final PDF URL
-// Does NOT auto-link to profile — user does that manually
+// Marks session as 'ready', returns final PDF URL
+// Works with or without n8n finalize workflow
 // ==========================================
 export async function POST(req: NextRequest) {
     try {
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
         // Verify session belongs to user
         const { data: session } = await supabase
             .from('cv_sessions')
-            .select('id, status, final_pdf_url')
+            .select('id, status, original_pdf_url, latest_draft_url, final_pdf_url, text_content')
             .eq('id', sessionId)
             .eq('user_id', user.id)
             .single()
@@ -34,37 +34,58 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Session not found' }, { status: 404 })
         }
 
-        // Call n8n finalize workflow
+        // If there's an n8n finalize webhook configured, call it
         const webhookUrl = process.env.N8N_CV_FINALIZE_WEBHOOK
-        if (!webhookUrl) {
-            return NextResponse.json({ error: 'CV finalize service not configured' }, { status: 503 })
+        let n8nResult = null
+
+        if (webhookUrl) {
+            try {
+                const n8nResponse = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Webhook-Secret': process.env.N8N_WEBHOOK_SECRET || '',
+                    },
+                    body: JSON.stringify({
+                        sessionId,
+                        userId: user.id,
+                        textContent: session.text_content || '',
+                    }),
+                })
+
+                if (n8nResponse.ok) {
+                    n8nResult = await n8nResponse.json()
+                } else {
+                    // n8n workflow failed — fall back to local finalize
+                    console.warn('n8n finalize webhook failed, using local finalize')
+                }
+            } catch (err) {
+                console.warn('n8n finalize webhook unreachable, using local finalize:', err)
+            }
         }
 
-        const n8nResponse = await fetch(webhookUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Webhook-Secret': process.env.N8N_WEBHOOK_SECRET || '',
-            },
-            body: JSON.stringify({
-                sessionId,
-                userId: user.id,
-            }),
-        })
+        // Determine the download URL:
+        // Priority: n8n result > latest_draft > final_pdf > original
+        const downloadUrl = n8nResult?.downloadUrl
+            || n8nResult?.finalPdfUrl
+            || session.latest_draft_url
+            || session.final_pdf_url
+            || session.original_pdf_url
+            || ''
 
-        if (!n8nResponse.ok) {
-            const errorText = await n8nResponse.text()
-            console.error('n8n finalize error:', errorText)
-            return NextResponse.json(
-                { error: 'Failed to finalize CV' },
-                { status: 502 }
-            )
-        }
+        // Mark session as 'ready'
+        await supabase
+            .from('cv_sessions')
+            .update({
+                status: 'ready',
+                ...(downloadUrl && !session.final_pdf_url ? { final_pdf_url: downloadUrl } : {}),
+            })
+            .eq('id', sessionId)
 
-        const result = await n8nResponse.json()
         return NextResponse.json({
-            ...result,
-            // Tell the frontend it can show the "Use on my profile" button
+            success: true,
+            downloadUrl,
+            sessionId,
             canLinkToProfile: true,
         })
     } catch (error) {

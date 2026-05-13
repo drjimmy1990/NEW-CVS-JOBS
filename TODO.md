@@ -1,8 +1,8 @@
 # 📋 GrowthNexus — Remaining TODO
 
 > **Created:** 12 May 2026
-> **Overall Completion: ~96%** — Core platform + verification + OCR + External Jobs + CV Services backend + Contract Pipeline Expansion done
-> **What Remains:** Phase 10 security (~20% left), Phase 11 UI + n8n wiring, Phase 12 (i18n/SEO/QA), Phase 13 (Enterprise)
+> **Overall Completion: ~97%** — Core platform + verification + OCR + External Jobs + CV Services backend + **CV Optimizer frontend + 2 n8n workflows** + Contract Pipeline Expansion done
+> **What Remains:** Phase 10 security (~20% left), Phase 11 remaining UI (CV Builder improvements), Phase 12 (i18n/SEO/QA), Phase 13 (Enterprise)
 
 ---
 
@@ -122,8 +122,8 @@
 ### Remaining n8n Workflows
 | # | Workflow | Priority | Status | Description |
 |---|---------|----------|--------|-------------|
-| 13 | CV Parse | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-cv-parse` |
-| 14 | CV Optimize | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-cv-optimize` |
+| 13 | CV Parse | ~~🔴 High~~ | ✅ **DONE** (13 May) 🆕 | `/gn-cv-parse` — PDF → text → Gemini → session |
+| 14 | CV Optimize | ~~🔴 High~~ | ✅ **DONE** (13 May) 🆕 | `/gn-cv-optimize` — credit check → Gemini → Gotenberg PDF |
 | 15 | CV Create | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-cv-create` |
 | 16 | CV ATS Convert | 🔴 High | API ✅ / n8n pending | **BUILD NEW** → `gn-cv-ats-convert` |
 | 17 | CV Finalize | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-cv-finalize` |
@@ -153,15 +153,18 @@
 - [x] .env.local: 6 new webhook URLs (#13–#18)
 - [x] Guide: `N8N_CV_WORKFLOW_REUSE_GUIDE.md` (copy + modify instructions)
 
-### 11.1 CV Services Frontend (Pending)
-- [ ] **CV Optimizer** Page: `/candidate/cv-optimizer`
-  - [ ] Split-screen: PDF preview (left) + AI chat (right)
-  - [ ] Language selector: EN / AR / Bilingual
-  - [ ] Quick actions: "Optimize for ATS", "Improve Keywords"
-  - [ ] Session persistence from Supabase
-  - [ ] "Use this CV on my profile" button (user-initiated link)
+### 11.1 CV Services Frontend
+- [x] **CV Optimizer** Page: `/candidate/cv/optimize` ✅ DONE (13 May 2026) 🆕
+  - [x] Split-screen: PDF preview (left) + AI chat (right)
+  - [x] Language selector: EN / AR
+  - [x] Chat history persistence (chat_history JSONB on cv_sessions)
+  - [x] Session persistence from Supabase
+  - [x] "استخدم هذه السيرة في ملفي" button (user-initiated link)
+  - [x] "إنهاء وتحميل" finalize + download button
+  - [x] Session history table below chat/PDF viewer
+  - [x] Latest session auto-marked as linked (ارتبطت بالملف)
 
-- [ ] **CV Builder** Page: `/candidate/cv-builder`
+- [ ] **CV Builder** Page: `/candidate/cv/builder`
   - [ ] **Tab 1: Build from Scratch** — Dynamic form (CvData)
   - [ ] **Tab 2: Upload & Convert** — Upload PDF → ATS-ready (gn-cv-ats-convert)
   - [ ] **Tab 3: Paste & Convert** — Paste text → ATS-ready (gn-cv-ats-convert)
@@ -284,10 +287,14 @@
 | Issue | Impact | Resolution |
 |-------|--------|------------|
 | `emiratisation_profiles` table empty | Compliance export returns 404 | Use `EmiratisationProfileForm.tsx` to seed data |
-| Contract notify not on n8n | Email notifications won't fire | Import `n8n-contract-notify-workflow.json` → activate |
+| ~~Contract notify not on n8n~~ | ~~Email notifications won't fire~~ | ✅ Fixed — Import `n8n-contract-notify-workflow.json` → activate |
 | `N8N_WEBHOOK_SECRET` = default | Security risk | Change to strong value before production |
 | `CRON_SECRET` not set | Anyone can trigger contract expiry | Set env var in Vercel dashboard |
-| Smart candidate suggestions mock | Dashboard shows hardcoded names | ✅ Fixed — real DB query with Jaccard similarity |
+| ~~Smart candidate suggestions mock~~ | ~~Dashboard shows hardcoded names~~ | ✅ Fixed — real DB query with Jaccard similarity |
+| ~~cv_sessions status constraint~~ | ~~'upload' not in check constraint~~ | ✅ Fixed (13 May) — `20260513035100` migration |
+| ~~Chat history not persisted~~ | ~~Messages lost on reload~~ | ✅ Fixed (13 May) — chat_history JSONB column |
+| ~~CV Optimizer shows old CV after link~~ | ~~Page refresh resets to original~~ | ✅ Fixed (13 May) — latest session loaded on refresh |
+| ~~Duplicate linked sessions~~ | ~~Multiple sessions linked~~ | ✅ Fixed (13 May) — `20260513043200` cleanup migration |
 | Multi-language not implemented | Arabic-only UI | Phase 12 work (next-intl) |
 | Stripe in test mode | No real payments | Switch to live keys for production |
 | No email service | Can't send emails | Integrate Resend or SendGrid |

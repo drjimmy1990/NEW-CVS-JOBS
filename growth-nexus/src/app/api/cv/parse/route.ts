@@ -14,12 +14,18 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        const body = await req.json()
-        const { pdfBase64, language = 'en' } = body
+        const formData = await req.formData()
+        const file = formData.get('file') as File
+        const language = (formData.get('language') as string) || 'en'
 
-        if (!pdfBase64) {
-            return NextResponse.json({ error: 'PDF data required' }, { status: 400 })
+        if (!file) {
+            return NextResponse.json({ error: 'File is required' }, { status: 400 })
         }
+
+        // Convert the File object to a Base64 string for n8n
+        const arrayBuffer = await file.arrayBuffer()
+        const buffer = Buffer.from(arrayBuffer)
+        const pdfBase64 = buffer.toString('base64')
 
         // Call n8n parse-cv workflow
         const webhookUrl = process.env.N8N_CV_PARSE_WEBHOOK
@@ -37,6 +43,8 @@ export async function POST(req: NextRequest) {
                 userId: user.id,
                 pdfBase64,
                 language,
+                fileName: file.name,
+                mimeType: file.type,
             }),
         })
 

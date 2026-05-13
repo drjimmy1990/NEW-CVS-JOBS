@@ -2865,9 +2865,7 @@ status TEXT DEFAULT 'active' CHECK (
 ),
 
 -- File URLs
-original_pdf_url TEXT,
-latest_draft_url TEXT,
-final_pdf_url TEXT,
+original_pdf_url TEXT, latest_draft_url TEXT, final_pdf_url TEXT,
 
 -- Content
 text_content TEXT, form_data JSONB, parsed_data JSONB,
@@ -3137,3 +3135,63 @@ WITH
             'declined'
         )
     );
+
+-- ============================================
+-- Add chat_history column to cv_sessions
+-- Persists chat messages so they survive page refresh
+-- ============================================
+
+ALTER TABLE cv_sessions 
+ADD COLUMN IF NOT EXISTS chat_history jsonb DEFAULT '[]'::jsonb;
+
+-- Add comment for documentation
+COMMENT ON COLUMN cv_sessions.chat_history IS 'JSON array of chat messages [{id, sender, content, timestamp}]';
+
+-- Keep only the most recently linked session for each user and mark the rest as not linked
+
+UPDATE cv_sessions
+SET
+    linked_to_profile = false
+WHERE
+    linked_to_profile = true
+    AND id NOT IN(
+        SELECT id
+        FROM (
+                SELECT id, ROW_NUMBER() OVER (
+                        PARTITION BY
+                            user_id
+                        ORDER BY created_at DESC
+                    ) as rn
+                FROM cv_sessions
+                WHERE
+                    linked_to_profile = true
+            ) sub
+        WHERE
+            rn = 1
+    );
+
+-- ============================================
+-- Cleanup: Archive old stale cv_sessions
+-- Keep only the latest 'ready' session as active
+-- Archive all other sessions that are cluttering the optimizer
+-- ============================================
+
+-- Archive old 'downloaded' sessions (created before the fix)
+UPDATE cv_sessions
+SET
+    status = 'archived'
+WHERE
+    status = 'downloaded'
+    AND session_type = 'optimize';
+
+-- Verify: only one session should remain as 'ready'
+SELECT
+    id,
+    status,
+    created_at,
+    latest_draft_url IS NOT NULL AS has_draft
+FROM cv_sessions
+WHERE
+    session_type = 'optimize'
+    AND status IN ('active', 'ready')
+ORDER BY created_at DESC;

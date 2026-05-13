@@ -1,9 +1,9 @@
 # 📋 GrowthNexus — Master Plan
 
-> **Last Updated:** 12 May 2026 — 10:15 PM
-> **Current Phase: 10–11 (Integration + B2C Backend)**
-> **Completed: 9 of 12 phases + Phase 11 backend done + Contract Pipeline Expansion (Phase 10 at ~75%, Phase 11 at ~40%)**
-> **Source of Truth:** `full.sql` + GitNexus (2504 symbols, 120 flows)
+> **Last Updated:** 13 May 2026 — 04:30 AM
+> **Current Phase: 10–11 (Integration + B2C)**
+> **Completed: 9 of 12 phases + Phase 11 backend done + CV Optimizer frontend + 2 n8n workflows + Contract Pipeline Expansion (Phase 10 at ~75%, Phase 11 at ~55%)**
+> **Source of Truth:** `full.sql` + GitNexus (2731 symbols, 130 flows)
 
 ---
 
@@ -147,9 +147,9 @@ GrowthNexus is an **AI Recruitment Operating System** for the UAE market, servin
 ### 10.4 Remaining N8N Workflows
 | # | Workflow | Priority | Status | Description |
 |---|---------|----------|--------|-------------|
-| 12 | Contract Notifications | 🔴 High | ✅ **Merged** | 4 events via Switch + 4 email templates |
-| 13 | CV Parse | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-cv-parse` |
-| 14 | CV Optimize | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-cv-optimize` |
+| 12 | Contract Notifications | ~~🔴 High~~ | ✅ **Merged** | 4 events via Switch + 4 email templates |
+| 13 | CV Parse | ~~🔴 High~~ | ✅ **DONE** (13 May) 🆕 | `/gn-cv-parse` — PDF → text → Gemini → session |
+| 14 | CV Optimize | ~~🔴 High~~ | ✅ **DONE** (13 May) 🆕 | `/gn-cv-optimize` — credit check → Gemini → Gotenberg PDF |
 | 15 | CV Create | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-cv-create` |
 | 16 | CV ATS Convert | 🔴 High | API ✅ / n8n pending | **BUILD NEW** → `gn-cv-ats-convert` |
 | 17 | CV Finalize | 🔴 High | API ✅ / n8n pending | Copy from cv-maker → `gn-cv-finalize` |
@@ -209,11 +209,26 @@ Based on the business strategy doc (منصة التوظيف), launch in order:
 | `.env.local` | Config | ✅ 6 new webhook URLs (#13–#18) |
 | `N8N_CV_WORKFLOW_REUSE_GUIDE.md` | Guide | ✅ Copy/modify instructions for 6 workflows |
 
-### Phase 11.1 — CV Services Frontend (Pending)
+### ✅ Phase 11.1 — CV Optimizer Frontend (DONE 13 May 2026) 🆕
+| Artifact | Type | Status |
+|----------|------|--------|
+| `/candidate/cv/optimize` | Page | ✅ Split-screen: PDF viewer (left) + AI chat (right) |
+| Chat history persistence | Feature | ✅ `chat_history` JSONB column on `cv_sessions` |
+| Session history table | UI | ✅ Table below chat/PDF showing all user sessions |
+| "استخدم هذه السيرة في ملفي" | Feature | ✅ `cv_link_to_profile()` RPC, profile linking |
+| "إنهاء وتحميل" | Feature | ✅ Finalize + download optimized PDF |
+| Language selector | UI | ✅ EN / AR |
+| Linked session badge | UI | ✅ Latest session marked "ارتبطت بالملف" |
+| n8n `/gn-cv-parse` | Workflow | ✅ PDF → text → Gemini → session creation |
+| n8n `/gn-cv-optimize` | Workflow | ✅ Credit check → Gemini LLM → Gotenberg PDF → session update |
+| `20260513035100_add_chat_history.sql` | Migration | ✅ Status constraint fix + chat_history column |
+| `20260513041200_cleanup_old_sessions.sql` | Migration | ✅ Clean stale sessions |
+| `20260513043200_fix_duplicate_linked_sessions.sql` | Migration | ✅ Dedup linked sessions |
+
+### Phase 11.1b — Remaining CV Services Frontend (Pending)
 | Service | Route | Status | Details |
 |---------|-------|--------|---------|
-| CV Optimizer | `/candidate/cv-optimizer` | ❌ UI pending (API ready) | Split-screen: PDF preview + AI chat, language selector |
-| CV Builder | `/candidate/cv-builder` | ❌ UI pending (API ready) | 3 tabs: Build from Scratch / Upload ATS / Paste ATS |
+| CV Builder | `/candidate/cv/builder` | ❌ UI pending (API ready) | 3 tabs: Build from Scratch / Upload ATS / Paste ATS |
 | Interview AI (Candidate) | TBD | ❌ Not Started | Adapt employer interview flow for self-practice |
 
 ### Phase 11.2 — Growth Pack
@@ -431,10 +446,11 @@ All critical columns indexed: job status, company, applications, candidates, sea
 4. 10.5 (Security hardening) — production requirement
 5. ~~10.6 (AI enhancement / mock replacement)~~ ✅ Done (12 May)
 6. ~~10.6b (External Jobs Aggregator)~~ ✅ Done (12 May) — n8n scraper workflow still needed
-7. 10.7 (Stripe production) — monetization
-8. 10.3b (Company verification OCR) — trust & compliance
-9. 12.x (i18n + SEO + testing) — launch polish
-10. 11.x (B2C services) — revenue expansion
+7. ~~11.1a (CV Optimizer frontend + n8n)~~ ✅ Done (13 May) 🆕
+8. 10.7 (Stripe production) — monetization
+9. 10.3b (Company verification OCR) — trust & compliance
+10. 12.x (i18n + SEO + testing) — launch polish
+11. 11.x remaining (B2C services) — revenue expansion
 
 ---
 

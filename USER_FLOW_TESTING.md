@@ -1,7 +1,7 @@
 # 🔄 GrowthNexus — User Flow Testing Guide
 
-> **Last Updated:** 12 May 2026 — 10:15 PM
-> **Source of Truth:** GitNexus (2504 symbols, 120 flows) + `full.sql` (26 tables, 16 RPCs)
+> **Last Updated:** 13 May 2026 — 04:30 AM
+> **Source of Truth:** GitNexus (2731 symbols, 130 flows) + `full.sql` (26 tables, 16 RPCs)
 > **Instructions:** Test each flow in order. Mark ✅ for working, ❌ for broken.
 > Items marked 🔗 use **n8n webhooks** — they work with mock data if n8n is offline.
 > Items marked 🔒 require **company verification** — only verified employers can access.
@@ -333,10 +333,12 @@ UPDATE profiles SET role = 'admin' WHERE email = 'your@email.com';
 | 11 | Committee Summary | `/webhook/gn-committee-summary` | Panel evaluation | ✅ |
 | 12 | Contract Notifications | (direct fetch) | Contract lifecycle | ✅ |
 | 13 | Contract Generation | `/webhook/gn-contract-gen` | Contract PDF | 🔧 Code Ready |
-| 14 | External Jobs Import | `/api/external-jobs` | Scraped job import | 🔧 Code Ready 🆕 |
+| 14 | External Jobs Import | `/api/external-jobs` | Scraped job import | 🔧 Code Ready |
+| 15 | CV Parse (Optimizer) | `/webhook/gn-cv-parse` | CV Optimizer upload | ✅ 🆕 |
+| 16 | CV Optimize | `/webhook/gn-cv-optimize` | AI chat + CV rewrite | ✅ 🆕 |
 
 > **Note:** All webhooks work with mock/fallback data when n8n is offline.
-> **Contract notify is now merged into the main `n8n workflow.json`** (9 webhook paths total). The standalone `n8n-contract-notify-workflow.json` is legacy.
+> **CV Parse (#15) and CV Optimize (#16) are separate dedicated workflow files.**
 
 ---
 
@@ -520,3 +522,71 @@ Dashboard server query:
 - **Tracking:** `increment_external_job_clicks` + `increment_external_job_views` RPCs
 - **Admin:** Full CRUD at `/admin/external-jobs`
 - **Guide:** See `N8N_EXTERNAL_JOBS_WORKFLOW_GUIDE.md` for n8n build instructions
+
+---
+
+## Flow 21: CV Optimizer (AI Chat + PDF Rewrite) 🧠
+
+> **Added:** 13 May 2026 — Tests the full CV optimization workflow with AI chat, PDF generation, session management, and profile linking
+
+### 21.1 Upload & Parse
+
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|--------|
+| 1 | Navigate to CV Optimizer | `/candidate/cv/optimize` | Page loads with upload area | |
+| 2 | Upload PDF file | | File uploaded to n8n via `/api/cv/parse` | |
+| 3 | 🔗 n8n `/gn-cv-parse` fires | | PDF downloaded → text extracted → Gemini parse → cv_session created | |
+| 4 | PDF viewer shows document | | Left panel displays uploaded PDF | |
+| 5 | AI chat shows parsed summary | | Right panel shows initial AI response about parsed CV | |
+| 6 | cv_session created in DB | | `session_type: optimize`, `status: active`, `language` set | |
+
+### 21.2 AI Chat & Optimization
+
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|--------|
+| 1 | Type chat message (general question) | | AI responds in user's language (no CV modification) | |
+| 2 | Type modification request (e.g., "حسن قسم المهارات") | | AI rewrites CV HTML + generates new PDF via Gotenberg | |
+| 3 | 🔗 n8n `/gn-cv-optimize` fires | | Credit check → Gemini LLM → Gotenberg PDF → session update | |
+| 4 | PDF viewer updates | | New optimized PDF displayed in left panel | |
+| 5 | Chat history preserved | | All messages visible in chat panel | |
+| 6 | Page reload preserves chat | | Chat history loaded from `cv_sessions.chat_history` JSONB | |
+
+### 21.3 Session Management
+
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|--------|
+| 1 | Session history table visible | | Table below chat/PDF shows all user's sessions | |
+| 2 | Latest session marked as linked | | "ارتبطت بالملف" badge on latest linked session | |
+| 3 | Other sessions show different badge | | Non-linked sessions have different indicator | |
+| 4 | Click on old session | | Session loads in viewer (view-only or resume) | |
+
+### 21.4 Finalize & Link
+
+| # | Step | Route | Expected | Result |
+|---|------|-------|----------|--------|
+| 1 | Click "إنهاء وتحميل" | | PDF downloads to user's device | |
+| 2 | Click "استخدم هذه السيرة في ملفي" | | `cv_link_to_profile()` RPC fires | |
+| 3 | Profile updated | | `candidates.resume_url` updated to optimized PDF URL | |
+| 4 | Session marked as linked | | `cv_sessions.linked_to_profile = true` | |
+| 5 | Previous linked sessions unlinked | | Only latest session is `linked_to_profile = true` | |
+| 6 | Page refresh shows latest CV | | Optimizer loads the linked session’s PDF, not original | |
+
+### 21.5 Credit System
+
+| # | Step | Expected | Result |
+|---|------|----------|--------|
+| 1 | `cv_services_free_mode = true` | No credits deducted | |
+| 2 | `cv_services_free_mode = false` + user has `credits_cv` | Deduct from `credits_cv` first | |
+| 3 | `credits_cv = 0` + user has `credits_balance` | Fallback to `credits_balance` | |
+| 4 | Both credits = 0 | Error message: insufficient credits | |
+
+### Key Details
+
+- **Route:** `/candidate/cv/optimize`
+- **API Routes:** `/api/cv/parse` → `/api/cv/optimize`
+- **n8n Workflows:** `gn-cv-parse` (parse) + `gn-cv-optimize` (chat/modify)
+- **DB Tables:** `cv_sessions` (session tracking) + `cv_chat_messages` (deprecated, using chat_history JSONB)
+- **PDF Engine:** Gotenberg (HTML → PDF conversion)
+- **Language:** CV content always English, chat replies in user's language
+- **Credits:** `deduct_cv_credits()` RPC with dual-balance fallback
+- **Migrations:** `20260513035100` (status fix + chat_history), `20260513041200` (cleanup), `20260513043200` (dedup linked)
