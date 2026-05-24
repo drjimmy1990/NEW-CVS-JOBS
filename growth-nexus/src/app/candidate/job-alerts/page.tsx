@@ -68,12 +68,23 @@ export default function JobAlertsPage() {
     async function saveAlert() {
         if (!alertName.trim()) { setError('اسم التنبيه مطلوب'); return }
         setSaving(true); setError('')
+
+        // Auto-add any pending input before saving
+        const finalKeywords = [...keywords]
+        if (kwInput.trim() && !finalKeywords.includes(kwInput.trim())) {
+            finalKeywords.push(kwInput.trim())
+        }
+        const finalSkills = [...skills]
+        if (skInput.trim() && !finalSkills.includes(skInput.trim())) {
+            finalSkills.push(skInput.trim())
+        }
+
         try {
             const res = await fetch('/api/job-alerts', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    alert_name: alertName, keywords, skills, job_types: jobTypes,
+                    alert_name: alertName, keywords: finalKeywords, skills: finalSkills, job_types: jobTypes,
                     locations, salary_min: salaryMin ? +salaryMin : null,
                     salary_max: salaryMax ? +salaryMax : null, frequency,
                 }),
@@ -140,7 +151,8 @@ export default function JobAlertsPage() {
                         <label className="text-sm text-cream-dark/60">كلمات مفتاحية</label>
                         <div className="flex gap-2">
                             <Input value={kwInput} onChange={e => setKwInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTag(keywords, setKeywords, kwInput, setKwInput))}
-                                placeholder="أضف كلمة مفتاحية" className="bg-navy border-gold/20 text-cream" />
+                                placeholder="أضف كلمة مفتاحية" className="bg-navy border-gold/20 text-cream flex-1" />
+                            <Button type="button" variant="outline" size="sm" onClick={() => addTag(keywords, setKeywords, kwInput, setKwInput)} className="border-gold/20 text-gold hover:bg-gold/10 shrink-0">إضافة</Button>
                         </div>
                         {keywords.length > 0 && <div className="flex flex-wrap gap-2">{keywords.map(k => <Badge key={k} variant="secondary" className="bg-gold/10 text-gold gap-1">{k}<X className="h-3 w-3 cursor-pointer" onClick={() => setKeywords(keywords.filter(x => x !== k))} /></Badge>)}</div>}
                     </div>
@@ -150,7 +162,8 @@ export default function JobAlertsPage() {
                         <label className="text-sm text-cream-dark/60">مهارات</label>
                         <div className="flex gap-2">
                             <Input value={skInput} onChange={e => setSkInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTag(skills, setSkills, skInput, setSkInput))}
-                                placeholder="أضف مهارة" className="bg-navy border-gold/20 text-cream" />
+                                placeholder="أضف مهارة" className="bg-navy border-gold/20 text-cream flex-1" />
+                            <Button type="button" variant="outline" size="sm" onClick={() => addTag(skills, setSkills, skInput, setSkInput)} className="border-gold/20 text-gold hover:bg-gold/10 shrink-0">إضافة</Button>
                         </div>
                         {skills.length > 0 && <div className="flex flex-wrap gap-2">{skills.map(s => <Badge key={s} variant="secondary" className="bg-blue-500/10 text-blue-400 gap-1">{s}<X className="h-3 w-3 cursor-pointer" onClick={() => setSkills(skills.filter(x => x !== s))} /></Badge>)}</div>}
                     </div>
