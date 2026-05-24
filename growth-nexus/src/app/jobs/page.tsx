@@ -12,6 +12,7 @@ import {
     Building2,
     Filter,
     Globe,
+    DollarSign,
 } from 'lucide-react'
 import { JobCard } from '@/components/ui/job-card'
 import { SortSelect } from '@/components/ui/sort-select'
@@ -27,7 +28,7 @@ export const metadata: Metadata = {
 }
 
 interface Props {
-    searchParams: Promise<{ q?: string; type?: string; location?: string; sort?: string; experience?: string; candidate_type?: string; date?: string; source?: string }>
+    searchParams: Promise<{ q?: string; type?: string; location?: string; sort?: string; experience?: string; candidate_type?: string; date?: string; source?: string; salary?: string }>
 }
 
 export default async function JobsPage({ searchParams }: Props) {
@@ -85,6 +86,14 @@ export default async function JobsPage({ searchParams }: Props) {
         else if (params.date === '30d') since = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
         if (since) {
             query = query.gte('created_at', since.toISOString())
+        }
+    }
+
+    // Salary filter
+    if (params.salary) {
+        const salaryVal = parseInt(params.salary)
+        if (!isNaN(salaryVal)) {
+            query = query.gte('salary_min', salaryVal)
         }
     }
 
@@ -289,12 +298,35 @@ export default async function JobsPage({ searchParams }: Props) {
                             </select>
                         </div>
 
+                        {/* Salary Filter */}
+                        <div className="mb-8">
+                            <h3 className="text-lg font-semibold text-cream mb-4 flex items-center gap-2">
+                                <DollarSign className="h-5 w-5 text-gold/60" />
+                                الحد الأدنى للراتب
+                            </h3>
+                            <select
+                                name="salary"
+                                defaultValue={params.salary || ''}
+                                className="w-full h-11 px-3 bg-navy border border-gold/15 rounded-xl text-cream-dark/60 focus-visible:ring-1 focus-visible:ring-gold outline-none appearance-none"
+                            >
+                                <option value="">جميع الرواتب</option>
+                                <option value="3000">3,000+ درهم</option>
+                                <option value="5000">5,000+ درهم</option>
+                                <option value="7000">7,000+ درهم</option>
+                                <option value="10000">10,000+ درهم</option>
+                                <option value="15000">15,000+ درهم</option>
+                                <option value="20000">20,000+ درهم</option>
+                                <option value="30000">30,000+ درهم</option>
+                                <option value="50000">50,000+ درهم</option>
+                            </select>
+                        </div>
+
                         {/* Source Filter */}
                         <div className="mb-8">
                             <h3 className="text-lg font-semibold text-cream mb-4">المصدر</h3>
                             <div className="flex flex-wrap gap-2">
                                 <a
-                                    href={`/jobs?${new URLSearchParams({ ...(params.q ? { q: params.q } : {}), ...(params.type ? { type: params.type } : {}), ...(params.location ? { location: params.location } : {}), ...(params.date ? { date: params.date } : {}) }).toString()}`}
+                                    href={`/jobs?${new URLSearchParams({ ...(params.q ? { q: params.q } : {}), ...(params.type ? { type: params.type } : {}), ...(params.location ? { location: params.location } : {}), ...(params.date ? { date: params.date } : {}), ...(params.salary ? { salary: params.salary } : {}) }).toString()}`}
                                     className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
                                         !params.source
                                             ? 'bg-gold/20 text-gold border-gold/40'
@@ -304,7 +336,7 @@ export default async function JobsPage({ searchParams }: Props) {
                                     جميع المصادر
                                 </a>
                                 <a
-                                    href={`/jobs?${new URLSearchParams({ ...(params.q ? { q: params.q } : {}), ...(params.type ? { type: params.type } : {}), ...(params.location ? { location: params.location } : {}), ...(params.date ? { date: params.date } : {}), source: 'platform' }).toString()}`}
+                                    href={`/jobs?${new URLSearchParams({ ...(params.q ? { q: params.q } : {}), ...(params.type ? { type: params.type } : {}), ...(params.location ? { location: params.location } : {}), ...(params.date ? { date: params.date } : {}), ...(params.salary ? { salary: params.salary } : {}), source: 'platform' }).toString()}`}
                                     className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
                                         params.source === 'platform'
                                             ? 'bg-gold/20 text-gold border-gold/40'
@@ -316,7 +348,7 @@ export default async function JobsPage({ searchParams }: Props) {
                                 {sourcePlatforms.map((platform: string) => (
                                     <a
                                         key={platform}
-                                        href={`/jobs?${new URLSearchParams({ ...(params.q ? { q: params.q } : {}), ...(params.type ? { type: params.type } : {}), ...(params.location ? { location: params.location } : {}), ...(params.date ? { date: params.date } : {}), source: platform }).toString()}`}
+                                        href={`/jobs?${new URLSearchParams({ ...(params.q ? { q: params.q } : {}), ...(params.type ? { type: params.type } : {}), ...(params.location ? { location: params.location } : {}), ...(params.date ? { date: params.date } : {}), ...(params.salary ? { salary: params.salary } : {}), source: platform }).toString()}`}
                                         className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all capitalize ${
                                             params.source === platform
                                                 ? 'bg-blue-500/20 text-blue-400 border-blue-500/40'
