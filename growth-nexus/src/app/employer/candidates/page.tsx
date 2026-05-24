@@ -47,7 +47,7 @@ export default async function CandidateSearchPage({
     }
 
     // Check if employer has CV database access (subscription)
-    const hasAccess = false // TODO: Phase 6: wire to subscription check
+    const hasAccess = true // TESTING MODE — set to subscription check in production
 
     // Query real candidates from Supabase
     let query = supabase
