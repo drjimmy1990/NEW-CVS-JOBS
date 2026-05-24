@@ -33,14 +33,17 @@ export async function POST(req: Request) {
         )
 
         // 1. Fetch the job details
+        console.log('[smart-match] Looking up job_id:', job_id, '| has service key:', !!process.env.SUPABASE_SERVICE_ROLE_KEY)
         const { data: job, error: jobError } = await adminClient
             .from('jobs')
             .select('id, title, description, skills_required, job_type, location, salary_min, salary_max, experience_min, nationality_required')
             .eq('id', job_id)
             .single()
 
+        console.log('[smart-match] Job lookup result:', job ? `Found: ${job.title}` : `NOT FOUND`, '| Error:', jobError?.message || 'none')
+
         if (jobError || !job) {
-            return NextResponse.json({ error: 'الوظيفة غير موجودة — تأكد من اختيار وظيفة نشطة', rankings: [] }, { status: 200 })
+            return NextResponse.json({ error: `الوظيفة غير موجودة (${jobError?.message || 'unknown'})`, rankings: [] }, { status: 200 })
         }
 
         // 2. Fetch candidates (specific IDs from page, or all public)
