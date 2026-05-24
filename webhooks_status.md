@@ -1,6 +1,6 @@
 # 🔌 GrowthNexus — N8N Webhooks Status
 
-> **Last Updated:** 24 May 2026 — 06:00 AM
+> **Last Updated:** 24 May 2026 — 07:30 AM
 > **Roadmap:** See `ROADMAP.md` for sprint execution plan
 
 ## Legend
@@ -19,7 +19,7 @@
 | 4 | **Interview Questions** | `/gn-interview-questions` | ✅ Done | Webhook → Gemini → Code cleanup → Respond. ⚠️ Fallback to mock if LLM errors |
 | 5 | **Interview Evaluation** | `/gn-interview-eval` | ✅ Done | Webhook → Gemini → Code cleanup → Respond. ⚠️ Fallback to mock if LLM errors |
 | 6 | **Application Notification** | `/gn-application-notify` | ⚠️ Partial | In-app bell ✅ + n8n gets owner profile. **Missing: Email/Telegram send node** |
-| 7 | **Smart Candidate Matching** | `/gn-smart-match` | ✅ Done 🆕 | **Full pipeline:** Webhook → Build Prompt (job + candidates) → Gemini 2.0 Flash (semantic ranking) → Parse JSON → Respond. API at `/api/ai/smart-match`. Fallback to local Jaccard if n8n offline |
+| 7 | **Smart Candidate Matching** | `/gn-smart-match` | ✅ Done 🆕 | **Full pipeline:** Webhook → Build Prompt (job+candidates with UUIDs) → AI Agent (Gemini) → Parse+Fix IDs → Respond. API `/api/ai/smart-match` extracts skills from `skill_aliases` DB table. Handles n8n async mode. Fallback to local Jaccard. UUID safety-net parser |
 | 8 | **Message Notification** | `/gn-message-notify` | ❌ Not Started | Notify user when they receive a new message |
 | 9 | **Payment Verification** | `/gn-payment-verify` | ❌ Not Started | Verify Stripe/EdfaPay → fulfill subscription/credits |
 | 10 | **Company Verification** | `/gn-company-verify` | ✅ Done | Webhook → HTTP Download → Gemini OCR → Decision Engine (risk scoring) → 3× Supabase updates (company status, doc OCR data, audit log). Triggered by Supabase DB webhook on `company_documents` INSERT |
@@ -120,7 +120,7 @@ See: `N8N_EXTERNAL_JOBS_WORKFLOW_GUIDE.md`
 
 ### ~~4. Smart Candidate Matching (#7)~~ ✅ DONE (24 May 2026)
 ~~Employer can search their candidate pool and AI ranks best matches for a job.~~
-**Done:** Full candidate search + n8n AI workflow. `n8n-smart-match-workflow.json` (5 nodes: Webhook → Prompt → Gemini Flash → Parse → Respond). API at `/api/ai/smart-match`. `SmartMatchButton.tsx` component with results panel. Fallback to local Jaccard. Screening fields: nationality filter, education, CV summary. Setup guide: `N8N_SMART_MATCH_WORKFLOW_GUIDE.md`.
+**Done:** Full AI pipeline: API `/api/ai/smart-match` extracts skills from `skill_aliases` DB table when `skills_required` is empty. n8n workflow: Webhook → Build Prompt (job+candidates with UUIDs) → AI Agent (Gemini 3.1 Flash Lite) → Parse+Fix IDs → Respond. UUID safety-net maps `candidate_1`/names back to real UUIDs. Handles n8n async (`"Workflow was started"`) and 500 errors with local Jaccard fallback. `SmartMatchButton.tsx` displays scores (🟢≥70 🟡≥40 🔴<40), strengths, gaps, recommendations.
 
 ### ~~5. Company Verification (#10)~~ ✅ DONE
 ~~OCR trade license, extract company data, calculate trust score.~~

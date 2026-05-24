@@ -1,6 +1,6 @@
 # 📋 GrowthNexus — Master Plan
 
-> **Last Updated:** 24 May 2026 — 06:00 AM
+> **Last Updated:** 24 May 2026 — 07:30 AM
 > **Current Phase: 10–11 (Integration + B2C)**
 > **Completed: 9 of 12 phases + Phase 11 CV Services + Interview Self-Practice + Contract Pipeline Expansion + Bilingual Smart Matching + Candidate Search v2 + Smart Match AI**
 > **Source of Truth:** `full.sql` + GitNexus (2930 symbols, 132 flows)
@@ -156,7 +156,7 @@ GrowthNexus is an **AI Recruitment Operating System** for the UAE market, servin
 | 17 | CV Finalize | ~~🔴 High~~ | ✅ **NOT NEEDED** | API route works locally without n8n |
 | 18 | Email Send | 🔴 High | API ✅ / n8n pending | Generic SMTP sender → `gn-email-send` |
 | 19 | External Jobs Scraper | 🟡 Medium | API ✅ / n8n pending | LinkedIn/Bayt/Indeed scraper |
-| 7 | Smart Matching | 🟡 Medium | Pending | AI ranks best candidates |
+| 7 | Smart Matching | ~~🟡 Medium~~ | ✅ **DONE** (24 May) 🆕 | n8n AI Agent + API + skill_aliases DB + UUID fixer |
 | 8 | Message Notification | 🟢 Low | Pending | Chat message notifications |
 | 9 | Payment Verification | 🟡 Medium | Pending | Stripe webhook fulfillment |
 

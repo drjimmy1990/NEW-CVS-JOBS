@@ -1,6 +1,6 @@
 # 📊 GrowthNexus — Progress Report
 
-> **Last Updated:** 24 May 2026 — 06:00 AM
+> **Last Updated:** 24 May 2026 — 07:30 AM
 > **Overall Completion: ~98%** (Core + Verification + External Jobs + CV Services complete + **15 n8n workflows** + Contract Pipeline + **Interview Self-Practice** + **Bilingual Smart Matching** + **Candidate Search v2** + **Smart Match AI** done)
 > **Detailed Roadmap:** See `ROADMAP.md` for sprint execution plan
 > **Repo:** `https://github.com/drjimmy1990/NEW-CVS-JOBS`
@@ -195,7 +195,7 @@
 | 4 | Interview Questions | ✅ Done | Gemini → Respond |
 | 5 | Interview Evaluation | ✅ Done | Gemini → Respond |
 | 6 | Application Notification | ⚠️ Partial | In-app ✅, n8n webhook ✅, Email/Telegram missing |
-| 7 | Smart Matching | ❌ Not Started | AI candidate pool search |
+| 7 | Smart Matching | ✅ **DONE** (24 May) 🆕 | n8n AI Agent + API + SmartMatchButton + skill_aliases DB + UUID fixer |
 | 8 | Message Notification | ❌ Not Started | Chat notifications |
 | 9 | Payment Verification | ❌ Not Started | Stripe fulfillment |
 | 10 | Company Verification | ✅ Done | Webhook → Download → Gemini OCR → Decision Engine → 3× Supabase |
@@ -208,7 +208,7 @@
 | 17 | **CV ATS Convert** | ✅ Done 🆕 | In main JSON: IF PDF → extract text → Gemini reformat → Gotenberg PDF → Supabase Storage |
 | 18 | **CV Create (Builder)** | ✅ Done 🆕 | In main JSON: Load profile → Gemini LLM → Gotenberg HTML→PDF → Supabase Storage → cv_session |
 
-### Summary: 14 Done, 2 Code Ready, 3 Not Started
+### Summary: 15 Done, 2 Code Ready, 2 Not Started
 ### n8n workflow.json: Single file — 13 webhook paths — 136 nodes total
 
 > **See `webhooks_status.md` for full details**
@@ -509,6 +509,7 @@ N8N_CV_OPTIMIZE_WEBHOOK=
 N8N_CV_CREATE_WEBHOOK=
 N8N_CV_ATS_CONVERT_WEBHOOK=
 # N8N_CV_FINALIZE_WEBHOOK=      # NOT NEEDED — API handles locally
+N8N_SMART_MATCH_WEBHOOK=         # ✅ Smart Match AI workflow
 N8N_EMAIL_SEND_WEBHOOK=          # ⚠️ Still pending workflow
 ```
 

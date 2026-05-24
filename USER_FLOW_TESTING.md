@@ -1,6 +1,6 @@
 # 🔄 GrowthNexus — User Flow Testing Guide
 
-> **Last Updated:** 24 May 2026 — 06:00 AM
+> **Last Updated:** 24 May 2026 — 07:30 AM
 > **Source of Truth:** GitNexus (2930 symbols, 132 flows) + `full.sql` (27 tables, 16 RPCs)
 > **Roadmap:** See `ROADMAP.md` for sprint execution plan
 > **Instructions:** Test each flow in order. Mark ✅ for working, ❌ for broken.
