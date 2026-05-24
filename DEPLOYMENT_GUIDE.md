@@ -364,3 +364,22 @@ git stash pop
 - [ ] حدّث Supabase Auth redirect URLs
 - [ ] لا تشارك `SUPABASE_SERVICE_ROLE_KEY`
 - [ ] غيّر كلمة مرور aaPanel الافتراضية
+
+
+
+
+# 1. Go to the git repository folder and pull the new code
+cd /www/wwwroot/jobs-test.uae4jobs.ae/NEW-CVS-JOBS
+git pull origin main
+
+# 2. Copy the updated code to the actual website folder
+cp -r growth-nexus/* /www/wwwroot/jobs-test.uae4jobs.ae/
+
+# 3. Go to the website folder
+cd /www/wwwroot/jobs-test.uae4jobs.ae
+
+# 4. Rebuild the Next.js app so it sees the new route.ts changes
+npm run build
+
+# 5. Restart the PM2 server
+pm2 restart growthnexus
