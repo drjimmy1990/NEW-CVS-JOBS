@@ -29,9 +29,9 @@ export default async function CompanyProfilePage({
     // Get company's active jobs
     const { data: jobs } = await supabase
         .from('jobs')
-        .select('id, title, slug, location_city, job_type, salary_min, salary_max, salary_currency, created_at, is_featured')
+        .select('id, title, slug, location_city, job_type, salary_min, salary_max, currency, created_at, is_featured')
         .eq('company_id', company.id)
-        .eq('status', 'open')
+        .eq('status', 'active')
         .order('created_at', { ascending: false })
 
     const jobTypeLabels: Record<string, string> = {
@@ -133,7 +133,7 @@ export default async function CompanyProfilePage({
                                                     </span>
                                                     {job.salary_min && (
                                                         <span className="text-gold/60">
-                                                            {job.salary_min.toLocaleString()} - {job.salary_max?.toLocaleString()} {job.salary_currency || 'AED'}
+                                                            {job.salary_min.toLocaleString()} - {job.salary_max?.toLocaleString()} {job.currency || 'درهم'}
                                                         </span>
                                                     )}
                                                 </div>
