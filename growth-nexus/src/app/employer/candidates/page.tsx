@@ -304,13 +304,17 @@ export default async function CandidateSearchPage({
             )}
 
             {/* AI Smart Match Button */}
-            {params.job_id && selectedJobTitle && candidates.length > 0 && (
-                <SmartMatchButton
-                    jobId={params.job_id}
-                    jobTitle={selectedJobTitle}
-                    candidateIds={candidates.map((c: any) => c.id)}
-                />
-            )}
+            {employerJobs.length > 0 && candidates.length > 0 && (() => {
+                const smartJobId = params.job_id || employerJobs[0]?.id
+                const smartJobTitle = selectedJobTitle || employerJobs[0]?.title || 'وظيفة'
+                return (
+                    <SmartMatchButton
+                        jobId={smartJobId}
+                        jobTitle={smartJobTitle}
+                        candidateIds={candidates.map((c: any) => c.id)}
+                    />
+                )
+            })()}
 
             {/* Results */}
             <div className="space-y-4">
