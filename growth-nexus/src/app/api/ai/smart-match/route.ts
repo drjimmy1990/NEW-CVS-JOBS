@@ -32,15 +32,15 @@ export async function POST(req: Request) {
             process.env.SUPABASE_SERVICE_ROLE_KEY!
         )
 
-        // 1. Fetch the job details
-        console.log('[smart-match] Looking up job_id:', job_id, '| has service key:', !!process.env.SUPABASE_SERVICE_ROLE_KEY)
+        // 1. Fetch the job details (using actual DB column names)
+        console.log('[smart-match] Looking up job_id:', job_id)
         const { data: job, error: jobError } = await adminClient
             .from('jobs')
-            .select('id, title, description, skills_required, job_type, location, salary_min, salary_max, experience_min, nationality_required')
+            .select('id, title, description, skills_required, job_type, location_city, location_country, salary_min, salary_max, currency')
             .eq('id', job_id)
             .single()
 
-        console.log('[smart-match] Job lookup result:', job ? `Found: ${job.title}` : `NOT FOUND`, '| Error:', jobError?.message || 'none')
+        console.log('[smart-match] Job lookup:', job ? `Found: ${job.title}` : 'NOT FOUND', '| Error:', jobError?.message || 'none')
 
         if (jobError || !job) {
             return NextResponse.json({ error: `الوظيفة غير موجودة (${jobError?.message || 'unknown'})`, rankings: [] }, { status: 200 })
@@ -60,10 +60,12 @@ export async function POST(req: Request) {
             candidateQuery = candidateQuery.eq('is_public', true)
         }
 
-        const { data: rawCandidates } = await candidateQuery
+        const { data: rawCandidates, error: candidateError } = await candidateQuery
+
+        console.log('[smart-match] Candidates found:', rawCandidates?.length || 0, '| Error:', candidateError?.message || 'none')
 
         if (!rawCandidates || rawCandidates.length === 0) {
-            return NextResponse.json({ error: 'No candidates found', rankings: [] }, { status: 200 })
+            return NextResponse.json({ error: 'لا يوجد مرشحين', rankings: [] }, { status: 200 })
         }
 
         // 3. Fetch profiles for names
@@ -112,12 +114,11 @@ export async function POST(req: Request) {
                 description: job.description,
                 skills_required: job.skills_required || [],
                 job_type: job.job_type,
-                location: job.location,
+                location: job.location_city || '',
+                country: job.location_country || '',
                 salary_range: job.salary_min && job.salary_max
-                    ? `${job.salary_min}-${job.salary_max} AED`
+                    ? `${job.salary_min}-${job.salary_max} ${job.currency || 'AED'}`
                     : null,
-                experience_min: job.experience_min,
-                nationality_required: job.nationality_required,
             },
             candidates: candidateSummaries,
             employer_id: user.id,
@@ -134,8 +135,10 @@ export async function POST(req: Request) {
             body: JSON.stringify(n8nPayload),
         })
 
+        console.log('[smart-match] n8n response status:', n8nResponse.status)
+
         if (!n8nResponse.ok) {
-            console.error('[smart-match] n8n error:', n8nResponse.status)
+            console.error('[smart-match] n8n error:', n8nResponse.status, await n8nResponse.text().catch(() => ''))
             // Fallback: return basic Jaccard ranking
             return NextResponse.json({
                 success: true,
