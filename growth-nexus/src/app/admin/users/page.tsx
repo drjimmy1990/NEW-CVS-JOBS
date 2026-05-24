@@ -1,17 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/utils/supabase/client'
 import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Users, Search, Loader2, Shield, ShieldCheck, ShieldX } from 'lucide-react'
+import { Users, Search, Loader2 } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 
 export default function AdminUsersPage() {
-    const supabase = createClient()
     const [users, setUsers] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
@@ -21,16 +18,29 @@ export default function AdminUsersPage() {
 
     const loadUsers = async () => {
         setLoading(true)
-        const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(100)
-        setUsers(data || [])
-        setLoading(false)
+        try {
+            const res = await fetch('/api/admin/users')
+            const json = await res.json()
+            setUsers(json.data || [])
+        } catch {
+            toast.error('فشل في تحميل المستخدمين')
+        } finally {
+            setLoading(false)
+        }
     }
 
     const handleRoleChange = async (userId: string, newRole: string) => {
-        const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', userId)
-        if (error) { toast.error('فشل تحديث الدور') } else {
+        try {
+            const res = await fetch('/api/admin/users', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, role: newRole }),
+            })
+            if (!res.ok) { toast.error('فشل تحديث الدور'); return }
             toast.success('تم تحديث الدور')
             setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u))
+        } catch {
+            toast.error('فشل تحديث الدور')
         }
     }
 
