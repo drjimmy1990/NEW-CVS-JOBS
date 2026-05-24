@@ -105,18 +105,19 @@ export default async function CandidateSearchPage({
 
     // --- CLIENT-SIDE FILTERING (reliable, case-insensitive) ---
 
-    // 1. Text search filter
+    // 1. Text search filter — supports multiple terms separated by comma or space
     if (params.q) {
-        const q = params.q.toLowerCase().trim()
-        candidates = candidates.filter(c => {
-            // Search in headline
-            if (c.headline && c.headline.toLowerCase().includes(q)) return true
-            // Search in name
-            if (c.full_name.toLowerCase().includes(q)) return true
-            // Search in any skill (case-insensitive, partial match)
-            if (c.parsedSkills.some((s: string) => s.toLowerCase().includes(q))) return true
-            return false
-        })
+        const terms = params.q.split(/[,،\s]+/).map(t => t.trim().toLowerCase()).filter(Boolean)
+        if (terms.length > 0) {
+            candidates = candidates.filter(c => {
+                return terms.some(q => {
+                    if (c.headline && c.headline.toLowerCase().includes(q)) return true
+                    if (c.full_name.toLowerCase().includes(q)) return true
+                    if (c.parsedSkills.some((s: string) => s.toLowerCase().includes(q))) return true
+                    return false
+                })
+            })
+        }
     }
 
     // 2. Location filter
