@@ -273,7 +273,7 @@ export default async function CandidateSearchPage({
                             <CardContent className="p-6">
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                     {/* Match Score Circle */}
-                                    {candidate.matchPercent > 0 && (
+                                    {employerJobs.length > 0 && (
                                         <div className="shrink-0 flex flex-col items-center gap-1">
                                             <div className={`relative h-16 w-16 rounded-full flex items-center justify-center border-[3px] ${
                                                 candidate.matchPercent >= 70 ? 'border-emerald-500/60 text-emerald-400' :
@@ -309,7 +309,7 @@ export default async function CandidateSearchPage({
                                                 )}
                                             </div>
                                             {/* Match Progress Bar */}
-                                            {candidate.matchPercent > 0 && (
+                                            {employerJobs.length > 0 && (
                                                 <div className="mt-3 max-w-xs">
                                                     <div className="h-1.5 rounded-full bg-navy overflow-hidden">
                                                         <div
