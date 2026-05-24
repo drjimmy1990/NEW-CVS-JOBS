@@ -58,7 +58,10 @@ Open **Supabase SQL Editor** → Create **New Query** → Paste and run:
 ALTER TABLE public.candidates
 ADD COLUMN IF NOT EXISTS education_level text,
 ADD COLUMN IF NOT EXISTS specialization text,
-ADD COLUMN IF NOT EXISTS last_job_title text;
+ADD COLUMN IF NOT EXISTS last_job_title text,
+ADD COLUMN IF NOT EXISTS experience jsonb DEFAULT '[]'::jsonb,
+ADD COLUMN IF NOT EXISTS education jsonb DEFAULT '[]'::jsonb,
+ADD COLUMN IF NOT EXISTS languages jsonb DEFAULT '[{"name":"العربية","level":"native"}]'::jsonb;
 
 -- Add new columns to applications table (if not exist)
 ALTER TABLE public.applications
