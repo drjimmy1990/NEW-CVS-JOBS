@@ -33,7 +33,6 @@ export async function POST(req: Request) {
         )
 
         // 1. Fetch the job details
-        console.log('[smart-match] Looking up job_id:', job_id)
         const { data: job, error: jobError } = await adminClient
             .from('jobs')
             .select('id, title, description, skills_required, job_type, location, salary_min, salary_max, experience_min, nationality_required')
@@ -41,20 +40,21 @@ export async function POST(req: Request) {
             .single()
 
         if (jobError || !job) {
-            console.error('[smart-match] Job lookup failed:', jobError?.message, 'job_id:', job_id)
             return NextResponse.json({ error: 'الوظيفة غير موجودة — تأكد من اختيار وظيفة نشطة', rankings: [] }, { status: 200 })
         }
-        console.log('[smart-match] Found job:', job.title)
 
-        // 2. Fetch candidates (either specific IDs or all public)
+        // 2. Fetch candidates (specific IDs from page, or all public)
         let candidateQuery = adminClient
             .from('candidates')
             .select('id, headline, skills, years_experience, residence_emirate, cv_url, nationality, candidate_type, resume_parsed_data')
-            .eq('is_public', true)
             .limit(limit)
 
         if (candidate_ids && candidate_ids.length > 0) {
+            // Employer passed specific IDs from the page — no need to filter by is_public
             candidateQuery = candidateQuery.in('id', candidate_ids)
+        } else {
+            // No specific IDs — only show public candidates
+            candidateQuery = candidateQuery.eq('is_public', true)
         }
 
         const { data: rawCandidates } = await candidateQuery
