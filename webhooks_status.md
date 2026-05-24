@@ -1,6 +1,6 @@
 # 🔌 GrowthNexus — N8N Webhooks Status
 
-> **Last Updated:** 14 May 2026 — 01:24 AM
+> **Last Updated:** 24 May 2026 — 05:20 AM
 > **Roadmap:** See `ROADMAP.md` for sprint execution plan
 
 ## Legend
@@ -19,7 +19,7 @@
 | 4 | **Interview Questions** | `/gn-interview-questions` | ✅ Done | Webhook → Gemini → Code cleanup → Respond. ⚠️ Fallback to mock if LLM errors |
 | 5 | **Interview Evaluation** | `/gn-interview-eval` | ✅ Done | Webhook → Gemini → Code cleanup → Respond. ⚠️ Fallback to mock if LLM errors |
 | 6 | **Application Notification** | `/gn-application-notify` | ⚠️ Partial | In-app bell ✅ + n8n gets owner profile. **Missing: Email/Telegram send node** |
-| 7 | **Smart Candidate Matching** | `/gn-smart-match` | ❌ Not Started | Employer searches for best candidates from pool |
+| 7 | **Smart Candidate Matching** | `/gn-smart-match` | ⚠️ Partial | **Jaccard similarity matching DONE** (bilingual, DB-driven `skill_aliases`). n8n AI ranking workflow pending |
 | 8 | **Message Notification** | `/gn-message-notify` | ❌ Not Started | Notify user when they receive a new message |
 | 9 | **Payment Verification** | `/gn-payment-verify` | ❌ Not Started | Verify Stripe/EdfaPay → fulfill subscription/credits |
 | 10 | **Company Verification** | `/gn-company-verify` | ✅ Done | Webhook → HTTP Download → Gemini OCR → Decision Engine (risk scoring) → 3× Supabase updates (company status, doc OCR data, audit log). Triggered by Supabase DB webhook on `company_documents` INSERT |
@@ -40,8 +40,8 @@
 | Status | Count |
 |--------|-------|
 | ✅ Done / No n8n needed | 14 |
-| ⚠️ Partial / Code Ready | 2 |
-| ❌ Not Started | 3 |
+| ⚠️ Partial / Code Ready | 3 |
+| ❌ Not Started | 2 |
 
 ## n8n Workflow JSON Files
 
@@ -118,8 +118,10 @@ Webhook (prompt, sessionId, language, chatHistory)
 Build n8n scraper workflow for LinkedIn/Bayt/Indeed → `/api/external-jobs`.
 See: `N8N_EXTERNAL_JOBS_WORKFLOW_GUIDE.md`
 
-### 4. Smart Candidate Matching (#7) — HIGH VALUE
-Employer can search their candidate pool and AI ranks best matches for a job.
+### ~~4. Smart Candidate Matching (#7)~~ ⚠️ PARTIAL (24 May 2026)
+~~Employer can search their candidate pool and AI ranks best matches for a job.~~
+**Done:** Bilingual Jaccard similarity matching on both dashboards. `skill_aliases` DB table + Admin CRUD UI. Search page fixed (RLS bypass + column name fix).
+**Remaining:** n8n AI-powered ranking workflow for deeper semantic matching.
 
 ### ~~5. Company Verification (#10)~~ ✅ DONE
 ~~OCR trade license, extract company data, calculate trust score.~~

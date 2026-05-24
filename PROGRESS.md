@@ -1,7 +1,7 @@
 # 📊 GrowthNexus — Progress Report
 
-> **Last Updated:** 14 May 2026 — 01:24 AM
-> **Overall Completion: ~98%** (Core + Verification + External Jobs + CV Services complete + **13 n8n workflows** + Contract Pipeline + **Interview Self-Practice** done)
+> **Last Updated:** 24 May 2026 — 05:20 AM
+> **Overall Completion: ~98%** (Core + Verification + External Jobs + CV Services complete + **13 n8n workflows** + Contract Pipeline + **Interview Self-Practice** + **Bilingual Smart Matching** done)
 > **Detailed Roadmap:** See `ROADMAP.md` for sprint execution plan
 > **Repo:** `https://github.com/drjimmy1990/NEW-CVS-JOBS`
 > **Live Site:** `https://jobs-test.uae4jobs.ae`
@@ -67,6 +67,8 @@
 | **Pipeline** | — | ✅ Complete | 7-stage Kanban (applied → reviewing → shortlisted → interview → offer → hired → rejected), **offer interceptor → contract dialog** 🆕 |
 | **CV Services** | — | 🔧 Partially Complete | 7 API routes, 2 tables, 2 RPCs, 12 types. **CV Optimizer: frontend + 3 n8n workflows DONE (parse + optimize + ATS convert)** 🆕. Session delete + resume all statuses. CV Builder UI pending |
 | **Interview Practice** | — | ✅ Complete | Standalone self-practice module: SearchableSelect combobox, 3 API routes, `interview_practice_sessions` table, dual-credit RPC, session detail view, history 🆕 |
+| **Smart Matching** | — | ✅ Complete 🆕 | Bilingual Jaccard similarity on both dashboards. `skill_aliases` DB table (96 aliases). Admin CRUD at `/admin/skill-aliases`. Dynamic DB-driven normalization |
+| **Admin Fixes** | — | ✅ Complete 🆕 | Users list via service role API (`/api/admin/users`). Candidate search fixed (RLS bypass + column fix + search syntax) |
 | **Email** | — | 🔧 Backend Done | Generic n8n SMTP sender, `/api/notifications/email` |
 
 ---

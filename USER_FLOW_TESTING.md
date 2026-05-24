@@ -1,7 +1,7 @@
 # 🔄 GrowthNexus — User Flow Testing Guide
 
-> **Last Updated:** 14 May 2026 — 01:24 AM
-> **Source of Truth:** GitNexus (2810 symbols, 131 flows) + `full.sql` (26 tables, 16 RPCs)
+> **Last Updated:** 24 May 2026 — 05:20 AM
+> **Source of Truth:** GitNexus (2930 symbols, 132 flows) + `full.sql` (27 tables, 16 RPCs)
 > **Roadmap:** See `ROADMAP.md` for sprint execution plan
 > **Instructions:** Test each flow in order. Mark ✅ for working, ❌ for broken.
 > Items marked 🔗 use **n8n webhooks** — they work with mock data if n8n is offline.
@@ -25,7 +25,7 @@
 | 10 | Step 7: Pending Approval | | Redirect to dashboard with `VerificationBanner` | |
 | 11 | Dashboard limited access | `/employer/dashboard` | Cannot publish jobs or see candidates until verified | |
 | 12 | 🔒 Post Job button shows lock icon | `/employer/dashboard` | "التوثيق مطلوب للنشر" instead of CTA | |
-| 13 | 🔒 Candidates page blocked | `/employer/candidates` | `VerificationLockServer` full-page block | |
+| 13 | 🔒 Candidates page blocked | `/employer/candidates` | ~~`VerificationLockServer` full-page block~~ ✅ **Removed for testing** (24 May) | |
 | 14 | 🔒 Messages page blocked | `/employer/messages` | `VerificationLock` full-page block | |
 | 15 | 🔒 Saved candidates blocked | `/employer/saved-candidates` | `VerificationLock` full-page block | |
 

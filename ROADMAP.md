@@ -1,8 +1,8 @@
 # 🗺️ GrowthNexus — Production Roadmap
 
 > **Created:** 14 May 2026
-> **Last Updated:** 14 May 2026 — 01:24 AM
-> **Current Status:** ~98% complete — all core platform + 13 n8n workflows + Interview Self-Practice done
+> **Last Updated:** 24 May 2026 — 05:20 AM
+> **Current Status:** ~98% complete — all core platform + 13 n8n workflows + Interview Self-Practice + Bilingual Smart Matching done
 > **Source of Truth:** `PLAN.MD` + `TODO.md` + `webhooks_status.md`
 > **Execution Strategy:** Build all B2C revenue features → Wire remaining n8n → Deploy → Polish
 
@@ -23,6 +23,8 @@
 | Interview AI (Application-triggered) | ✅ Done | 100% |
 | Analytics + Forecasting + Emiratisation | ✅ Done | 100% |
 | **B2C Paid Services (Phase 11)** | 🔧 In Progress | ~17% (Interview Practice ✅) |
+| **Smart Matching (Bilingual Jaccard)** | ✅ Done | 100% 🆕 |
+| **Admin Panel Fixes (Users + Search)** | ✅ Done | 100% 🆕 |
 | **Security Hardening** | ❌ Not Started | 0% |
 | **Production Deployment** | ❌ Not Started | 0% |
 | **i18n + SEO + Testing (Phase 12)** | ❌ Not Started | 0% |
@@ -362,6 +364,7 @@ Schedule Trigger (daily 08:00 UTC)
 | `webhooks_status.md` | n8n webhook mapping |
 | `USER_FLOW_TESTING.md` | Manual test guide |
 | `n8n workflow.json` | All 13 n8n workflows (136 nodes) |
+| `migration_skill_aliases.sql` | Bilingual skill aliases DB migration (96 seeds) 🆕 |
 | `N8N_EXTERNAL_JOBS_WORKFLOW_GUIDE.md` | Scraper build guide |
 | `N8N_CV_WORKFLOW_REUSE_GUIDE.md` | CV workflow reuse guide |
 | `DEPLOYMENT_GUIDE.md` | VPS deployment steps |

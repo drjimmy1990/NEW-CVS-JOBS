@@ -1,7 +1,7 @@
 # 📋 GrowthNexus — Remaining TODO
 
 > **Created:** 12 May 2026
-> **Overall Completion: ~98%** — Core platform + verification + OCR + External Jobs + CV Services (Optimizer + Builder + ATS Convert) + **13 n8n workflows** + Contract Pipeline + **Interview Self-Practice** done
+> **Overall Completion: ~98%** — Core platform + verification + OCR + External Jobs + CV Services (Optimizer + Builder + ATS Convert) + **13 n8n workflows** + Contract Pipeline + **Interview Self-Practice** + **Bilingual Smart Matching** done
 > **What Remains:** Sprint 1: B2C Services (5 remaining) → Sprint 2: n8n wiring → Sprint 3: Deploy + Security → Sprint 4: i18n/SEO/QA
 > **Detailed Roadmap:** See `ROADMAP.md` for full sprint plan
 
@@ -50,7 +50,7 @@
   - [ ] `/api/stripe/checkout`
 - [ ] CORS configuration for production domain
 - [ ] Audit all RPC functions for SECURITY DEFINER usage safety
-- [ ] Review all `service_role` key usage (currently: company registration)
+- [ ] Review all `service_role` key usage (currently: company registration, admin users, candidate search, skill-aliases API)
 
 ---
 
@@ -71,11 +71,15 @@
 
 ### 10.6 AI Enhancement (Replace Mocks)
 
-#### ~~Smart Candidate Suggestions~~ ✅ DONE (12 May)
+#### ~~Smart Candidate Suggestions~~ ✅ DONE (12 May + 24 May)
 - [x] Replace hardcoded candidate names on employer dashboard
 - [x] Build real DB query: match candidate skills against company's active job requirements
 - [x] Add Jaccard similarity scoring for skill matching
 - [x] Display top 5 suggested candidates with match percentage
+- [x] **Bilingual matching** — Arabic/English skill normalization via DB-driven `skill_aliases` table 🆕
+- [x] **Admin Skill Aliases Panel** — `/admin/skill-aliases` CRUD with search, category filter, grouped view 🆕
+- [x] **Dynamic aliases** — both dashboards fetch from DB instead of hardcoded dictionaries 🆕
+- [x] `migration_skill_aliases.sql` — 96 seed aliases covering 30+ canonical skills 🆕
 
 #### ~~AI Match Score Enhancement~~ ✅ DONE (12 May)
 - [x] Improve `calculate_match_score` with:
@@ -130,7 +134,7 @@
 | 17 | CV Finalize | ~~🔴 High~~ | ✅ **NOT NEEDED** | API route works **locally** without n8n (built-in fallback) |
 | 18 | Email Send | 🔴 High | API ✅ / n8n pending | Generic SMTP sender → `gn-email-send` |
 | 19 | External Jobs Scraper | 🟡 Medium | Pending | LinkedIn/Bayt/Indeed → `/api/external-jobs` |
-| 7 | Smart Matching | 🟡 Medium | Pending | AI ranks best candidates from talent pool |
+| 7 | Smart Matching | 🟡 Medium | ⚠️ Partial (24 May) | **Jaccard done** (bilingual, DB-driven). n8n AI ranking pending |
 | 8 | Message Notification | 🟢 Low | Pending | Chat message push notifications |
 | 9 | Payment Verification | 🟡 Medium | Pending | Stripe webhook fulfillment validation |
 
@@ -326,6 +330,10 @@
 | Stripe in test mode | No real payments | Switch to live keys for production |
 | No email service | Can't send generic emails | n8n SMTP configured for contract lifecycle; `gn-email-send` workflow still needed |
 | No monitoring | No error tracking | Add Sentry before launch |
+| ~~Admin users list showed 1 user~~ | ~~RLS blocked employer from seeing all profiles~~ | ✅ Fixed (24 May) — service role API `/api/admin/users` bypasses RLS 🆕 |
+| ~~Candidate search showed nothing~~ | ~~RLS + wrong column name + broken search syntax~~ | ✅ Fixed (24 May) — service role client, `years_experience` column, array syntax 🆕 |
+| ~~Candidate search locked by subscription~~ | ~~`hasAccess = false` hardcoded~~ | ✅ Fixed (24 May) — set to `true` for testing 🆕 |
+| ~~Skill matching English-only~~ | ~~Hardcoded dictionary, no Arabic support~~ | ✅ Fixed (24 May) — DB-driven `skill_aliases` table with admin CRUD 🆕 |
 
 ---
 
