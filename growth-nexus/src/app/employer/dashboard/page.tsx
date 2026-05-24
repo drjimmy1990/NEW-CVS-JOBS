@@ -92,15 +92,46 @@ export default async function EmployerDashboard() {
             .eq('status', 'interview')
         : { count: 0 }
 
-    // --- SMART CANDIDATE SUGGESTIONS (real DB query) ---
+    // --- SMART CANDIDATE SUGGESTIONS (Bilingual Jaccard matching) ---
+    // Bilingual skill dictionary: Arabic → English canonical form
+    const skillAliases: Record<string, string> = {
+        'رياكت': 'react', 'ريأكت': 'react', 'react.js': 'react', 'reactjs': 'react',
+        'نود': 'node.js', 'نود جي اس': 'node.js', 'nodejs': 'node.js',
+        'جافاسكريبت': 'javascript', 'جافا سكريبت': 'javascript', 'js': 'javascript',
+        'تايب سكريبت': 'typescript', 'تايبسكريبت': 'typescript', 'ts': 'typescript',
+        'بايثون': 'python', 'بيثون': 'python', 'جافا': 'java',
+        'سي شارب': 'c#', 'بي اتش بي': 'php',
+        'فيو': 'vue', 'vue.js': 'vue', 'vuejs': 'vue',
+        'أنجولار': 'angular', 'انجولار': 'angular',
+        'نيكست': 'next.js', 'nextjs': 'next.js',
+        'فلاتر': 'flutter', 'سويفت': 'swift', 'كوتلن': 'kotlin',
+        'لارافل': 'laravel', 'دجانجو': 'django',
+        'قواعد بيانات': 'databases', 'قواعد البيانات': 'databases',
+        'بوستجرس': 'postgresql', 'مونجو': 'mongodb', 'mongo': 'mongodb',
+        'أمازون': 'aws', 'امازون': 'aws', 'دوكر': 'docker',
+        'تصميم': 'design', 'تصميم واجهات': 'ui/ux', 'تجربة المستخدم': 'ux',
+        'واجهة المستخدم': 'ui', 'فيجما': 'figma', 'فوتوشوب': 'photoshop',
+        'إدارة المشاريع': 'project management', 'ادارة المشاريع': 'project management',
+        'التسويق الرقمي': 'digital marketing', 'تسويق رقمي': 'digital marketing',
+        'التسويق': 'marketing', 'تسويق': 'marketing',
+        'تحليل البيانات': 'data analysis', 'الذكاء الاصطناعي': 'ai', 'ذكاء اصطناعي': 'ai',
+        'تعلم الآلة': 'machine learning', 'ml': 'machine learning',
+        'المبيعات': 'sales', 'مبيعات': 'sales',
+        'خدمة العملاء': 'customer service', 'المحاسبة': 'accounting', 'محاسبة': 'accounting',
+        'الموارد البشرية': 'hr', 'موارد بشرية': 'hr', 'human resources': 'hr',
+        'تحسين محركات البحث': 'seo', 'سيو': 'seo',
+        'إكسل': 'excel', 'اكسل': 'excel',
+    }
+    const normalizeSkill = (s: string) => { const l = s.toLowerCase().trim(); return skillAliases[l] || l }
+
     let suggestedCandidates: { id: string; name: string; headline: string | null; skills: string[]; matchPercent: number }[] = []
 
     if (companyId && jobs && jobs.length > 0) {
-        // 1. Collect all unique skills from company's jobs
+        // 1. Collect all unique normalized skills from company's jobs
         const allJobSkills = new Set<string>()
         for (const job of jobs) {
             const jr = (job as any).skills_required as string[] | null
-            if (jr) jr.forEach(s => allJobSkills.add(s.toLowerCase().trim()))
+            if (jr) jr.forEach(s => allJobSkills.add(normalizeSkill(s)))
         }
 
         if (allJobSkills.size > 0) {
@@ -113,9 +144,9 @@ export default async function EmployerDashboard() {
                 .limit(50)
 
             if (candidates && candidates.length > 0) {
-                // 3. Score each candidate by skill overlap (Jaccard-like)
+                // 3. Score each candidate by skill overlap (Bilingual Jaccard)
                 const scored = candidates.map(c => {
-                    const cSkills = (c.skills || []).map((s: string) => s.toLowerCase().trim())
+                    const cSkills = (c.skills || []).map((s: string) => normalizeSkill(s))
                     const matched = cSkills.filter((s: string) => allJobSkills.has(s)).length
                     const union = new Set([...allJobSkills, ...cSkills]).size
                     const matchPercent = union > 0 ? Math.round((matched / union) * 100) : 0
