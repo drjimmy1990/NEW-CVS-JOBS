@@ -40,20 +40,33 @@ export async function POST(request: NextRequest) {
 
     const candidateSkills: string[] = candidate?.skills || []
 
-    // --- Load target job skills (if job_id provided) ---
+    // --- Load target job (if job_id provided) ---
     let jobTitle = target_job_title || ''
     let jobSkills: string[] = target_skills || []
+    let jobDescription = ''
+    let jobCompany = ''
+    let jobLocation = ''
+    let jobType = ''
 
     if (target_job_id) {
-        const { data: job } = await supabase
+        const { data: job, error: jobError } = await supabase
             .from('jobs')
-            .select('title, skills_required, description')
+            .select('title, skills_required, description, location_city, job_type, companies(name)')
             .eq('id', target_job_id)
             .single()
 
+        if (jobError) {
+            console.error('[skill-gap] Job lookup error:', jobError.message, 'job_id:', target_job_id)
+        }
+
         if (job) {
-            jobTitle = job.title
+            jobTitle = job.title || ''
             jobSkills = job.skills_required || []
+            jobDescription = (job.description || '').replace(/<[^>]*>/g, '').slice(0, 1500)
+            jobLocation = job.location_city || ''
+            jobType = job.job_type || ''
+            const co = job.companies as unknown as { name: string } | null
+            jobCompany = co?.name || ''
         }
     }
 
@@ -90,8 +103,13 @@ export async function POST(request: NextRequest) {
                 body: JSON.stringify({
                     session_id: session.id,
                     target_job_title: jobTitle,
+                    target_job_description: jobDescription,
+                    target_job_company: jobCompany,
+                    target_job_location: jobLocation,
+                    target_job_type: jobType,
                     target_skills: jobSkills,
                     candidate_skills: candidateSkills,
+                    candidate_headline: candidate?.headline || '',
                     years_experience: candidate?.years_experience || 0,
                 }),
             })
