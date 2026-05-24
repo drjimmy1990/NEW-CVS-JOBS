@@ -106,6 +106,22 @@ export default function AutoApplyPage() {
         finally { setSaving(false) }
     }
 
+    async function toggleActive() {
+        const newState = !isActive
+        setIsActive(newState)
+        if (!settings) return // No settings yet, just toggle local state
+        try {
+            await fetch('/api/auto-apply', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...settings, is_active: newState }),
+            })
+            setSuccess(newState ? 'تم تفعيل التقديم التلقائي ✅' : 'تم إيقاف التقديم التلقائي')
+            setTimeout(() => setSuccess(''), 3000)
+            await loadData()
+        } catch { setError('فشل تحديث الحالة') }
+    }
+
     if (loading) return <div className="flex items-center justify-center min-h-[400px]"><Loader2 className="h-8 w-8 animate-spin text-gold" /></div>
 
     const appsUsed = settings?.applications_this_month || 0
@@ -132,7 +148,7 @@ export default function AutoApplyPage() {
             <div className="p-6 rounded-2xl bg-navy-light border border-gold/10 space-y-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <button onClick={() => setIsActive(!isActive)} className={`h-12 w-12 rounded-xl flex items-center justify-center transition-all ${isActive ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                        <button onClick={toggleActive} className={`h-12 w-12 rounded-xl flex items-center justify-center transition-all ${isActive ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
                             {isActive ? <Power className="h-6 w-6" /> : <PowerOff className="h-6 w-6" />}
                         </button>
                         <div>
