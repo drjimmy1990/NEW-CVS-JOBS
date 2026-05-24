@@ -270,7 +270,9 @@ export default function JobAlertsPage() {
                     <div className="space-y-2">
                         {history.map(h => {
                             const isExpanded = expandedHistoryId === h.id
-                            const jobs = h.jobs_sent || []
+                            let jobs = h.jobs_sent || []
+                            if (typeof jobs === 'string') { try { jobs = JSON.parse(jobs) } catch { jobs = [] } }
+                            if (!Array.isArray(jobs)) jobs = []
                             return (
                                 <div key={h.id} className="rounded-xl bg-navy-light border border-gold/5 overflow-hidden transition-all">
                                     <button
