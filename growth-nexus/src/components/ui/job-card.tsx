@@ -253,11 +253,7 @@ export function JobCard({ job, isLoggedIn = false, isSaved = false, isExternal =
                                 <div className="w-full bg-navy/60 rounded-xl p-2.5 border border-gold/8 backdrop-blur-sm">
                                     <div className="flex items-center justify-between text-xs text-cream-dark/40 mb-1.5">
                                         <span className="flex items-center gap-1">
-                                            {isExternal ? (
-                                                <><Globe className="h-3 w-3" />{applicantsCount} نقرة</>
-                                            ) : (
-                                                <><Users className="h-3 w-3" />{applicantsCount} متقدم</>
-                                            )}
+                                            <><Users className="h-3 w-3" />{applicantsCount} مشاهدة</>
                                         </span>
                                     </div>
                                     {!isExternal && (
