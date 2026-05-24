@@ -28,7 +28,8 @@ The dashboard (`/candidate/auto-apply`) manages **settings** (CRUD via `/api/aut
     ↓
 [Loop: For each matched job]
     ├── [IF: score >= min_match_score AND under monthly limit]
-    │   ├── YES → [Supabase: INSERT into applications]
+    │   ├── YES → [AI: Generate personalized cover letter]
+    │   │         [Supabase: INSERT into applications + cover_letter]
     │   │         [Supabase: INSERT into auto_apply_log (status=applied)]
     │   │         [Supabase: INCREMENT applications_this_month]
     │   └── NO  → [Supabase: INSERT into auto_apply_log (status=skipped)]
@@ -209,10 +210,11 @@ return [{
 
 ### Node 8: Code — Loop & Apply
 
-For each matched job, insert an application:
+For each matched job, prepare data for AI cover letter:
 
 ```javascript
 const data = $input.first().json;
+const candidate = $('Supabase - Get Candidate').first().json;
 const results = [];
 
 for (const job of data.to_apply) {
@@ -222,7 +224,17 @@ for (const job of data.to_apply) {
       settings_id: data.settings_id,
       job_id: job.job_id,
       title: job.title,
+      location_city: job.location_city,
+      salary_min: job.salary_min,
+      salary_max: job.salary_max,
       match_score: job.match_score,
+      // Pass candidate info for AI
+      candidate_name: candidate.full_name || '',
+      candidate_skills: (candidate.skills || []).join(', '),
+      candidate_experience: candidate.years_experience || '',
+      candidate_headline: candidate.headline || '',
+      // Pass user template if exists
+      cover_letter_template: data.cover_letter_template || '',
       action: 'apply',
     }
   });
@@ -231,7 +243,50 @@ for (const job of data.to_apply) {
 return results;
 ```
 
-### Node 9: Supabase — Insert Application
+### Node 9: AI — Generate Cover Letter
+
+| Setting | Value |
+|---------|-------|
+| Type | **AI Agent** or **Google Gemini Chat Model** |
+| Model | `gemini-2.0-flash` |
+
+**System Message:**
+
+```
+أنت كاتب رسائل تغطية محترف. مهمتك كتابة رسالة تغطية موجزة ومقنعة بالعربية للتقديم على وظيفة.
+
+القواعد:
+- الرسالة يجب أن تكون 150-250 كلمة فقط
+- ابدأ بجملة افتتاحية قوية تظهر الاهتمام بالوظيفة المحددة
+- اربط مهارات وخبرات المرشح بمتطلبات الوظيفة
+- اختم بدعوة للعمل (طلب مقابلة أو تواصل)
+- الأسلوب: مهني ومباشر بدون مبالغة
+- لا تكتب عنوان أو "إلى من يهمه الأمر" — ابدأ مباشرة بالمحتوى
+- إذا أعطاك المستخدم قالب، استخدمه كأساس وعدّله حسب الوظيفة
+```
+
+**User Message (Prompt):**
+
+```
+الوظيفة: {{ $json.title }}
+الموقع: {{ $json.location_city }}
+الراتب: {{ $json.salary_min }}-{{ $json.salary_max }} AED
+nسبة التوافق: {{ $json.match_score }}%
+
+بيانات المرشح:
+- الاسم: {{ $json.candidate_name }}
+- المسمى: {{ $json.candidate_headline }}
+- المهارات: {{ $json.candidate_skills }}
+- سنوات الخبرة: {{ $json.candidate_experience }}
+
+{{ $json.cover_letter_template ? 'قالب المستخدم للاسترشاد:\n' + $json.cover_letter_template : '' }}
+
+اكتب رسالة تغطية مخصصة لهذه الوظيفة.
+```
+
+> **Important:** The AI output will be in `{{ $json.text }}` — use it in the next node.
+
+### Node 10: Supabase — Insert Application
 
 | Setting | Value |
 |---------|-------|
@@ -241,15 +296,17 @@ return results;
 Fields:
 ```json
 {
-  "candidate_id": "{{ $json.user_id }}",
-  "job_id": "{{ $json.job_id }}",
+  "candidate_id": "{{ $('Code - Loop Jobs').item.json.user_id }}",
+  "job_id": "{{ $('Code - Loop Jobs').item.json.job_id }}",
   "status": "pending",
-  "cover_letter": "تم التقديم تلقائياً عبر نظام التقديم الذكي",
+  "cover_letter": "{{ $json.text }}",
   "source": "auto_apply"
 }
 ```
 
-### Node 10: Supabase — Log Application
+> **Note:** `cover_letter` now uses the AI-generated text from the previous node, NOT a static string.
+
+### Node 11: Supabase — Log Application
 
 | Setting | Value |
 |---------|-------|
@@ -327,7 +384,8 @@ const appliedJobIds = existingApps.map(a => a.json.job_id);
 | 5 | Supabase | SELECT `jobs` WHERE active |
 | 6 | Code | Score & filter jobs |
 | 7 | IF | to_apply.length > 0 |
-| 8 | Code | Loop matched jobs |
-| 9 | Supabase | INSERT `applications` |
-| 10 | Supabase | INSERT `auto_apply_log` |
-| 11 | Supabase | UPDATE settings (counter + last_run) |
+| 8 | Code | Loop matched jobs + prepare AI prompt |
+| 9 | **AI (Gemini)** | **Generate personalized cover letter** |
+| 10 | Supabase | INSERT `applications` + AI cover letter |
+| 11 | Supabase | INSERT `auto_apply_log` |
+| 12 | Supabase | UPDATE settings (counter + last_run) |
