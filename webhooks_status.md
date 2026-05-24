@@ -39,8 +39,8 @@
 
 | Status | Count |
 |--------|-------|
-| ✅ Done / No n8n needed | 14 |
-| ⚠️ Partial / Code Ready | 3 |
+| ✅ Done / No n8n needed | 15 |
+| ⚠️ Partial / Code Ready | 2 |
 | ❌ Not Started | 2 |
 
 ## n8n Workflow JSON Files
@@ -118,10 +118,9 @@ Webhook (prompt, sessionId, language, chatHistory)
 Build n8n scraper workflow for LinkedIn/Bayt/Indeed → `/api/external-jobs`.
 See: `N8N_EXTERNAL_JOBS_WORKFLOW_GUIDE.md`
 
-### ~~4. Smart Candidate Matching (#7)~~ ⚠️ PARTIAL (24 May 2026)
+### ~~4. Smart Candidate Matching (#7)~~ ✅ DONE (24 May 2026)
 ~~Employer can search their candidate pool and AI ranks best matches for a job.~~
-**Done:** Full candidate search rewritten — auto match score vs ALL employer jobs (circle + progress bar, color-coded), multi-term search (comma/space), filter by job dropdown, case-insensitive partial match, CV PDF viewer, separate DB queries (no FK join). Bilingual Jaccard on dashboards.
-**Remaining:** n8n AI-powered ranking workflow for deeper semantic matching.
+**Done:** Full candidate search + n8n AI workflow. `n8n-smart-match-workflow.json` (5 nodes: Webhook → Prompt → Gemini Flash → Parse → Respond). API at `/api/ai/smart-match`. `SmartMatchButton.tsx` component with results panel. Fallback to local Jaccard. Screening fields: nationality filter, education, CV summary. Setup guide: `N8N_SMART_MATCH_WORKFLOW_GUIDE.md`.
 
 ### ~~5. Company Verification (#10)~~ ✅ DONE
 ~~OCR trade license, extract company data, calculate trust score.~~

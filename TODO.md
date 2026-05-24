@@ -84,6 +84,9 @@
 - [x] **Match Score Circle** — always-visible % circle + progress bar, color-coded (green/amber/red) 🆕
 - [x] **Multi-term Search** — comma/space separated skills search (e.g., "React, Node, AWS") 🆕
 - [x] **View CV Button** — opens candidate CV PDF in new tab 🆕
+- [x] **Screening Fields** — nationality, education, CV summary on candidate card (per client الفرز doc) 🆕
+- [x] **Nationality Filter** — dropdown (إماراتي/خليجي/عربي/أجنبي) with group logic 🆕
+- [x] **Smart Match AI n8n** — `n8n-smart-match-workflow.json` (Gemini semantic ranking) + API `/api/ai/smart-match` + `SmartMatchButton.tsx` 🆕
 
 #### ~~AI Match Score Enhancement~~ ✅ DONE (12 May)
 - [x] Improve `calculate_match_score` with:
@@ -138,7 +141,7 @@
 | 17 | CV Finalize | ~~🔴 High~~ | ✅ **NOT NEEDED** | API route works **locally** without n8n (built-in fallback) |
 | 18 | Email Send | 🔴 High | API ✅ / n8n pending | Generic SMTP sender → `gn-email-send` |
 | 19 | External Jobs Scraper | 🟡 Medium | Pending | LinkedIn/Bayt/Indeed → `/api/external-jobs` |
-| 7 | Smart Matching | 🟡 Medium | ⚠️ Partial (24 May) | **Full search rewritten** (match score, multi-term, filter by job). n8n AI ranking pending |
+| 7 | Smart Matching | 🟡 Medium | ✅ **DONE** (24 May) | n8n AI workflow + API + SmartMatchButton + screening fields |
 | 8 | Message Notification | 🟢 Low | Pending | Chat message push notifications |
 | 9 | Payment Verification | 🟡 Medium | Pending | Stripe webhook fulfillment validation |
 
