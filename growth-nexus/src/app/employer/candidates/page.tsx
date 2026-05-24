@@ -289,10 +289,19 @@ export default async function CandidateSearchPage({
 
                                     {/* Actions */}
                                     <div className="flex items-center gap-2 md:flex-col md:items-end shrink-0">
-                                        <Button size="sm" className="bg-gold hover:bg-gold-dark text-navy font-bold">
-                                            <Eye className="h-4 w-4 me-1.5" />
-                                            عرض الملف
-                                        </Button>
+                                        {candidate.cv_url ? (
+                                            <a href={candidate.cv_url} target="_blank" rel="noopener noreferrer">
+                                                <Button size="sm" className="bg-gold hover:bg-gold-dark text-navy font-bold">
+                                                    <Eye className="h-4 w-4 me-1.5" />
+                                                    عرض الملف
+                                                </Button>
+                                            </a>
+                                        ) : (
+                                            <Button size="sm" className="bg-gold/50 text-navy font-bold cursor-not-allowed" disabled>
+                                                <Eye className="h-4 w-4 me-1.5" />
+                                                لا يوجد سيرة
+                                            </Button>
+                                        )}
                                         <Button
                                             size="sm"
                                             variant="ghost"
