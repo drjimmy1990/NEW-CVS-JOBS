@@ -1,0 +1,120 @@
+{
+  "name": "GrowthNexus - External Jobs Scraper (RSS Feed)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "e6f43702-8610-4ec3-ba4b-32694b79b6d8",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        220,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://weworkremotely.com/categories/remote-programming-jobs.rss"
+      },
+      "id": "2b3c4d5e-6f7g-8h9i-0j1k-2l3m4n5o6p7q",
+      "name": "Read RSS Feed",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [
+        440,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Map RSS feed items to GrowthNexus external_jobs schema\nconst items = $input.all();\nconst transformedJobs = [];\n\nfor (const item of items) {\n  const job = item.json;\n  \n  // Basic data extraction from standard RSS\n  const titleParts = job.title ? job.title.split(': ') : ['Unknown Company', 'Unknown Title'];\n  const companyName = titleParts.length > 1 ? titleParts[0] : 'Remote Company';\n  const jobTitle = titleParts.length > 1 ? titleParts[1] : titleParts[0];\n  \n  transformedJobs.push({\n    external_id: job.guid || job.link,\n    source_platform: \"weworkremotely\",\n    source_url: job.link,\n    title: jobTitle,\n    company_name: companyName,\n    description: job.content || job.description || \"\",\n    job_type: \"remote\",\n    location_city: \"Remote\",\n    location_country: \"Global\",\n    access_level: \"public\",\n    posted_at: job.isoDate || new Date().toISOString()\n  });\n}\n\n// Batch all jobs into a single payload for the API\nreturn [{\n  json: {\n    secret: \"change-me-to-a-strong-secret\", // Replace with your actual N8N_WEBHOOK_SECRET\n    jobs: transformedJobs\n  }\n}];"
+      },
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "Transform Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR_DOMAIN/api/external-jobs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-webhook-secret",
+              "value": "change-me-to-a-strong-secret"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "1a2b3c4d-5e6f-7a8b-9c0d-e1f2a3b4c5d6",
+      "name": "POST to GrowthNexus API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        880,
+        280
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read RSS Feed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read RSS Feed": {
+      "main": [
+        [
+          {
+            "node": "Transform Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform Data": {
+      "main": [
+        [
+          {
+            "node": "POST to GrowthNexus API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

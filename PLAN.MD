@@ -265,7 +265,7 @@ Based on the business strategy doc (منصة التوظيف), launch in order:
 |---------|-------|--------|---------|
 | Rejection Analyzer | 29 AED | ❌ Not Started | AI analysis of why candidate was rejected + improvement tips |
 | Career Path Generator | 29 AED/month | ❌ Not Started | Input skills/goals → AI growth trajectory + skill gaps + training |
-| Skill Gap Analyzer | 25 AED | ❌ Not Started | Compare current skills vs target job requirements |
+| Skill Gap Analyzer | 25 AED | ❌ Not Started | Compare current skills vs target job requirements  |
 | Smart Job Alert | 19 AED/month | ❌ Not Started | Email/push for matching jobs, daily/weekly digest via n8n |
 
 ### Phase 11.3 — Pro Pack

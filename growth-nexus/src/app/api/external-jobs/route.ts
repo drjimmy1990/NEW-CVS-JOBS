@@ -53,7 +53,12 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'No jobs provided' }, { status: 400 })
     }
 
-    const supabase = await createClient()
+    // Use Service Role key to bypass RLS for webhook ingestion
+    const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+    const supabase = createSupabaseClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
     const results = {
         imported: 0,
