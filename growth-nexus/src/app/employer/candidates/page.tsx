@@ -7,14 +7,14 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
     Search, MapPin,
-    Briefcase, Heart, Eye, Filter
+    Briefcase, Heart, Eye, Filter, GraduationCap, Globe
 } from 'lucide-react'
 import Link from 'next/link'
 
 export default async function CandidateSearchPage({
     searchParams,
 }: {
-    searchParams: Promise<{ q?: string; location?: string; experience?: string; job_id?: string }>
+    searchParams: Promise<{ q?: string; location?: string; experience?: string; job_id?: string; nationality?: string }>
 }) {
     const params = await searchParams
     const supabase = await createServerClient()
@@ -71,7 +71,7 @@ export default async function CandidateSearchPage({
     // Fetch ALL public candidates (no PostgREST array filters — we filter in JS for reliability)
     const { data: rawCandidates, error } = await adminClient
         .from('candidates')
-        .select('id, headline, skills, years_experience, residence_emirate, is_public, cv_url')
+        .select('id, headline, skills, years_experience, residence_emirate, is_public, cv_url, nationality, candidate_type, resume_parsed_data')
         .eq('is_public', true)
         .order('updated_at', { ascending: false })
         .limit(200)
@@ -90,18 +90,32 @@ export default async function CandidateSearchPage({
     }
 
     // Build candidate list with profiles attached
-    let candidates = (rawCandidates || []).map(c => ({
-        ...c,
-        full_name: profilesMap[c.id]?.full_name || 'مرشح',
-        avatar_url: profilesMap[c.id]?.avatar_url || null,
-        // Parse skills: handle both text[] and JSON string
-        parsedSkills: Array.isArray(c.skills)
-            ? c.skills as string[]
-            : typeof c.skills === 'string'
-                ? (() => { try { return JSON.parse(c.skills) } catch { return [] } })()
-                : [],
-        matchPercent: 0,
-    }))
+    let candidates = (rawCandidates || []).map(c => {
+        // Parse resume_parsed_data for summary + education
+        let parsedResume: any = {}
+        if (c.resume_parsed_data) {
+            parsedResume = typeof c.resume_parsed_data === 'string'
+                ? (() => { try { return JSON.parse(c.resume_parsed_data) } catch { return {} } })()
+                : c.resume_parsed_data
+        }
+
+        return {
+            ...c,
+            full_name: profilesMap[c.id]?.full_name || 'مرشح',
+            avatar_url: profilesMap[c.id]?.avatar_url || null,
+            // Parse skills: handle both text[] and JSON string
+            parsedSkills: Array.isArray(c.skills)
+                ? c.skills as string[]
+                : typeof c.skills === 'string'
+                    ? (() => { try { return JSON.parse(c.skills) } catch { return [] } })()
+                    : [],
+            // From resume_parsed_data
+            summary: parsedResume?.summary || null,
+            education: parsedResume?.education || [],
+            matchPercent: 0,
+            bestJobTitle: '',
+        }
+    })
 
     // --- CLIENT-SIDE FILTERING (reliable, case-insensitive) ---
 
@@ -136,7 +150,22 @@ export default async function CandidateSearchPage({
         }
     }
 
-    // 4. Smart Match Score — always calculate against employer's jobs
+    // 4. Nationality filter
+    if (params.nationality) {
+        const gulfCountries = ['إماراتي', 'سعودي', 'كويتي', 'بحريني', 'عماني', 'قطري']
+        const arabCountries = [...gulfCountries, 'مصري', 'أردني', 'لبناني', 'سوري', 'فلسطيني', 'عراقي', 'تونسي', 'مغربي', 'جزائري', 'ليبي', 'سوداني', 'يمني']
+
+        if (params.nationality === 'إماراتي') {
+            candidates = candidates.filter(c => c.nationality?.includes('إمارات') || c.nationality?.includes('Emirati'))
+        } else if (params.nationality === 'خليجي') {
+            candidates = candidates.filter(c => gulfCountries.some(n => c.nationality?.includes(n)))
+        } else if (params.nationality === 'عربي') {
+            candidates = candidates.filter(c => arabCountries.some(n => c.nationality?.includes(n)))
+        } else if (params.nationality === 'أجنبي') {
+            candidates = candidates.filter(c => c.nationality && !arabCountries.some(n => c.nationality?.includes(n)))
+        }
+    }
+
     // Helper: compute match % between candidate skills and a set of job skills
     function computeMatch(candidateSkills: string[], jobSkills: string[]): number {
         if (jobSkills.length === 0) return 0
@@ -246,6 +275,17 @@ export default async function CandidateSearchPage({
                                 <option value="3-5">3-5 سنوات</option>
                                 <option value="6+">+6 سنوات</option>
                             </select>
+                            <select
+                                name="nationality"
+                                defaultValue={params.nationality || ''}
+                                className="flex h-10 rounded-md border border-gold/10 bg-navy px-3 py-2 text-sm text-cream focus:outline-none focus:ring-2 focus:ring-gold min-w-[140px]"
+                            >
+                                <option value="">الجنسية</option>
+                                <option value="إماراتي">إماراتي</option>
+                                <option value="خليجي">دول الخليج</option>
+                                <option value="عربي">الجنسيات العربية</option>
+                                <option value="أجنبي">الجنسيات الأجنبية</option>
+                            </select>
                             <Button type="submit" className="bg-gold hover:bg-gold-dark text-navy font-bold">
                                 بحث
                             </Button>
@@ -302,13 +342,25 @@ export default async function CandidateSearchPage({
                                             </div>
                                             <p className="text-sm text-cream-dark/50 mt-0.5">{candidate.headline || 'باحث عن عمل'}</p>
                                             <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-cream-dark/40">
+                                                {candidate.nationality && (
+                                                    <span className="flex items-center gap-1.5"><Globe className="h-3.5 w-3.5" /> {candidate.nationality}</span>
+                                                )}
                                                 {candidate.residence_emirate && (
                                                     <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" /> {candidate.residence_emirate}</span>
                                                 )}
                                                 {candidate.years_experience != null && (
                                                     <span className="flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5" /> {candidate.years_experience} سنوات خبرة</span>
                                                 )}
+                                                {candidate.education?.length > 0 && (
+                                                    <span className="flex items-center gap-1.5"><GraduationCap className="h-3.5 w-3.5" /> {candidate.education[0]}</span>
+                                                )}
                                             </div>
+                                            {/* CV Summary */}
+                                            {candidate.summary && (
+                                                <p className="text-xs text-cream-dark/40 mt-2 line-clamp-2 leading-relaxed" dir="auto">
+                                                    {candidate.summary}
+                                                </p>
+                                            )}
                                             {/* Match Progress Bar */}
                                             {employerJobs.length > 0 && (
                                                 <div className="mt-3 max-w-xs">
