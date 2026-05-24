@@ -74,6 +74,18 @@ export async function POST(req: NextRequest) {
             if (parsed.last_job_title) updateData.last_job_title = parsed.last_job_title
             if (parsed.nationality) updateData.nationality = parsed.nationality
             if (parsed.city) updateData.city = parsed.city
+
+            // Extract structured profile data (auto-fills profile page)
+            if (parsed.summary) updateData.headline = parsed.summary
+            if (Array.isArray(parsed.experience_list) && parsed.experience_list.length > 0) {
+                updateData.experience = parsed.experience_list
+            }
+            if (Array.isArray(parsed.education_list) && parsed.education_list.length > 0) {
+                updateData.education = parsed.education_list
+            }
+            if (Array.isArray(parsed.languages) && parsed.languages.length > 0) {
+                updateData.languages = parsed.languages
+            }
         }
 
         const { error: updateError } = await supabase

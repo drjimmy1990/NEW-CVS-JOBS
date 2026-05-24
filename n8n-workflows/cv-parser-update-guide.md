@@ -1,161 +1,248 @@
-# دليل تحديث n8n CV Parser — استخراج البيانات الجديدة
+# n8n CV Parser Update Guide — Auto-Fill Candidate Profile
 
-## الوضع الحالي
+## Current State
 
-عندنا workflow في n8n اسمه **gn-cv-parser** بيشتغل كالتالي:
+We have an n8n workflow called **gn-cv-parser** that works like this:
 
 ```
-المستخدم يرفع CV (PDF)
+User uploads CV (PDF)
      ↓
 Frontend: triggerAIParsing() → POST → n8n webhook
      ↓
-n8n: يحمل الـ PDF → يستخرج النص → يبعته لـ Gemini AI
+n8n: Downloads PDF → Extracts text → Sends to Gemini AI
      ↓
-Gemini AI يرجع JSON ببيانات المرشح
+Gemini AI returns JSON with candidate data
      ↓
-n8n يحدّث جدول candidates في Supabase
+n8n updates `candidates` table in Supabase
 ```
 
-### أماكن الاستدعاء (مهم!)
+### Where the CV Parser is Called
 
-| المكان | الملف | هل يشغّل AI Parsing؟ |
-|--------|-------|---------------------|
-| رفع CV جديد | `candidate/cv/page.tsx` سطر 142 | ✅ نعم — `triggerAIParsing()` |
-| ربط CV من session | `api/cv/link-profile/route.ts` سطر 103 | ✅ نعم — بيبعت webhook + بيستخرج البيانات من `parsed_data` |
-| التقديم على وظيفة | `components/candidate/ApplyModal.tsx` | ❌ لا — بياخد snapshot بس |
+| Location | File | Triggers AI Parsing? |
+|----------|------|---------------------|
+| Direct CV upload | `candidate/cv/page.tsx` line 142 | ✅ Yes — `triggerAIParsing()` |
+| Link CV from session | `api/cv/link-profile/route.ts` line 103 | ✅ Yes — sends webhook + extracts `parsed_data` fields |
+| Apply to a job | `components/candidate/ApplyModal.tsx` | ❌ No — only takes a snapshot |
+
+### What It Currently Extracts (OLD — Only 4 Fields)
+
+```json
+{
+  "skills": ["React", "Node.js"],
+  "experience_years": 5,
+  "education": ["BSc - University X"],
+  "summary": "Professional summary..."
+}
+```
+
+### What It Saves to Supabase (OLD — Only 3 Columns)
+
+| Column | Value |
+|--------|-------|
+| `skills` | `parsed_data.skills` |
+| `resume_parsed_data` | Full JSON object |
+| `years_experience` | `parsed_data.experience_years` |
+
+**Problem:** The profile page (الخبرة، التعليم، المهارات، اللغات) stays EMPTY because the AI doesn't extract structured data for those sections.
 
 ---
 
-## المطلوب: تحديثات n8n (3 خطوات)
+## Required: n8n Updates (3 Steps)
 
-### الخطوة 1: شغّل الـ SQL Migration
+### Step 1: Run the SQL Migration
 
-افتح **Supabase SQL Editor** → اعمل **New Query** → الصق ده وشغّله:
+Open **Supabase SQL Editor** → Create **New Query** → Paste and run:
 
 ```sql
--- إضافة أعمدة جديدة لجدول candidates
+-- Add new columns to candidates table (if not exist)
 ALTER TABLE public.candidates
 ADD COLUMN IF NOT EXISTS education_level text,
 ADD COLUMN IF NOT EXISTS specialization text,
 ADD COLUMN IF NOT EXISTS last_job_title text;
 
--- إضافة أعمدة جديدة لجدول applications
+-- Add new columns to applications table (if not exist)
 ALTER TABLE public.applications
 ADD COLUMN IF NOT EXISTS match_score int,
 ADD COLUMN IF NOT EXISTS ai_summary jsonb;
 ```
 
-✅ **تأكد** إن الـ query نجح بدون errors.
+✅ **Confirm** the query ran without errors.
 
 ---
 
-### الخطوة 2: تحديث AI Prompt في n8n
+### Step 2: Update the AI Prompt in n8n
 
-1. افتح **n8n** → الـ Workflow **GrowthNexus CV Parser**
-2. اضغط على Node: **"Basic LLM Chain"**
-3. روح على **Messages** → **System Message**
-4. **استبدل** المحتوى كله بالتالي:
+1. Open **n8n** → Workflow **GrowthNexus CV Parser**
+2. Click on Node: **"Basic LLM Chain"**
+3. Go to **Messages** → **System Message**
+4. **Replace** the entire content with:
 
 ```
-أنت خبير موارد بشرية ومحلل سير ذاتية محترف.
-مهمتك هي قراءة النص المستخرج من السيرة الذاتية المرفقة، واستخراج البيانات المحددة بدقة.
+You are an expert HR professional and CV analyst.
+Your task is to read the extracted text from the attached CV and extract the specified data accurately.
 
-يجب عليك إرجاع النتيجة بصيغة JSON صالح (Valid JSON) فقط، وبدون أي نصوص إضافية أو شروحات، وبدون علامات (```json).
-يجب أن يحتوي الـ JSON على الحقول الإنجليزية التالية حصراً (لكن المحتوى يجب أن يترجم للغة العربية):
+You MUST return the result as valid JSON only, without any additional text, explanations, or markdown code blocks.
+The JSON must contain ONLY the following English field names (but content values should be in Arabic):
 
 {
-  "skills": ["اسم المهارة 1", "اسم المهارة 2"],
+  "skills": ["Skill 1", "Skill 2"],
   "experience_years": 5,
-  "education": ["اسم الدرجة - اسم الجامعة"],
-  "summary": "ملخص احترافي من سطرين...",
+  "education": ["BSc in CS - Cairo University"],
+  "summary": "Professional 2-line summary in Arabic",
   "education_level": "بكالوريوس",
   "specialization": "هندسة البرمجيات",
   "last_job_title": "مطور واجهات أمامي أول",
   "nationality": "مصري",
-  "city": "دبي"
+  "city": "دبي",
+  "experience_list": [
+    {
+      "id": 1,
+      "title": "مطور واجهات أمامي أول",
+      "company": "شركة ABC",
+      "start": "2022",
+      "end": "حتى الآن",
+      "description": ""
+    },
+    {
+      "id": 2,
+      "title": "مطور ويب",
+      "company": "شركة XYZ",
+      "start": "2019",
+      "end": "2022",
+      "description": ""
+    }
+  ],
+  "education_list": [
+    {
+      "id": 1,
+      "degree": "bachelors",
+      "field": "هندسة البرمجيات",
+      "institution": "جامعة القاهرة",
+      "year": "2019"
+    }
+  ],
+  "languages": [
+    { "name": "العربية", "level": "native" },
+    { "name": "English", "level": "advanced" }
+  ]
 }
 
-شرح الحقول:
-- skills: مصفوفة من أهم المهارات التقنية والناعمة
-- experience_years: إجمالي سنوات الخبرة كرقم صحيح (Integer) فقط، إذا لم يوجد ضع 0
-- education: مصفوفة من المؤهلات العلمية
-- summary: ملخص احترافي للمرشح من سطرين باللغة العربية
-- education_level: أعلى مؤهل علمي (ثانوية، دبلوم، بكالوريوس، ماجستير، دكتوراه). إذا لم يُذكر ضع ""
-- specialization: تخصص المؤهل العلمي الأعلى. إذا لم يُذكر ضع ""
-- last_job_title: آخر مسمى وظيفي شغله المرشح. إذا لم يُذكر ضع ""
-- nationality: الجنسية إذا مذكورة في السيرة. إذا لم تُذكر ضع ""
-- city: المدينة الحالية إذا مذكورة. إذا لم تُذكر ضع ""
+Field descriptions:
+- skills: Array of top technical and soft skills
+- experience_years: Total years of experience as integer. If not found, use 0
+- education: Array of educational qualifications as simple strings
+- summary: Professional 2-line summary of the candidate in Arabic
+- education_level: Highest education level (ثانوية، دبلوم، بكالوريوس، ماجستير، دكتوراه). If not mentioned, use ""
+- specialization: Field of study. If not mentioned, use ""
+- last_job_title: Most recent job title. If not mentioned, use ""
+- nationality: Nationality if mentioned. If not mentioned, use ""
+- city: Current city if mentioned. If not mentioned, use ""
+- experience_list: Array of work experiences, each with:
+  - id: sequential number starting from 1
+  - title: job title (in Arabic)
+  - company: company name
+  - start: start year (e.g. "2020")
+  - end: end year or "حتى الآن" if current
+  - description: brief description (can be empty "")
+- education_list: Array of educational records, each with:
+  - id: sequential number starting from 1
+  - degree: one of "high_school", "diploma", "bachelors", "masters", "phd"
+  - field: field of study (in Arabic)
+  - institution: university/school name (in Arabic)
+  - year: graduation year
+- languages: Array of languages, each with:
+  - name: language name (in Arabic)
+  - level: one of "beginner", "intermediate", "advanced", "native"
 
-تأكد 100% أن المخرجات هي JSON فقط لكي يتمكن النظام من برمجتها.
+If a section has no data in the CV, return an empty array [].
+Make 100% sure the output is valid JSON only so the system can parse it programmatically.
 ```
 
 ---
 
-### الخطوة 3: إضافة الحقول الجديدة في Supabase Node
+### Step 3: Add New Fields to the Supabase "Update a row" Node
 
-1. في نفس الـ Workflow، اضغط على Node: **"Update a row"**
-2. في **Fields** section، اضغط **Add Field** وأضف الحقول التالية:
+1. In the same Workflow, click on Node: **"Update a row"**
+2. In the **Fields** section, click **Add Field** for each new field:
 
 | # | Field ID | Field Value |
 |---|----------|-------------|
-| 1 | `skills` | `{{ $json.parsed_data.skills }}` *(موجود)* |
-| 2 | `resume_parsed_data` | `{{ $json.parsed_data }}` *(موجود)* |
-| 3 | `years_experience` | `{{ $json.parsed_data.experience_years }}` *(موجود)* |
+| 1 | `skills` | `{{ $json.parsed_data.skills }}` *(existing)* |
+| 2 | `resume_parsed_data` | `{{ $json.parsed_data }}` *(existing)* |
+| 3 | `years_experience` | `{{ $json.parsed_data.experience_years }}` *(existing)* |
 | **4** | **`education_level`** | **`{{ $json.parsed_data.education_level }}`** |
 | **5** | **`specialization`** | **`{{ $json.parsed_data.specialization }}`** |
 | **6** | **`last_job_title`** | **`{{ $json.parsed_data.last_job_title }}`** |
 | **7** | **`nationality`** | **`{{ $json.parsed_data.nationality }}`** |
 | **8** | **`city`** | **`{{ $json.parsed_data.city }}`** |
+| **9** | **`headline`** | **`{{ $json.parsed_data.summary }}`** |
+| **10** | **`experience`** | **`{{ $json.parsed_data.experience_list }}`** |
+| **11** | **`education`** | **`{{ $json.parsed_data.education_list }}`** |
+| **12** | **`languages`** | **`{{ $json.parsed_data.languages }}`** |
 
-3. اضغط **Save** ثم **Activate** الـ Workflow
+3. Click **Save** then **Activate** the Workflow
 
 ---
 
-## ✅ تعديلات الكود (تم تنفيذها)
+## What Gets Auto-Filled in the Profile Page
 
-### 1. `api/cv/link-profile/route.ts`
-عدّلنا الكود بحيث لما يربط CV بملف المستخدم عبر session، يستخرج كل الحقول الجديدة من `parsed_data` ويحفظها:
+After this update, when a candidate uploads or links a CV:
+
+| Profile Section | Auto-Filled From | Profile Field |
+|----------------|-----------------|---------------|
+| **المعلومات الشخصية** | `summary` → `headline` | العنوان المهني |
+| **المعلومات الشخصية** | `nationality` → `nationality` | الجنسية |
+| **الخبرة العملية** | `experience_list` → `experience` (jsonb) | Job title, company, dates |
+| **التعليم** | `education_list` → `education` (jsonb) | Degree, field, institution, year |
+| **المهارات** | `skills` → `skills` | Skills badges |
+| **اللغات** | `languages` → `languages` (jsonb) | Language name + level |
+
+---
+
+## Code Changes (Already Done)
+
+### `api/cv/link-profile/route.ts`
+Updated to extract ALL profile fields from `parsed_data`:
 
 ```diff
-+ if (parsed.experience_years) updateData.years_experience = parsed.experience_years
-+ if (parsed.education_level) updateData.education_level = parsed.education_level
-+ if (parsed.specialization) updateData.specialization = parsed.specialization
-+ if (parsed.last_job_title) updateData.last_job_title = parsed.last_job_title
-+ if (parsed.nationality) updateData.nationality = parsed.nationality
-+ if (parsed.city) updateData.city = parsed.city
++ // Extract structured profile data (auto-fills profile page)
++ if (parsed.summary) updateData.headline = parsed.summary
++ if (Array.isArray(parsed.experience_list) && parsed.experience_list.length > 0) {
++     updateData.experience = parsed.experience_list
++ }
++ if (Array.isArray(parsed.education_list) && parsed.education_list.length > 0) {
++     updateData.education = parsed.education_list
++ }
++ if (Array.isArray(parsed.languages) && parsed.languages.length > 0) {
++     updateData.languages = parsed.languages
++ }
 ```
 
-هذا يضمن إن ربط CV بالملف يحدّث كل البيانات — مش بس الـ skills.
+### Data Flow Summary
 
-### 2. كل المسارات اللي بتحدّث الملف الآن:
-
-| المسار | كيف بيحدّث الملف |
-|--------|-----------------|
-| **رفع CV مباشر** (`cv/page.tsx`) | يرفع → يبعت لـ n8n → n8n يحدّث candidates مباشرة |
-| **ربط CV من session** (`link-profile`) | يقرأ parsed_data من الـ session → يحدّث candidates → كمان يبعت لـ n8n عشان يعيد تحليل |
-| **n8n webhook** | يحلل PDF → يستخرج كل البيانات → يحدّث candidates |
+| Path | What It Auto-Fills |
+|------|-------------------|
+| **Direct CV upload** → n8n webhook | All 12 fields (skills, experience, education, languages, headline, etc.) |
+| **Link CV from session** → `link-profile` API | All 12 fields from session parsed_data + re-triggers n8n |
 
 ---
 
-## اختبار التعديلات
+## Testing
 
-1. ✅ شغّل الـ SQL (الخطوة 1)
-2. ✅ حدّث n8n (الخطوتين 2 و 3)
-3. ✅ ارفع CV جديد من صفحة "سيرتي الذاتية"
-4. ✅ افتح Supabase → جدول `candidates` → تأكد إن الحقول الجديدة اتملت
-5. ✅ افتح صفحة المتقدمين (employer) → تأكد إن البيانات ظاهرة في الـ List View
+1. ✅ Run the **SQL migration** (Step 1)
+2. ✅ Update n8n **AI Prompt** (Step 2)
+3. ✅ Add n8n **Supabase fields** (Step 3)
+4. ✅ Deploy code changes (git pull → build → restart)
+5. ✅ Upload a new CV → Go to Profile page → Confirm all sections are filled
 
 ---
 
-## ملاحظة عن المتقدمين القدام
+## Re-Parsing Old CVs
 
-المتقدمين اللي رفعوا CV **قبل** التحديث مش هيكون عندهم البيانات الجديدة.
+Candidates who uploaded CVs before this update won't have the new data.
 
-### حل: إعادة تحليل CVs القديمة
+**Option 1:** Create a new n8n workflow that:
+1. Gets all candidates where `cv_url IS NOT NULL AND experience IS NULL`
+2. Loops and sends each to `gn-cv-parser` webhook
 
-لو حبيت تعيد تحليل كل الـ CVs القديمة، ممكن تعمل workflow جديد في n8n:
-
-1. Supabase Node → **Get All Rows** من `candidates` → فلتر: `cv_url IS NOT NULL` و `education_level IS NULL`
-2. Loop → لكل مرشح: ابعت request لـ webhook `gn-cv-parser` بالـ `cv_url` و `user_id`
-
-أو ببساطة اطلب من المرشحين يعملوا "استبدال" لسيرتهم الذاتية.
+**Option 2:** Ask candidates to re-upload or "Replace" their CV.
