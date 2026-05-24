@@ -24,6 +24,7 @@ export default async function CandidateSearchPage({
         const { redirect } = await import('next/navigation')
         redirect('/login')
     }
+    const userId = user!.id
 
     // Use service role client to bypass RLS
     const adminClient = createClient(
@@ -33,13 +34,13 @@ export default async function CandidateSearchPage({
 
     // Get employer's company to load their jobs for the job filter dropdown
     const { data: ownedCo } = await adminClient
-        .from('companies').select('id').eq('owner_id', user.id).single()
+        .from('companies').select('id').eq('owner_id', userId).single()
     let companyId = ownedCo?.id || null
     if (!companyId) {
         const { data: membership } = await adminClient
             .from('company_members')
             .select('company_id')
-            .eq('user_id', user.id).eq('status', 'active').single()
+            .eq('user_id', userId).eq('status', 'active').single()
         companyId = membership?.company_id || null
     }
 
@@ -139,7 +140,7 @@ export default async function CandidateSearchPage({
         candidates = candidates.map(c => {
             const candidateSkillsLower = c.parsedSkills.map((s: string) => s.toLowerCase())
             const jobSkillsLower = selectedJobSkills.map(s => s.toLowerCase())
-            const intersection = jobSkillsLower.filter(s => candidateSkillsLower.some(cs => cs.includes(s) || s.includes(cs)))
+            const intersection = jobSkillsLower.filter(s => candidateSkillsLower.some((cs: string) => cs.includes(s) || s.includes(cs)))
             const union = new Set([...candidateSkillsLower, ...jobSkillsLower])
             const matchPercent = union.size > 0 ? Math.round((intersection.length / jobSkillsLower.length) * 100) : 0
             return { ...c, matchPercent }
