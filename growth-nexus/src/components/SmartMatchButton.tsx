@@ -151,7 +151,7 @@ export default function SmartMatchButton({ jobs, candidateIds }: Props) {
                 {/* No job selected hint */}
                 {!selectedJob && !results && (
                     <p className="text-xs text-purple-300/40">
-                        اختر وظيفة من القائمة ثم اضغط &quot;ابدأ التطابق الذكي&quot; لتحليل المرشحين بالذكاء الاصطناعي
+                        اختر وظيفة من القائمة ثم اضغط «ابدأ التطابق الذكي» لتحليل المرشحين بالذكاء الاصطناعي
                     </p>
                 )}
 
@@ -169,7 +169,7 @@ export default function SmartMatchButton({ jobs, candidateIds }: Props) {
                             <div className="flex items-center gap-2">
                                 <Sparkles className="h-4 w-4 text-purple-400" />
                                 <span className="font-semibold text-cream text-sm">
-                                    نتائج المطابقة لـ &quot;{selectedJobTitle}&quot; — {results.length} مرشح
+                                    نتائج المطابقة لـ «{selectedJobTitle}» — {results.length} مرشح
                                 </span>
                             </div>
                             <Badge variant="outline" className="text-[10px] border-purple-400/30 text-purple-400">
