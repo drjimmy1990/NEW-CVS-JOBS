@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import {
     Zap, Loader2, Plus, X, XCircle, Power, PowerOff,
-    Clock, Sparkles, CheckCircle2, BarChart3, Briefcase
+    Clock, Sparkles, CheckCircle2, BarChart3, Briefcase, Check
 } from 'lucide-react'
 
 const JOB_TYPES = [
@@ -33,6 +33,7 @@ export default function AutoApplyPage() {
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState('')
+    const [success, setSuccess] = useState('')
 
     // Form
     const [isActive, setIsActive] = useState(false)
@@ -74,22 +75,33 @@ export default function AutoApplyPage() {
     }
 
     async function saveSettings() {
-        setSaving(true); setError('')
+        setSaving(true); setError(''); setSuccess('')
+
+        // Auto-add any pending inputs before saving
+        const finalRoles = [...roles]
+        if (roleInput.trim() && !finalRoles.includes(roleInput.trim())) finalRoles.push(roleInput.trim())
+        const finalSkills = [...skills]
+        if (skInput.trim() && !finalSkills.includes(skInput.trim())) finalSkills.push(skInput.trim())
+        const finalExcludes = [...excludes]
+        if (exInput.trim() && !finalExcludes.includes(exInput.trim())) finalExcludes.push(exInput.trim())
+
         try {
             const res = await fetch('/api/auto-apply', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    is_active: isActive, target_roles: roles, target_skills: skills,
+                    is_active: isActive, target_roles: finalRoles, target_skills: finalSkills,
                     target_locations: locs, target_job_types: jTypes,
                     min_salary: minSalary ? +minSalary : null, min_match_score: minScore,
                     max_applications_per_month: maxApps, cover_letter_template: coverLetter || null,
-                    exclude_companies: excludes,
+                    exclude_companies: finalExcludes,
                 }),
             })
             const data = await res.json()
             if (!res.ok) { setError(data.error || 'حدث خطأ'); return }
-            setSettings(data.settings)
+            setSuccess('تم حفظ الإعدادات بنجاح ✅')
+            setTimeout(() => setSuccess(''), 3000)
+            await loadData()
         } catch { setError('فشل الاتصال') }
         finally { setSaving(false) }
     }
@@ -114,6 +126,7 @@ export default function AutoApplyPage() {
             </div>
 
             {error && <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center gap-2"><XCircle className="h-5 w-5 shrink-0" />{error}</div>}
+            {success && <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center gap-2"><Check className="h-5 w-5 shrink-0" />{success}</div>}
 
             {/* Status Card */}
             <div className="p-6 rounded-2xl bg-navy-light border border-gold/10 space-y-4">
@@ -151,7 +164,8 @@ export default function AutoApplyPage() {
                     <label className="text-sm text-cream-dark/60">الوظائف المستهدفة</label>
                     <div className="flex gap-2">
                         <Input value={roleInput} onChange={e => setRoleInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTag(roles, setRoles, roleInput, setRoleInput))}
-                            placeholder="مثال: مطور برمجيات" className="bg-navy border-gold/20 text-cream" />
+                            placeholder="مثال: مطور برمجيات" className="bg-navy border-gold/20 text-cream flex-1" />
+                        <Button type="button" variant="outline" size="sm" onClick={() => addTag(roles, setRoles, roleInput, setRoleInput)} className="border-gold/20 text-gold hover:bg-gold/10 shrink-0">إضافة</Button>
                     </div>
                     {roles.length > 0 && <div className="flex flex-wrap gap-2">{roles.map(r => <Badge key={r} variant="secondary" className="bg-gold/10 text-gold gap-1">{r}<X className="h-3 w-3 cursor-pointer" onClick={() => setRoles(roles.filter(x => x !== r))} /></Badge>)}</div>}
                 </div>
@@ -161,7 +175,8 @@ export default function AutoApplyPage() {
                     <label className="text-sm text-cream-dark/60">مهارات مطلوبة</label>
                     <div className="flex gap-2">
                         <Input value={skInput} onChange={e => setSkInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTag(skills, setSkills, skInput, setSkInput))}
-                            placeholder="أضف مهارة" className="bg-navy border-gold/20 text-cream" />
+                            placeholder="أضف مهارة" className="bg-navy border-gold/20 text-cream flex-1" />
+                        <Button type="button" variant="outline" size="sm" onClick={() => addTag(skills, setSkills, skInput, setSkInput)} className="border-gold/20 text-gold hover:bg-gold/10 shrink-0">إضافة</Button>
                     </div>
                     {skills.length > 0 && <div className="flex flex-wrap gap-2">{skills.map(s => <Badge key={s} variant="secondary" className="bg-blue-500/10 text-blue-400 gap-1">{s}<X className="h-3 w-3 cursor-pointer" onClick={() => setSkills(skills.filter(x => x !== s))} /></Badge>)}</div>}
                 </div>
@@ -224,7 +239,8 @@ export default function AutoApplyPage() {
                     <label className="text-sm text-cream-dark/60">شركات مستثناة</label>
                     <div className="flex gap-2">
                         <Input value={exInput} onChange={e => setExInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTag(excludes, setExcludes, exInput, setExInput))}
-                            placeholder="اسم شركة لا تريد التقديم عليها" className="bg-navy border-gold/20 text-cream" />
+                            placeholder="اسم شركة لا تريد التقديم عليها" className="bg-navy border-gold/20 text-cream flex-1" />
+                        <Button type="button" variant="outline" size="sm" onClick={() => addTag(excludes, setExcludes, exInput, setExInput)} className="border-gold/20 text-gold hover:bg-gold/10 shrink-0">إضافة</Button>
                     </div>
                     {excludes.length > 0 && <div className="flex flex-wrap gap-2">{excludes.map(c => <Badge key={c} variant="secondary" className="bg-red-500/10 text-red-400 gap-1">{c}<X className="h-3 w-3 cursor-pointer" onClick={() => setExcludes(excludes.filter(x => x !== c))} /></Badge>)}</div>}
                 </div>
