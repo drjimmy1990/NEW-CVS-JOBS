@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import {
     Bell, Loader2, Plus, X, Trash2, XCircle,
-    Power, PowerOff, Clock, Mail, Sparkles
+    Power, PowerOff, Clock, Mail, Sparkles,
+    ChevronDown, ChevronUp, Briefcase, MapPin, ExternalLink
 } from 'lucide-react'
 
 const JOB_TYPES = [
@@ -27,6 +28,7 @@ interface AlertPref {
 
 interface AlertHist {
     id: string; jobs_matched: number; sent_at: string
+    jobs_sent: { id: string; title: string; company_name?: string; location_city?: string; salary_min?: number; salary_max?: number; slug?: string; job_type?: string; score?: number }[]
 }
 
 export default function JobAlertsPage() {
@@ -36,6 +38,7 @@ export default function JobAlertsPage() {
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState('')
     const [showForm, setShowForm] = useState(false)
+    const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null)
 
     // Form state
     const [alertName, setAlertName] = useState('')
@@ -265,13 +268,59 @@ export default function JobAlertsPage() {
                 <div className="space-y-3">
                     <h3 className="text-lg font-semibold text-cream">سجل التنبيهات</h3>
                     <div className="space-y-2">
-                        {history.map(h => (
-                            <div key={h.id} className="flex items-center gap-3 p-3 rounded-xl bg-navy-light border border-gold/5">
-                                <Mail className="h-4 w-4 text-gold shrink-0" />
-                                <span className="text-sm text-cream-dark/60 flex-1">{h.jobs_matched} وظائف مطابقة</span>
-                                <span className="text-xs text-cream-dark/40">{new Date(h.sent_at).toLocaleDateString('ar-AE')}</span>
-                            </div>
-                        ))}
+                        {history.map(h => {
+                            const isExpanded = expandedHistoryId === h.id
+                            const jobs = h.jobs_sent || []
+                            return (
+                                <div key={h.id} className="rounded-xl bg-navy-light border border-gold/5 overflow-hidden transition-all">
+                                    <button
+                                        onClick={() => setExpandedHistoryId(isExpanded ? null : h.id)}
+                                        className="w-full flex items-center gap-3 p-4 hover:bg-gold/5 transition-colors text-right"
+                                    >
+                                        <Mail className="h-4 w-4 text-gold shrink-0" />
+                                        <span className="text-sm text-cream-dark/60 flex-1">{h.jobs_matched} وظائف مطابقة</span>
+                                        <span className="text-xs text-cream-dark/40">{new Date(h.sent_at).toLocaleDateString('ar-AE')}</span>
+                                        {jobs.length > 0 && (
+                                            isExpanded ? <ChevronUp className="h-4 w-4 text-cream-dark/40" /> : <ChevronDown className="h-4 w-4 text-cream-dark/40" />
+                                        )}
+                                    </button>
+                                    {isExpanded && jobs.length > 0 && (
+                                        <div className="border-t border-gold/5 p-3 space-y-2 animate-in slide-in-from-top-1 duration-200">
+                                            {jobs.map((job, i) => (
+                                                <a
+                                                    key={job.id || i}
+                                                    href={`/jobs/${job.slug || job.id}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center gap-3 p-3 rounded-lg bg-navy/50 hover:bg-gold/5 transition-colors group"
+                                                >
+                                                    <div className="h-9 w-9 rounded-lg bg-gold/10 flex items-center justify-center shrink-0">
+                                                        <Briefcase className="h-4 w-4 text-gold" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-medium text-cream truncate">{job.title}</p>
+                                                        <div className="flex items-center gap-2 mt-0.5">
+                                                            {job.company_name && <span className="text-xs text-cream-dark/40">{job.company_name}</span>}
+                                                            {job.location_city && (
+                                                                <span className="text-xs text-cream-dark/40 flex items-center gap-0.5">
+                                                                    <MapPin className="h-3 w-3" />{job.location_city}
+                                                                </span>
+                                                            )}
+                                                            {job.salary_min && job.salary_max && (
+                                                                <span className="text-xs text-cream-dark/40">
+                                                                    {job.salary_min.toLocaleString()}-{job.salary_max.toLocaleString()} AED
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <ExternalLink className="h-3.5 w-3.5 text-cream-dark/20 group-hover:text-gold transition-colors shrink-0" />
+                                                </a>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )
+                        })}
                     </div>
                 </div>
             )}

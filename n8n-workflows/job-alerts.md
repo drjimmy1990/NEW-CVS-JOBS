@@ -303,9 +303,11 @@ Fields:
   "user_id": "{{ $json.user_id }}",
   "preference_id": "{{ $json.preference_id }}",
   "jobs_matched": "{{ $json.matched_count }}",
-  "jobs_sent": "{{ JSON.stringify($json.matched_jobs.map(j => j.id)) }}"
+  "jobs_sent": "{{ JSON.stringify($json.matched_jobs) }}"
 }
 ```
+
+> **Important:** `jobs_sent` stores the FULL matched jobs array (title, company, location, salary, slug) — NOT just IDs. This lets the dashboard show job details in the history section.
 
 ### Node 10: Supabase — Update last_sent_at
 
