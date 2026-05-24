@@ -19,7 +19,7 @@
 | 4 | **Interview Questions** | `/gn-interview-questions` | ✅ Done | Webhook → Gemini → Code cleanup → Respond. ⚠️ Fallback to mock if LLM errors |
 | 5 | **Interview Evaluation** | `/gn-interview-eval` | ✅ Done | Webhook → Gemini → Code cleanup → Respond. ⚠️ Fallback to mock if LLM errors |
 | 6 | **Application Notification** | `/gn-application-notify` | ⚠️ Partial | In-app bell ✅ + n8n gets owner profile. **Missing: Email/Telegram send node** |
-| 7 | **Smart Candidate Matching** | `/gn-smart-match` | ⚠️ Partial | **Full candidate search DONE** — auto match score (circle + progress bar), multi-term search, filter by job, case-insensitive partial match. n8n AI ranking pending |
+| 7 | **Smart Candidate Matching** | `/gn-smart-match` | ✅ Done 🆕 | **Full pipeline:** Webhook → Build Prompt (job + candidates) → Gemini 2.0 Flash (semantic ranking) → Parse JSON → Respond. API at `/api/ai/smart-match`. Fallback to local Jaccard if n8n offline |
 | 8 | **Message Notification** | `/gn-message-notify` | ❌ Not Started | Notify user when they receive a new message |
 | 9 | **Payment Verification** | `/gn-payment-verify` | ❌ Not Started | Verify Stripe/EdfaPay → fulfill subscription/credits |
 | 10 | **Company Verification** | `/gn-company-verify` | ✅ Done | Webhook → HTTP Download → Gemini OCR → Decision Engine (risk scoring) → 3× Supabase updates (company status, doc OCR data, audit log). Triggered by Supabase DB webhook on `company_documents` INSERT |

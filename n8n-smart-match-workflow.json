@@ -1,0 +1,107 @@
+{
+  "name": "GN - Smart Candidate Match (AI Semantic)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gn-smart-match",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "id": "smart-match-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300],
+      "webhookId": "gn-smart-match"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract job and candidates from webhook body\nconst body = $input.first().json.body || $input.first().json;\n\nconst job = body.job;\nconst candidates = body.candidates || [];\n\nif (!job || !candidates.length) {\n  return [{ json: { error: 'Missing job or candidates data' } }];\n}\n\n// Build a compact prompt for Gemini\nconst jobSummary = `\nJob Title: ${job.title}\nDescription: ${(job.description || '').slice(0, 500)}\nRequired Skills: ${(job.skills_required || []).join(', ')}\nJob Type: ${job.job_type || 'N/A'}\nLocation: ${job.location || 'N/A'}\nSalary: ${job.salary_range || 'N/A'}\nMin Experience: ${job.experience_min || 'N/A'} years\nNationality Required: ${job.nationality_required || 'All'}\n`.trim();\n\nconst candidateList = candidates.map((c, i) => `\n[Candidate ${i + 1}] ID: ${c.id}\nName: ${c.name}\nHeadline: ${c.headline || 'N/A'}\nSkills: ${(c.skills || []).join(', ')}\nExperience: ${c.years_experience || 0} years\nLocation: ${c.location || 'N/A'}\nNationality: ${c.nationality || 'N/A'}\nEducation: ${(c.education || []).join(', ') || 'N/A'}\nSummary: ${(c.summary || '').slice(0, 200)}\n`.trim()).join('\\n---\\n');\n\nconst prompt = `You are an expert HR AI recruiter for the UAE market. Analyze the following job posting and rank the candidates by their suitability.\n\nIMPORTANT RULES:\n1. Consider SEMANTIC similarity of skills (e.g., \"React\" relates to \"Frontend\", \"Node.js\" relates to \"Backend\")\n2. Consider transferable skills and industry experience\n3. Match education level to job requirements  \n4. Consider nationality preferences if specified\n5. Consider location proximity\n6. Give HIGHER weight to exact skill matches, but also credit related/transferable skills\n7. Respond ONLY with valid JSON\n\n=== JOB POSTING ===\n${jobSummary}\n\n=== CANDIDATES ===\n${candidateList}\n\n=== OUTPUT FORMAT ===\nReturn ONLY a JSON object (no markdown, no backticks) with this exact structure:\n{\n  \"rankings\": [\n    {\n      \"candidate_id\": \"uuid\",\n      \"name\": \"string\",\n      \"score\": 0-100,\n      \"reasoning\": \"Arabic explanation why this candidate matches or doesn't (2-3 sentences)\",\n      \"strengths\": [\"skill1\", \"skill2\"],\n      \"gaps\": [\"missing_skill1\"],\n      \"recommendation\": \"مناسب جداً\" | \"مناسب\" | \"مناسب جزئياً\" | \"غير مناسب\"\n    }\n  ]\n}\n\nRank from highest score to lowest. Be fair and analytical.`;\n\nreturn [{ json: { prompt, job_id: job.id, employer_id: body.employer_id, candidate_count: candidates.length } }];"
+      },
+      "id": "build-prompt",
+      "name": "Build AI Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.0-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.0-flash"
+        },
+        "promptType": "define",
+        "text": "={{ $json.prompt }}",
+        "options": {
+          "temperature": 0.2,
+          "maxOutputTokens": 4096
+        }
+      },
+      "id": "gemini-rank",
+      "name": "Gemini Rank",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [660, 300],
+      "credentials": {
+        "googleGeminiApi": {
+          "id": "gemini-api",
+          "name": "Google Gemini API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Gemini response and clean it up\nconst rawText = $input.first().json.text || $input.first().json.response || '';\n\n// Try to extract JSON from the response\nlet result;\ntry {\n  // Remove markdown code fences if present\n  let cleaned = rawText.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  result = JSON.parse(cleaned);\n} catch (e) {\n  // If JSON parse fails, try to find JSON in the text\n  const jsonMatch = rawText.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    try {\n      result = JSON.parse(jsonMatch[0]);\n    } catch (e2) {\n      result = {\n        rankings: [],\n        error: 'Failed to parse AI response',\n        raw: rawText.slice(0, 500)\n      };\n    }\n  } else {\n    result = {\n      rankings: [],\n      error: 'No JSON found in AI response',\n      raw: rawText.slice(0, 500)\n    };\n  }\n}\n\n// Ensure rankings exist and are sorted\nif (result.rankings && Array.isArray(result.rankings)) {\n  result.rankings.sort((a, b) => (b.score || 0) - (a.score || 0));\n}\n\nreturn [{ json: result }];"
+      },
+      "id": "parse-response",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1100, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "Build AI Prompt", "type": "main", "index": 0 }]
+      ]
+    },
+    "Build AI Prompt": {
+      "main": [
+        [{ "node": "Gemini Rank", "type": "main", "index": 0 }]
+      ]
+    },
+    "Gemini Rank": {
+      "main": [
+        [{ "node": "Parse AI Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse AI Response": {
+      "main": [
+        [{ "node": "Respond", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    { "name": "GrowthNexus" },
+    { "name": "AI" },
+    { "name": "Matching" }
+  ]
+}
