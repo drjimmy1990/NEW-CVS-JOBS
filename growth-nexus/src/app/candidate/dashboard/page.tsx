@@ -89,6 +89,54 @@ export default async function CandidateDashboard() {
     if (candidate?.cv_url) completionPercentage += 25;
     if (candidate?.headline) completionPercentage += 10;
     if (profile?.avatar_url) completionPercentage += 5;
+
+    // --- SUGGESTED JOBS (Jaccard skill matching) ---
+    const jobTypeLabels: Record<string, string> = {
+        full_time: 'دوام كامل',
+        part_time: 'دوام جزئي',
+        contract: 'عقد',
+        remote: 'عن بُعد',
+        internship: 'تدريب',
+    }
+
+    let suggestedJobs: { id: string; title: string; slug: string; companyName: string; location_city: string | null; salary_min: number | null; salary_max: number | null; jobTypeLabel: string; matchPercent: number }[] = []
+
+    const candidateSkills = (candidate?.skills || []).map((s: string) => s.toLowerCase().trim())
+
+    if (candidateSkills.length > 0) {
+        const { data: activeJobs } = await supabase
+            .from('jobs')
+            .select('id, title, slug, skills_required, job_type, location_city, salary_min, salary_max, companies(name)')
+            .eq('status', 'active')
+            .limit(50)
+
+        if (activeJobs && activeJobs.length > 0) {
+            const candidateSkillSet = new Set(candidateSkills)
+
+            const scored = activeJobs.map((job: any) => {
+                const jobSkills = (job.skills_required || []).map((s: string) => s.toLowerCase().trim())
+                const matched = jobSkills.filter((s: string) => candidateSkillSet.has(s)).length
+                const union = new Set([...candidateSkillSet, ...jobSkills]).size
+                const matchPercent = union > 0 ? Math.round((matched / union) * 100) : 0
+                return {
+                    id: job.id,
+                    title: job.title,
+                    slug: job.slug,
+                    companyName: job.companies?.name || 'شركة',
+                    location_city: job.location_city,
+                    salary_min: job.salary_min,
+                    salary_max: job.salary_max,
+                    jobTypeLabel: jobTypeLabels[job.job_type] || 'دوام كامل',
+                    matchPercent,
+                }
+            })
+
+            suggestedJobs = scored
+                .filter(j => j.matchPercent > 0)
+                .sort((a, b) => b.matchPercent - a.matchPercent)
+                .slice(0, 5)
+        }
+    }
     
     return (
         <div className="space-y-8">
@@ -240,7 +288,7 @@ export default async function CandidateDashboard() {
                         </CardContent>
                     </Card>
 
-                    {/* Recommended Jobs */}
+                    {/* Recommended Jobs — Real DB matching */}
                     <Card className="bg-navy-light border-gold/10">
                         <CardHeader className="flex flex-row items-center justify-between pb-3">
                             <CardTitle className="text-cream flex items-center gap-2">
@@ -255,36 +303,39 @@ export default async function CandidateDashboard() {
                             </Link>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-4">
-                                {/* Job 1 */}
-                                <div className="p-4 rounded-xl border border-gold/10 bg-navy/50 hover:border-gold/20 transition-colors group">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div>
-                                            <h4 className="font-medium text-gold group-hover:text-gold-light transition-colors cursor-pointer">مطور React أول</h4>
-                                            <p className="text-sm text-cream-dark/40 mt-0.5">TechCorp MEA • دبي، الإمارات</p>
-                                        </div>
-                                        <Badge className="bg-gold/10 text-gold border-gold/20 font-medium">95% مطابقة</Badge>
-                                    </div>
-                                    <div className="flex items-center gap-4 mt-4 text-xs text-cream-dark/40">
-                                        <span className="flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5" /> دوام كامل</span>
-                                        <span className="flex items-center gap-1.5">20,000 - 30,000 د.إ</span>
-                                    </div>
+                            {suggestedJobs.length > 0 ? (
+                                <div className="space-y-4">
+                                    {suggestedJobs.map((job) => (
+                                        <Link key={job.id} href={`/jobs/${job.slug}`} className="block">
+                                            <div className="p-4 rounded-xl border border-gold/10 bg-navy/50 hover:border-gold/20 transition-colors group">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div>
+                                                        <h4 className="font-medium text-gold group-hover:text-gold-light transition-colors">{job.title}</h4>
+                                                        <p className="text-sm text-cream-dark/40 mt-0.5">{job.companyName} • {job.location_city || 'الإمارات'}</p>
+                                                    </div>
+                                                    <Badge className="bg-gold/10 text-gold border-gold/20 font-medium">{job.matchPercent}% مطابقة</Badge>
+                                                </div>
+                                                <div className="flex items-center gap-4 mt-4 text-xs text-cream-dark/40">
+                                                    <span className="flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5" /> {job.jobTypeLabel}</span>
+                                                    {(job.salary_min || job.salary_max) && (
+                                                        <span className="flex items-center gap-1.5">
+                                                            {job.salary_min ? job.salary_min.toLocaleString() : '—'} - {job.salary_max ? job.salary_max.toLocaleString() : '—'} د.إ
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    ))}
                                 </div>
-                                {/* Job 2 */}
-                                <div className="p-4 rounded-xl border border-gold/10 bg-navy/50 hover:border-gold/20 transition-colors group">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div>
-                                            <h4 className="font-medium text-gold group-hover:text-gold-light transition-colors cursor-pointer">قائد فريق Frontend</h4>
-                                            <p className="text-sm text-cream-dark/40 mt-0.5">InnovateX • أبوظبي، الإمارات</p>
-                                        </div>
-                                        <Badge className="bg-gold/10 text-gold border-gold/20 font-medium">88% مطابقة</Badge>
-                                    </div>
-                                    <div className="flex items-center gap-4 mt-4 text-xs text-cream-dark/40">
-                                        <span className="flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5" /> دوام كامل</span>
-                                        <span className="flex items-center gap-1.5">25,000 - 35,000 د.إ</span>
-                                    </div>
+                            ) : (
+                                <div className="text-center py-8">
+                                    <Sparkles className="h-8 w-8 mx-auto mb-2 text-gold/30" />
+                                    <p className="text-cream-dark/50 text-sm">ارفع سيرتك الذاتية لنقترح لك وظائف مطابقة</p>
+                                    <Link href="/candidate/cv" className="text-sm text-gold hover:text-gold-light mt-2 inline-block">
+                                        ارفع سيرتك الذاتية
+                                    </Link>
                                 </div>
-                            </div>
+                            )}
                         </CardContent>
                     </Card>
                 </div>
