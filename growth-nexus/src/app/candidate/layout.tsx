@@ -13,7 +13,12 @@ import {
     Heart,
     MessageSquare,
     FileSignature,
-    Brain
+    Brain,
+    AlertTriangle,
+    TrendingUp,
+    BarChart3,
+    Bell,
+    Zap
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -27,6 +32,13 @@ const sidebarLinks = [
     { href: '/candidate/applications', label: 'طلباتي', icon: Briefcase },
     { href: '/candidate/contracts', label: 'العقود', icon: FileSignature },
     { href: '/candidate/interview-practice', label: 'تدريب المقابلات', icon: Brain },
+    // ── B2C AI Services ──
+    { href: '/candidate/rejection-analyzer', label: 'تحليل الرفض', icon: AlertTriangle },
+    { href: '/candidate/career-path', label: 'المسار المهني', icon: TrendingUp },
+    { href: '/candidate/skill-gap', label: 'تحليل المهارات', icon: BarChart3 },
+    { href: '/candidate/job-alerts', label: 'تنبيهات الوظائف', icon: Bell },
+    { href: '/candidate/auto-apply', label: 'التقديم التلقائي', icon: Zap },
+    // ── End B2C ──
     { href: '/candidate/saved-jobs', label: 'الوظائف المحفوظة', icon: Heart },
     { href: '/candidate/messages', label: 'الرسائل', icon: MessageSquare },
     { href: '/candidate/settings', label: 'الإعدادات', icon: Settings },
