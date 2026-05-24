@@ -33,6 +33,7 @@ export async function POST(req: Request) {
         )
 
         // 1. Fetch the job details
+        console.log('[smart-match] Looking up job_id:', job_id)
         const { data: job, error: jobError } = await adminClient
             .from('jobs')
             .select('id, title, description, skills_required, job_type, location, salary_min, salary_max, experience_min, nationality_required')
@@ -40,8 +41,10 @@ export async function POST(req: Request) {
             .single()
 
         if (jobError || !job) {
+            console.error('[smart-match] Job lookup failed:', jobError?.message, 'job_id:', job_id)
             return NextResponse.json({ error: 'الوظيفة غير موجودة — تأكد من اختيار وظيفة نشطة', rankings: [] }, { status: 200 })
         }
+        console.log('[smart-match] Found job:', job.title)
 
         // 2. Fetch candidates (either specific IDs or all public)
         let candidateQuery = adminClient
