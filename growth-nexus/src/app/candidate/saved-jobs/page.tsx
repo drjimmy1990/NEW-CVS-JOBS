@@ -22,7 +22,7 @@ type SavedJob = {
         job_type: string
         salary_min: number | null
         salary_max: number | null
-        salary_currency: string
+        currency: string
         is_featured: boolean
         company: {
             name: string
@@ -69,7 +69,7 @@ export default function SavedJobsPage() {
                     job_type,
                     salary_min,
                     salary_max,
-                    salary_currency,
+                    currency,
                     is_featured,
                     company:companies (
                         name,
@@ -163,7 +163,7 @@ export default function SavedJobsPage() {
                                                 {saved.job?.salary_min && (
                                                     <span className="flex items-center gap-1 text-gold/60">
                                                         <DollarSign className="h-3 w-3" />
-                                                        {saved.job.salary_min.toLocaleString()} - {saved.job.salary_max?.toLocaleString()} {saved.job.salary_currency}
+                                                        {saved.job.salary_min.toLocaleString()} - {saved.job.salary_max?.toLocaleString()} {saved.job.currency}
                                                     </span>
                                                 )}
                                                 <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> حُفظت {new Date(saved.created_at).toLocaleDateString('ar-AE')}</span>
