@@ -125,55 +125,88 @@ export async function POST(req: Request) {
         }
 
         console.log('[smart-match] Sending', candidateSummaries.length, 'candidates to n8n for job:', job.title)
+        console.log('[smart-match] Job skills_required:', JSON.stringify(job.skills_required))
 
-        const n8nResponse = await fetch(n8nWebhookUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-webhook-secret': webhookSecret,
-            },
-            body: JSON.stringify(n8nPayload),
-        })
+        // Helper: build local fallback rankings
+        const buildFallbackRankings = () => {
+            return candidateSummaries.map(c => {
+                const jobSkills = Array.isArray(job.skills_required) ? job.skills_required
+                    : typeof job.skills_required === 'string'
+                        ? (() => { try { return JSON.parse(job.skills_required as string) } catch { return [] } })()
+                        : []
+                const score = calculateLocalScore(c.skills, jobSkills)
+                console.log('[smart-match] Fallback score for', c.name, ':', score, '| candidate skills:', c.skills.slice(0, 5), '| job skills:', jobSkills.slice(0, 5))
+                return {
+                    candidate_id: c.id,
+                    name: c.name,
+                    score,
+                    reasoning: 'تطابق المهارات المحلي',
+                    recommendation: score >= 70 ? 'مناسب جداً' : score >= 40 ? 'مناسب جزئياً' : 'غير مناسب',
+                    strengths: c.skills.filter((s: string) =>
+                        jobSkills.some((js: string) =>
+                            s.toLowerCase().includes(js.toLowerCase()) || js.toLowerCase().includes(s.toLowerCase())
+                        )
+                    ),
+                    gaps: jobSkills.filter((js: string) =>
+                        !c.skills.some((s: string) =>
+                            s.toLowerCase().includes(js.toLowerCase()) || js.toLowerCase().includes(s.toLowerCase())
+                        )
+                    ),
+                }
+            }).sort((a: any, b: any) => b.score - a.score)
+        }
 
-        console.log('[smart-match] n8n response status:', n8nResponse.status)
-
-        if (!n8nResponse.ok) {
-            console.error('[smart-match] n8n error:', n8nResponse.status, await n8nResponse.text().catch(() => ''))
-            // Fallback: return basic Jaccard ranking
+        let n8nResponse: Response
+        try {
+            n8nResponse = await fetch(n8nWebhookUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-webhook-secret': webhookSecret,
+                },
+                body: JSON.stringify(n8nPayload),
+            })
+            console.log('[smart-match] n8n response status:', n8nResponse.status)
+        } catch (fetchError: any) {
+            console.error('[smart-match] n8n fetch failed:', fetchError.message)
             return NextResponse.json({
                 success: true,
                 source: 'fallback',
-                message: 'n8n unavailable, using local matching',
-                rankings: candidateSummaries.map(c => {
-                    const score = calculateLocalScore(c.skills, job.skills_required || [])
-                    return {
-                        candidate_id: c.id,
-                        name: c.name,
-                        score,
-                        reasoning: 'تطابق المهارات المحلي (n8n غير متاح)',
-                        recommendation: score >= 70 ? 'مناسب جداً' : score >= 40 ? 'مناسب جزئياً' : 'غير مناسب',
-                        strengths: c.skills.filter((s: string) =>
-                            (job.skills_required || []).some((js: string) =>
-                                s.toLowerCase().includes(js.toLowerCase()) || js.toLowerCase().includes(s.toLowerCase())
-                            )
-                        ),
-                        gaps: (job.skills_required || []).filter((js: string) =>
-                            !c.skills.some((s: string) =>
-                                s.toLowerCase().includes(js.toLowerCase()) || js.toLowerCase().includes(s.toLowerCase())
-                            )
-                        ),
-                    }
-                }).sort((a: any, b: any) => b.score - a.score),
+                message: 'n8n unreachable',
+                rankings: buildFallbackRankings(),
+            })
+        }
+
+        if (!n8nResponse.ok) {
+            console.error('[smart-match] n8n error:', n8nResponse.status)
+            return NextResponse.json({
+                success: true,
+                source: 'fallback',
+                message: 'n8n returned error, using local matching',
+                rankings: buildFallbackRankings(),
             })
         }
 
         const aiResult = await n8nResponse.json()
         console.log('[smart-match] n8n returned:', JSON.stringify(aiResult).slice(0, 300))
 
+        // Check if n8n returned actual rankings or just an async confirmation
+        if (aiResult.rankings && Array.isArray(aiResult.rankings) && aiResult.rankings.length > 0) {
+            // AI returned real rankings
+            return NextResponse.json({
+                success: true,
+                source: 'ai',
+                ...aiResult,
+            })
+        }
+
+        // n8n returned 200 but no rankings (async mode: "Workflow was started")
+        console.log('[smart-match] n8n did not return rankings, falling back to local matching')
         return NextResponse.json({
             success: true,
-            source: 'ai',
-            ...aiResult,
+            source: 'fallback',
+            message: 'n8n async mode — using local matching',
+            rankings: buildFallbackRankings(),
         })
 
     } catch (error: any) {
