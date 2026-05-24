@@ -135,19 +135,44 @@ export default async function CandidateSearchPage({
         }
     }
 
-    // 4. Job-based matching: if a job is selected, calculate match % and sort by it
-    if (selectedJobSkills.length > 0) {
-        candidates = candidates.map(c => {
-            const candidateSkillsLower = c.parsedSkills.map((s: string) => s.toLowerCase())
-            const jobSkillsLower = selectedJobSkills.map(s => s.toLowerCase())
-            const intersection = jobSkillsLower.filter(s => candidateSkillsLower.some((cs: string) => cs.includes(s) || s.includes(cs)))
-            const union = new Set([...candidateSkillsLower, ...jobSkillsLower])
-            const matchPercent = union.size > 0 ? Math.round((intersection.length / jobSkillsLower.length) * 100) : 0
-            return { ...c, matchPercent }
-        })
-        // Sort by match percentage (highest first), then filter out 0% matches if job selected
-        candidates.sort((a, b) => b.matchPercent - a.matchPercent)
+    // 4. Smart Match Score — always calculate against employer's jobs
+    // Helper: compute match % between candidate skills and a set of job skills
+    function computeMatch(candidateSkills: string[], jobSkills: string[]): number {
+        if (jobSkills.length === 0) return 0
+        const cLower = candidateSkills.map(s => s.toLowerCase())
+        const jLower = jobSkills.map(s => s.toLowerCase())
+        const matched = jLower.filter(js => cLower.some((cs: string) => cs.includes(js) || js.includes(cs)))
+        return Math.round((matched.length / jLower.length) * 100)
     }
+
+    if (selectedJobSkills.length > 0) {
+        // Match against the SELECTED job specifically
+        candidates = candidates.map(c => ({
+            ...c,
+            matchPercent: computeMatch(c.parsedSkills, selectedJobSkills),
+            bestJobTitle: selectedJobTitle,
+        }))
+    } else if (employerJobs.length > 0) {
+        // Auto-match against ALL employer jobs — show the BEST match
+        candidates = candidates.map(c => {
+            let bestPercent = 0
+            let bestTitle = ''
+            for (const job of employerJobs) {
+                const pct = computeMatch(c.parsedSkills, job.skills_required || [])
+                if (pct > bestPercent) {
+                    bestPercent = pct
+                    bestTitle = job.title
+                }
+            }
+            return { ...c, matchPercent: bestPercent, bestJobTitle: bestTitle }
+        })
+    }
+
+    // Sort by match score (highest first), then by experience
+    candidates.sort((a, b) => {
+        if (b.matchPercent !== a.matchPercent) return b.matchPercent - a.matchPercent
+        return (b.years_experience || 0) - (a.years_experience || 0)
+    })
 
     return (
         <div className="space-y-8">
@@ -247,6 +272,22 @@ export default async function CandidateSearchPage({
                         <Card key={candidate.id} className="bg-navy-light border-gold/10 hover:border-gold/20 transition-colors group">
                             <CardContent className="p-6">
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                    {/* Match Score Circle */}
+                                    {candidate.matchPercent > 0 && (
+                                        <div className="shrink-0 flex flex-col items-center gap-1">
+                                            <div className={`relative h-16 w-16 rounded-full flex items-center justify-center border-[3px] ${
+                                                candidate.matchPercent >= 70 ? 'border-emerald-500/60 text-emerald-400' :
+                                                candidate.matchPercent >= 40 ? 'border-amber-500/60 text-amber-400' :
+                                                'border-red-500/40 text-red-400'
+                                            }`}>
+                                                <span className="text-lg font-bold">{candidate.matchPercent}%</span>
+                                            </div>
+                                            <span className="text-[9px] text-cream-dark/30 text-center max-w-[80px] truncate">
+                                                {candidate.bestJobTitle || 'تطابق'}
+                                            </span>
+                                        </div>
+                                    )}
+
                                     {/* Candidate Info */}
                                     <div className="flex items-start gap-4 flex-1">
                                         <div className="h-12 w-12 rounded-full bg-gradient-to-br from-gold/20 to-gold/10 border border-gold/20 flex items-center justify-center text-cream font-bold text-lg shrink-0">
@@ -257,11 +298,6 @@ export default async function CandidateSearchPage({
                                                 <h3 className="font-semibold text-cream">
                                                     {candidate.full_name}
                                                 </h3>
-                                                {candidate.matchPercent > 0 && (
-                                                    <Badge className="bg-emerald-500/15 text-emerald-400 text-[10px]">
-                                                        تطابق {candidate.matchPercent}%
-                                                    </Badge>
-                                                )}
                                             </div>
                                             <p className="text-sm text-cream-dark/50 mt-0.5">{candidate.headline || 'باحث عن عمل'}</p>
                                             <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-cream-dark/40">
@@ -272,6 +308,21 @@ export default async function CandidateSearchPage({
                                                     <span className="flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5" /> {candidate.years_experience} سنوات خبرة</span>
                                                 )}
                                             </div>
+                                            {/* Match Progress Bar */}
+                                            {candidate.matchPercent > 0 && (
+                                                <div className="mt-3 max-w-xs">
+                                                    <div className="h-1.5 rounded-full bg-navy overflow-hidden">
+                                                        <div
+                                                            className={`h-full rounded-full transition-all ${
+                                                                candidate.matchPercent >= 70 ? 'bg-emerald-500' :
+                                                                candidate.matchPercent >= 40 ? 'bg-amber-500' :
+                                                                'bg-red-500'
+                                                            }`}
+                                                            style={{ width: `${candidate.matchPercent}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
                                             <div className="flex gap-1.5 mt-3 flex-wrap">
                                                 {(candidate.parsedSkills || []).slice(0, 6).map((skill: string) => (
                                                     <Badge key={skill} variant="outline" className="text-[10px] border-gold/20 text-gold py-0">
