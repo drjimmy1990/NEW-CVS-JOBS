@@ -107,12 +107,43 @@ export async function POST(req: Request) {
         const n8nWebhookUrl = process.env.N8N_SMART_MATCH_WEBHOOK || 'https://n8n.asra3.com/webhook/gn-smart-match'
         const webhookSecret = process.env.N8N_WEBHOOK_SECRET || 'change-me-to-a-strong-secret'
 
+        // Extract skills from description if skills_required is empty
+        let jobSkills = Array.isArray(job.skills_required) ? job.skills_required : []
+        if (jobSkills.length === 0 && job.description) {
+            // Fetch all known skills from skill_aliases table
+            const { data: allAliases } = await adminClient
+                .from('skill_aliases')
+                .select('alias, canonical')
+
+            if (allAliases && allAliases.length > 0) {
+                const descLower = job.description.toLowerCase()
+                const matchedCanonicals = new Set<string>()
+
+                for (const row of allAliases) {
+                    if (descLower.includes(row.alias.toLowerCase())) {
+                        matchedCanonicals.add(row.canonical)
+                    }
+                }
+
+                // Also check canonical names directly in description
+                const uniqueCanonicals = [...new Set(allAliases.map(a => a.canonical))]
+                for (const canonical of uniqueCanonicals) {
+                    if (descLower.includes(canonical.toLowerCase())) {
+                        matchedCanonicals.add(canonical)
+                    }
+                }
+
+                jobSkills = [...matchedCanonicals]
+                console.log('[smart-match] Extracted skills from description via skill_aliases:', jobSkills)
+            }
+        }
+
         const n8nPayload = {
             job: {
                 id: job.id,
                 title: job.title,
                 description: job.description,
-                skills_required: job.skills_required || [],
+                skills_required: jobSkills,
                 job_type: job.job_type,
                 location: job.location_city || '',
                 country: job.location_country || '',
@@ -125,15 +156,11 @@ export async function POST(req: Request) {
         }
 
         console.log('[smart-match] Sending', candidateSummaries.length, 'candidates to n8n for job:', job.title)
-        console.log('[smart-match] Job skills_required:', JSON.stringify(job.skills_required))
+        console.log('[smart-match] Job skills:', JSON.stringify(jobSkills))
 
-        // Helper: build local fallback rankings
+        // Helper: build local fallback rankings (uses jobSkills already extracted above)
         const buildFallbackRankings = () => {
             return candidateSummaries.map(c => {
-                const jobSkills = Array.isArray(job.skills_required) ? job.skills_required
-                    : typeof job.skills_required === 'string'
-                        ? (() => { try { return JSON.parse(job.skills_required as string) } catch { return [] } })()
-                        : []
                 const score = calculateLocalScore(c.skills, jobSkills)
                 console.log('[smart-match] Fallback score for', c.name, ':', score, '| candidate skills:', c.skills.slice(0, 5), '| job skills:', jobSkills.slice(0, 5))
                 return {
