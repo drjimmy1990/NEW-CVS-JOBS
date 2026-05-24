@@ -40,7 +40,7 @@ export async function POST(req: Request) {
             .single()
 
         if (jobError || !job) {
-            return NextResponse.json({ error: 'Job not found' }, { status: 404 })
+            return NextResponse.json({ error: 'الوظيفة غير موجودة — تأكد من اختيار وظيفة نشطة', rankings: [] }, { status: 200 })
         }
 
         // 2. Fetch candidates (either specific IDs or all public)
@@ -135,22 +135,26 @@ export async function POST(req: Request) {
                 success: true,
                 source: 'fallback',
                 message: 'n8n unavailable, using local matching',
-                rankings: candidateSummaries.map(c => ({
-                    candidate_id: c.id,
-                    name: c.name,
-                    score: calculateLocalScore(c.skills, job.skills_required || []),
-                    reasoning: 'تطابق المهارات المحلي (n8n غير متاح)',
-                    strengths: c.skills.filter((s: string) =>
-                        (job.skills_required || []).some((js: string) =>
-                            s.toLowerCase().includes(js.toLowerCase()) || js.toLowerCase().includes(s.toLowerCase())
-                        )
-                    ),
-                    gaps: (job.skills_required || []).filter((js: string) =>
-                        !c.skills.some((s: string) =>
-                            s.toLowerCase().includes(js.toLowerCase()) || js.toLowerCase().includes(s.toLowerCase())
-                        )
-                    ),
-                })).sort((a: any, b: any) => b.score - a.score),
+                rankings: candidateSummaries.map(c => {
+                    const score = calculateLocalScore(c.skills, job.skills_required || [])
+                    return {
+                        candidate_id: c.id,
+                        name: c.name,
+                        score,
+                        reasoning: 'تطابق المهارات المحلي (n8n غير متاح)',
+                        recommendation: score >= 70 ? 'مناسب جداً' : score >= 40 ? 'مناسب جزئياً' : 'غير مناسب',
+                        strengths: c.skills.filter((s: string) =>
+                            (job.skills_required || []).some((js: string) =>
+                                s.toLowerCase().includes(js.toLowerCase()) || js.toLowerCase().includes(s.toLowerCase())
+                            )
+                        ),
+                        gaps: (job.skills_required || []).filter((js: string) =>
+                            !c.skills.some((s: string) =>
+                                s.toLowerCase().includes(js.toLowerCase()) || js.toLowerCase().includes(s.toLowerCase())
+                            )
+                        ),
+                    }
+                }).sort((a: any, b: any) => b.score - a.score),
             })
         }
 
