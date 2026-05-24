@@ -1,16 +1,15 @@
-import { createClient } from '@/utils/supabase/server'
+import { createClient as createServerClient } from '@/utils/supabase/server'
+import { createClient } from '@supabase/supabase-js'
 import { UAE_CITIES } from '@/lib/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
-    Search, Filter, Lock, Unlock, MapPin,
+    Search, MapPin,
     Briefcase, Heart, Eye
 } from 'lucide-react'
 import Link from 'next/link'
-import { getVerificationPermissions } from '@/lib/verification-engine'
-import { VerificationLockServer } from '@/components/employer/VerificationLockServer'
 
 export default async function CandidateSearchPage({
     searchParams,
@@ -18,45 +17,28 @@ export default async function CandidateSearchPage({
     searchParams: Promise<{ q?: string; location?: string; experience?: string }>
 }) {
     const params = await searchParams
-    const supabase = await createClient()
+    const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    // Verification gate — block unverified employers from candidate search
-    if (user) {
-        let companyId = null
-        const { data: ownedCo } = await supabase
-            .from('companies').select('id, verification_status').eq('owner_id', user.id).single()
-        let verificationStatus = 'pending_verification'
-        if (ownedCo) {
-            companyId = ownedCo.id
-            verificationStatus = ownedCo.verification_status || 'pending_verification'
-        } else {
-            const { data: membership } = await supabase
-                .from('company_members')
-                .select('company_id, companies(verification_status)')
-                .eq('user_id', user.id).eq('status', 'active').single()
-            if (membership) {
-                companyId = membership.company_id
-                verificationStatus = (membership.companies as any)?.verification_status || 'pending_verification'
-            }
-        }
-        const permissions = getVerificationPermissions(verificationStatus)
-        if (!permissions.canViewCVs) {
-            return <VerificationLockServer featureName="البحث عن مرشحين" verificationStatus={verificationStatus} />
-        }
+    if (!user) {
+        const { redirect } = await import('next/navigation')
+        redirect('/login')
     }
 
-    // Check if employer has CV database access (subscription)
-    const hasAccess = true // TESTING MODE — set to subscription check in production
+    // Use service role client to bypass RLS — employer needs to see ALL public candidates
+    const adminClient = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
-    // Query real candidates from Supabase
-    let query = supabase
+    // Query real candidates from Supabase (service role bypasses RLS)
+    let query = adminClient
         .from('candidates')
         .select(`
             id,
             headline,
             skills,
-            experience_years,
+            years_experience,
             residence_emirate,
             is_public,
             cv_url,
@@ -67,10 +49,12 @@ export default async function CandidateSearchPage({
         `)
         .eq('is_public', true)
         .order('updated_at', { ascending: false })
-        .limit(20)
+        .limit(50)
 
     if (params.q) {
-        query = query.or(`headline.ilike.%${params.q}%,skills.cs.{${params.q}}`)
+        // Search by headline text OR skill name
+        const q = params.q.trim()
+        query = query.or(`headline.ilike.%${q}%,skills.cs.{"${q}"}`)
     }
 
     if (params.location) {
@@ -87,7 +71,7 @@ export default async function CandidateSearchPage({
         }
     }
 
-    const { data: candidates } = await query
+    const { data: candidates, error } = await query
 
     return (
         <div className="space-y-8">
@@ -95,7 +79,7 @@ export default async function CandidateSearchPage({
             <div>
                 <h1 className="text-3xl font-bold text-cream">البحث عن مرشحين</h1>
                 <p className="text-cream-dark/50 mt-1">
-                    ابحث في قاعدة بيانات أكثر من 12,000 متخصص مؤهل في الإمارات.
+                    ابحث في قاعدة بيانات المرشحين المسجلين في المنصة.
                 </p>
             </div>
 
@@ -141,28 +125,6 @@ export default async function CandidateSearchPage({
                 </CardContent>
             </Card>
 
-            {/* Subscription Lock Banner */}
-            {!hasAccess && (
-                <Card className="bg-gradient-to-r from-gold/10 to-gold/5 border-gold/30">
-                    <CardContent className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <div className="flex items-start gap-4">
-                            <div className="p-3 bg-gold/20 rounded-xl">
-                                <Lock className="h-6 w-6 text-gold" />
-                            </div>
-                            <div>
-                                <h3 className="font-semibold text-cream">يلزم اشتراك للوصول لقاعدة السير الذاتية</h3>
-                                <p className="text-sm text-cream-dark/50 mt-1">
-                                    اشترك لفتح ملفات المرشحين الكاملة وبيانات التواصل وتنزيل السير الذاتية.
-                                </p>
-                            </div>
-                        </div>
-                        <Button className="bg-gold hover:bg-gold-dark text-navy shrink-0 font-bold shadow-lg shadow-gold/20">
-                            اشترك — 699 د.إ/شهر
-                        </Button>
-                    </CardContent>
-                </Card>
-            )}
-
             {/* Results */}
             <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -195,8 +157,8 @@ export default async function CandidateSearchPage({
                                                 {candidate.residence_emirate && (
                                                     <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" /> {candidate.residence_emirate}</span>
                                                 )}
-                                                {candidate.experience_years && (
-                                                    <span className="flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5" /> {candidate.experience_years} سنوات خبرة</span>
+                                                {candidate.years_experience != null && (
+                                                    <span className="flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5" /> {candidate.years_experience} سنوات خبرة</span>
                                                 )}
                                             </div>
                                             <div className="flex gap-1.5 mt-3 flex-wrap">
@@ -211,17 +173,12 @@ export default async function CandidateSearchPage({
 
                                     {/* Actions */}
                                     <div className="flex items-center gap-2 md:flex-col md:items-end shrink-0">
-                                        {hasAccess ? (
+                                        <Link href={`/candidate/${candidate.id}`}>
                                             <Button size="sm" className="bg-gold hover:bg-gold-dark text-navy font-bold">
                                                 <Eye className="h-4 w-4 me-1.5" />
                                                 عرض الملف
                                             </Button>
-                                        ) : (
-                                            <Button size="sm" variant="outline" className="border-gold/30 text-gold hover:bg-gold/10">
-                                                <Unlock className="h-4 w-4 me-1.5" />
-                                                فتح — 15 د.إ
-                                            </Button>
-                                        )}
+                                        </Link>
                                         <Button 
                                             size="sm" 
                                             variant="ghost" 
@@ -239,7 +196,7 @@ export default async function CandidateSearchPage({
                         <CardContent className="p-12 text-center">
                             <Search className="h-12 w-12 text-cream-dark/20 mx-auto mb-3" />
                             <h3 className="text-lg font-semibold text-cream mb-1">لم يتم العثور على مرشحين</h3>
-                            <p className="text-cream-dark/40">حاول تعديل معايير البحث</p>
+                            <p className="text-cream-dark/40">حاول تعديل معايير البحث أو تأكد من وجود مرشحين مسجلين</p>
                         </CardContent>
                     </Card>
                 )}
