@@ -93,35 +93,10 @@ export default async function EmployerDashboard() {
         : { count: 0 }
 
     // --- SMART CANDIDATE SUGGESTIONS (Bilingual Jaccard matching) ---
-    // Bilingual skill dictionary: Arabic → English canonical form
-    const skillAliases: Record<string, string> = {
-        'رياكت': 'react', 'ريأكت': 'react', 'react.js': 'react', 'reactjs': 'react',
-        'نود': 'node.js', 'نود جي اس': 'node.js', 'nodejs': 'node.js',
-        'جافاسكريبت': 'javascript', 'جافا سكريبت': 'javascript', 'js': 'javascript',
-        'تايب سكريبت': 'typescript', 'تايبسكريبت': 'typescript', 'ts': 'typescript',
-        'بايثون': 'python', 'بيثون': 'python', 'جافا': 'java',
-        'سي شارب': 'c#', 'بي اتش بي': 'php',
-        'فيو': 'vue', 'vue.js': 'vue', 'vuejs': 'vue',
-        'أنجولار': 'angular', 'انجولار': 'angular',
-        'نيكست': 'next.js', 'nextjs': 'next.js',
-        'فلاتر': 'flutter', 'سويفت': 'swift', 'كوتلن': 'kotlin',
-        'لارافل': 'laravel', 'دجانجو': 'django',
-        'قواعد بيانات': 'databases', 'قواعد البيانات': 'databases',
-        'بوستجرس': 'postgresql', 'مونجو': 'mongodb', 'mongo': 'mongodb',
-        'أمازون': 'aws', 'امازون': 'aws', 'دوكر': 'docker',
-        'تصميم': 'design', 'تصميم واجهات': 'ui/ux', 'تجربة المستخدم': 'ux',
-        'واجهة المستخدم': 'ui', 'فيجما': 'figma', 'فوتوشوب': 'photoshop',
-        'إدارة المشاريع': 'project management', 'ادارة المشاريع': 'project management',
-        'التسويق الرقمي': 'digital marketing', 'تسويق رقمي': 'digital marketing',
-        'التسويق': 'marketing', 'تسويق': 'marketing',
-        'تحليل البيانات': 'data analysis', 'الذكاء الاصطناعي': 'ai', 'ذكاء اصطناعي': 'ai',
-        'تعلم الآلة': 'machine learning', 'ml': 'machine learning',
-        'المبيعات': 'sales', 'مبيعات': 'sales',
-        'خدمة العملاء': 'customer service', 'المحاسبة': 'accounting', 'محاسبة': 'accounting',
-        'الموارد البشرية': 'hr', 'موارد بشرية': 'hr', 'human resources': 'hr',
-        'تحسين محركات البحث': 'seo', 'سيو': 'seo',
-        'إكسل': 'excel', 'اكسل': 'excel',
-    }
+    // Load bilingual skill aliases from DB
+    const { data: aliasRows } = await supabase.from('skill_aliases').select('alias, canonical')
+    const skillAliases: Record<string, string> = {}
+    aliasRows?.forEach(r => { skillAliases[r.alias.toLowerCase().trim()] = r.canonical.toLowerCase().trim() })
     const normalizeSkill = (s: string) => { const l = s.toLowerCase().trim(); return skillAliases[l] || l }
 
     let suggestedCandidates: { id: string; name: string; headline: string | null; skills: string[]; matchPercent: number }[] = []

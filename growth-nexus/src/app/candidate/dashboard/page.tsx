@@ -99,52 +99,10 @@ export default async function CandidateDashboard() {
         internship: 'تدريب',
     }
 
-    // Bilingual skill dictionary: Arabic → English canonical form
-    const skillAliases: Record<string, string> = {
-        // Programming & Frameworks
-        'رياكت': 'react', 'ريأكت': 'react', 'react.js': 'react', 'reactjs': 'react',
-        'نود': 'node.js', 'نود جي اس': 'node.js', 'nodejs': 'node.js',
-        'جافاسكريبت': 'javascript', 'جافا سكريبت': 'javascript', 'js': 'javascript',
-        'تايب سكريبت': 'typescript', 'تايبسكريبت': 'typescript', 'ts': 'typescript',
-        'بايثون': 'python', 'بيثون': 'python',
-        'جافا': 'java',
-        'سي شارب': 'c#', 'سي #': 'c#',
-        'بي اتش بي': 'php', 'فيو': 'vue', 'فيو جي اس': 'vue', 'vue.js': 'vue', 'vuejs': 'vue',
-        'أنجولار': 'angular', 'انجولار': 'angular',
-        'نيكست': 'next.js', 'نكست': 'next.js', 'nextjs': 'next.js',
-        'فلاتر': 'flutter', 'سويفت': 'swift', 'كوتلن': 'kotlin',
-        'لارافل': 'laravel', 'دجانجو': 'django', 'جانجو': 'django',
-        // Databases
-        'قواعد بيانات': 'databases', 'قواعد البيانات': 'databases',
-        'ماي اس كيو ال': 'mysql', 'بوستجرس': 'postgresql', 'بوستقريس': 'postgresql',
-        'مونجو': 'mongodb', 'مونقو': 'mongodb', 'mongo': 'mongodb',
-        // Cloud & DevOps
-        'أمازون': 'aws', 'امازون': 'aws', 'سحابة': 'cloud', 'الحوسبة السحابية': 'cloud',
-        'دوكر': 'docker', 'كوبرنيتس': 'kubernetes',
-        // Design & UI
-        'تصميم': 'design', 'تصميم واجهات': 'ui/ux', 'تجربة المستخدم': 'ux',
-        'واجهة المستخدم': 'ui', 'فيجما': 'figma', 'فوتوشوب': 'photoshop',
-        'أدوبي': 'adobe', 'ادوبي': 'adobe', 'اليستريتور': 'illustrator',
-        // General
-        'إدارة المشاريع': 'project management', 'ادارة المشاريع': 'project management',
-        'إدارة الفريق': 'team management', 'ادارة الفريق': 'team management',
-        'التسويق الرقمي': 'digital marketing', 'تسويق رقمي': 'digital marketing',
-        'التسويق': 'marketing', 'تسويق': 'marketing',
-        'تحليل البيانات': 'data analysis', 'تحليل بيانات': 'data analysis',
-        'الذكاء الاصطناعي': 'ai', 'ذكاء اصطناعي': 'ai', 'artificial intelligence': 'ai',
-        'تعلم الآلة': 'machine learning', 'تعلم آلي': 'machine learning', 'ml': 'machine learning',
-        'أمن المعلومات': 'cybersecurity', 'امن المعلومات': 'cybersecurity',
-        'المبيعات': 'sales', 'مبيعات': 'sales',
-        'خدمة العملاء': 'customer service', 'خدمة عملاء': 'customer service',
-        'المحاسبة': 'accounting', 'محاسبة': 'accounting',
-        'الموارد البشرية': 'hr', 'موارد بشرية': 'hr', 'human resources': 'hr',
-        'إدارة الأعمال': 'business management', 'ادارة الاعمال': 'business management',
-        'الترجمة': 'translation', 'ترجمة': 'translation',
-        'كتابة المحتوى': 'content writing', 'كتابة محتوى': 'content writing',
-        'تحسين محركات البحث': 'seo', 'سيو': 'seo',
-        'إكسل': 'excel', 'اكسل': 'excel',
-        'وورد': 'word', 'باوربوينت': 'powerpoint',
-    }
+    // Load bilingual skill aliases from DB
+    const { data: aliasRows } = await supabase.from('skill_aliases').select('alias, canonical')
+    const skillAliases: Record<string, string> = {}
+    aliasRows?.forEach(r => { skillAliases[r.alias.toLowerCase().trim()] = r.canonical.toLowerCase().trim() })
 
     // Normalize a skill to its canonical English form
     const normalizeSkill = (skill: string): string => {

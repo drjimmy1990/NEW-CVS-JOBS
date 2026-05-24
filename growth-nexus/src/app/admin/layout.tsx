@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 import {
     LayoutDashboard, Users, Building2, Briefcase, Settings,
-    CreditCard, LogOut, ChevronLeft, Shield, Globe
+    CreditCard, LogOut, ChevronLeft, Shield, Globe, Sparkles
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -16,6 +16,7 @@ const sidebarLinks = [
     { href: '/admin/jobs', label: 'الوظائف', icon: Briefcase },
     { href: '/admin/external-jobs', label: 'الوظائف الخارجية', icon: Globe },
     { href: '/admin/transactions', label: 'المعاملات المالية', icon: CreditCard },
+    { href: '/admin/skill-aliases', label: 'قاموس المهارات', icon: Sparkles },
     { href: '/admin/config', label: 'إعدادات النظام', icon: Settings },
 ]
 
