@@ -145,10 +145,15 @@ export async function POST(request: NextRequest) {
     }
 
     // --- Save analysis to application ---
-    await supabase
+    const { error: updateError } = await supabase
         .from('applications')
         .update({ rejection_analysis: analysis })
         .eq('id', application_id)
+        .eq('candidate_id', user.id)
+
+    if (updateError) {
+        console.error('[rejection-analyzer] Save error:', updateError.message, 'code:', updateError.code)
+    }
 
     return NextResponse.json({
         success: true,
