@@ -1,8 +1,8 @@
 # 🗺️ GrowthNexus — Production Roadmap
 
 > **Created:** 14 May 2026
-> **Last Updated:** 24 May 2026 — 05:20 AM
-> **Current Status:** ~98% complete — all core platform + 13 n8n workflows + Interview Self-Practice + Bilingual Smart Matching done
+> **Last Updated:** 24 May 2026 — 06:00 AM
+> **Current Status:** ~98% complete — all core platform + 13 n8n workflows + Interview Self-Practice + Bilingual Smart Matching + Candidate Search v2 done
 > **Source of Truth:** `PLAN.MD` + `TODO.md` + `webhooks_status.md`
 > **Execution Strategy:** Build all B2C revenue features → Wire remaining n8n → Deploy → Polish
 
@@ -24,6 +24,7 @@
 | Analytics + Forecasting + Emiratisation | ✅ Done | 100% |
 | **B2C Paid Services (Phase 11)** | 🔧 In Progress | ~17% (Interview Practice ✅) |
 | **Smart Matching (Bilingual Jaccard)** | ✅ Done | 100% 🆕 |
+| **Candidate Search v2 (Score + Multi-term)** | ✅ Done | 100% 🆕 |
 | **Admin Panel Fixes (Users + Search)** | ✅ Done | 100% 🆕 |
 | **Security Hardening** | ❌ Not Started | 0% |
 | **Production Deployment** | ❌ Not Started | 0% |

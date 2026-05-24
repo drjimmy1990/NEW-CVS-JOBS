@@ -1,7 +1,7 @@
 # 📋 GrowthNexus — Remaining TODO
 
 > **Created:** 12 May 2026
-> **Overall Completion: ~98%** — Core platform + verification + OCR + External Jobs + CV Services (Optimizer + Builder + ATS Convert) + **13 n8n workflows** + Contract Pipeline + **Interview Self-Practice** + **Bilingual Smart Matching** done
+> **Overall Completion: ~98%** — Core platform + verification + OCR + External Jobs + CV Services (Optimizer + Builder + ATS Convert) + **13 n8n workflows** + Contract Pipeline + **Interview Self-Practice** + **Bilingual Smart Matching** + **Candidate Search v2** done
 > **What Remains:** Sprint 1: B2C Services (5 remaining) → Sprint 2: n8n wiring → Sprint 3: Deploy + Security → Sprint 4: i18n/SEO/QA
 > **Detailed Roadmap:** See `ROADMAP.md` for full sprint plan
 
@@ -80,6 +80,10 @@
 - [x] **Admin Skill Aliases Panel** — `/admin/skill-aliases` CRUD with search, category filter, grouped view 🆕
 - [x] **Dynamic aliases** — both dashboards fetch from DB instead of hardcoded dictionaries 🆕
 - [x] `migration_skill_aliases.sql` — 96 seed aliases covering 30+ canonical skills 🆕
+- [x] **Candidate Search v2** — complete rewrite with auto match score, multi-term search, filter by job 🆕
+- [x] **Match Score Circle** — always-visible % circle + progress bar, color-coded (green/amber/red) 🆕
+- [x] **Multi-term Search** — comma/space separated skills search (e.g., "React, Node, AWS") 🆕
+- [x] **View CV Button** — opens candidate CV PDF in new tab 🆕
 
 #### ~~AI Match Score Enhancement~~ ✅ DONE (12 May)
 - [x] Improve `calculate_match_score` with:
@@ -134,7 +138,7 @@
 | 17 | CV Finalize | ~~🔴 High~~ | ✅ **NOT NEEDED** | API route works **locally** without n8n (built-in fallback) |
 | 18 | Email Send | 🔴 High | API ✅ / n8n pending | Generic SMTP sender → `gn-email-send` |
 | 19 | External Jobs Scraper | 🟡 Medium | Pending | LinkedIn/Bayt/Indeed → `/api/external-jobs` |
-| 7 | Smart Matching | 🟡 Medium | ⚠️ Partial (24 May) | **Jaccard done** (bilingual, DB-driven). n8n AI ranking pending |
+| 7 | Smart Matching | 🟡 Medium | ⚠️ Partial (24 May) | **Full search rewritten** (match score, multi-term, filter by job). n8n AI ranking pending |
 | 8 | Message Notification | 🟢 Low | Pending | Chat message push notifications |
 | 9 | Payment Verification | 🟡 Medium | Pending | Stripe webhook fulfillment validation |
 
