@@ -11,6 +11,7 @@ const cairo = Cairo({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://jobs-test.uae4jobs.ae"),
   title: "GrowthNexus - منصة التوظيف الذكية",
   description: "منصة توظيف ذكية مدعومة بالذكاء الاصطناعي في الإمارات. أنشر وظائف، حلل السير الذاتية بالذكاء الاصطناعي، ووظّف بذكاء.",
 };
