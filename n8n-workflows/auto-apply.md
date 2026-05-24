@@ -16,32 +16,37 @@ The dashboard (`/candidate/auto-apply`) manages **settings** (CRUD via `/api/aut
 ```
 [Schedule: Every 6 hours]
     ↓
-[Supabase: Get active auto-apply settings]
+[Get many rows2: Get active auto_apply_settings]
     ↓
-[Split In Batches: 1 user per loop]
+[Split Out1: 1 user per item]
     ↓
-[Supabase: Get user profile + CV data]
+[Get a row2: Get user PROFILE (full_name, email)]
     ↓
-[Supabase: Get active jobs (not already applied)]
+[Get a row1: Get user CANDIDATE (skills, headline, experience)]
     ↓
-[Code: Score & filter jobs by user preferences]
+[Get many rows3: Get active jobs]
     ↓
-[Loop: For each matched job]
-    ├── [IF: score >= min_match_score AND under monthly limit]
-    │   ├── YES → [AI: Generate personalized cover letter]
-    │   │         [Supabase: INSERT into applications + cover_letter]
-    │   │         [Supabase: INSERT into auto_apply_log (status=applied)]
-    │   │         [Supabase: INCREMENT applications_this_month]
-    │   └── NO  → [Supabase: INSERT into auto_apply_log (status=skipped)]
+[Code in JavaScript6: Score & filter jobs]
     ↓
-[Supabase: UPDATE last_run_at on settings]
+[If1: to_apply.length > 0?]
+    ├── YES →
+    │   [Code in JavaScript7: Loop jobs + prepare AI data]
+    │       ↓
+    │   [AI Agent: Generate cover letter per job]
+    │       ↓
+    │   [Supabase: INSERT application + cover_letter]
+    │       ↓
+    │   [Supabase: INSERT auto_apply_log]
+    │       ↓
+    │   [Supabase: UPDATE settings counter + last_run]
+    └── NO → end
 ```
 
 ---
 
-## Step-by-Step Setup
+## Actual Node Names & Setup
 
-### Node 1: Schedule Trigger
+### Node 1: Schedule Trigger (ADD LATER — test manually first)
 
 | Setting | Value |
 |---------|-------|
@@ -49,50 +54,69 @@ The dashboard (`/candidate/auto-apply`) manages **settings** (CRUD via `/api/aut
 | Expression | `0 */6 * * *` |
 | Note | Every 6 hours (4x daily) |
 
-### Node 2: Supabase — Get Active Settings
+---
+
+### Node 2: `Get many rows2` ✅ DONE
 
 | Setting | Value |
 |---------|-------|
 | Operation | Get All |
 | Table | `auto_apply_settings` |
-| Filters | `is_active` = `true` |
+| Filter | `is_active` = `true` |
 
-### Node 3: Split In Batches
+---
+
+### Node 3: `Split Out1` ✅ DONE
 
 | Setting | Value |
 |---------|-------|
-| Batch Size | 1 |
+| Field to Split Out | `is_active` |
+| Include | All Other Fields |
 
-### Node 4: Supabase — Get User Profile
+---
+
+### Node 4: `Get a row2` ✅ DONE — PROFILES table
+
+| Setting | Value |
+|---------|-------|
+| Operation | Get |
+| Table | `profiles` |
+| Filter | `id` = `{{ $json.user_id }}` |
+
+> Gives us: `full_name`, `email`
+
+---
+
+### Node 5: `Get a row1` ✅ DONE — CANDIDATES table
 
 | Setting | Value |
 |---------|-------|
 | Operation | Get |
 | Table | `candidates` |
-| Filter | `id` = `{{ $json.user_id }}` |
+| Filter | `id` = `{{ $json.id }}` |
 
-This gives us: `skills`, `years_experience`, `headline`, `education`, etc.
+> Gives us: `skills`, `headline`, `years_experience`
 
-### Node 5: Supabase — Get Active Jobs
+---
+
+### Node 6: `Get many rows3` ✅ DONE
 
 | Setting | Value |
 |---------|-------|
 | Operation | Get All |
 | Table | `jobs` |
-| Filters | `status` = `active` |
+| Filter | `status` = `active` |
 
-### Node 6: Code — Score & Filter Jobs
+---
 
-This is the main matching logic. Paste this JavaScript:
+### Node 7: `Code in JavaScript6` ✅ DONE — Score & Filter
 
 ```javascript
-const settings = $('Split In Batches').first().json;
-const candidate = $('Supabase - Get Candidate').first().json;
-const jobs = $('Supabase - Get Jobs').all();
+const settings = $('Split Out1').first().json;
+const candidate = $('Get a row1').first().json;
+const jobs = $('Get many rows3').all();
 
-// Get already applied job IDs (from auto_apply_log)
-// If you added a node to fetch existing applications, use it here
-const appliedJobIds = []; // TODO: populate from a Supabase query
+const appliedJobIds = [];
 
 const matchedJobs = [];
 const candidateSkills = (candidate.skills || []).map(s => s.toLowerCase());
@@ -100,12 +124,9 @@ const candidateSkills = (candidate.skills || []).map(s => s.toLowerCase());
 for (const jobItem of jobs) {
   const j = jobItem.json;
 
-  // Skip already applied
   if (appliedJobIds.includes(j.id)) continue;
 
-  // Skip excluded companies
   if (settings.exclude_companies && settings.exclude_companies.length > 0) {
-    // Would need company name from join — skip for now if company_id matches
   }
 
   let score = 0;
@@ -133,7 +154,7 @@ for (const jobItem of jobs) {
     }
   }
 
-  // --- Also check candidate skills vs job skills ---
+  // --- Candidate skills vs job skills ---
   if (candidateSkills.length > 0 && j.skills_required) {
     maxScore += 20;
     const jobSkills = j.skills_required.map(s => s.toLowerCase());
@@ -151,26 +172,24 @@ for (const jobItem of jobs) {
     if (settings.target_locations.includes(j.location_city)) {
       score += 10;
     } else {
-      continue; // Hard filter — skip non-matching locations
+      continue;
     }
   }
 
   // --- Job type match ---
   if (settings.target_job_types && settings.target_job_types.length > 0) {
     if (!settings.target_job_types.includes(j.job_type)) {
-      continue; // Hard filter
+      continue;
     }
   }
 
   // --- Salary filter ---
   if (settings.min_salary && j.salary_max && j.salary_max < settings.min_salary) {
-    continue; // Below minimum salary
+    continue;
   }
 
-  // Calculate percentage
   const matchScore = maxScore > 0 ? Math.round((score / maxScore) * 100) : 50;
 
-  // Only include if meets minimum score
   if (matchScore >= (settings.min_match_score || 60)) {
     matchedJobs.push({
       job_id: j.id,
@@ -184,7 +203,6 @@ for (const jobItem of jobs) {
   }
 }
 
-// Sort by score, limit by monthly remaining
 const monthlyRemaining = (settings.max_applications_per_month || 50) - (settings.applications_this_month || 0);
 matchedJobs.sort((a, b) => b.match_score - a.match_score);
 const toApply = matchedJobs.slice(0, Math.max(0, monthlyRemaining));
@@ -198,23 +216,27 @@ return [{
     to_skip: toSkip,
     total_matched: matchedJobs.length,
     monthly_remaining: monthlyRemaining,
+    cover_letter_template: settings.cover_letter_template || '',
   }
 }];
 ```
 
-### Node 7: IF — Has Jobs to Apply
+---
+
+### Node 8: `If1` ✅ DONE
 
 | Setting | Value |
 |---------|-------|
-| Condition | `{{ $json.to_apply.length }}` > `0` |
+| Condition | `{{ $json.to_apply.length }}` > `0` (number) |
 
-### Node 8: Code — Loop & Apply
+---
 
-For each matched job, prepare data for AI cover letter:
+### Node 9: `Code in JavaScript7` ✅ DONE — Loop & Prepare AI Data
 
 ```javascript
 const data = $input.first().json;
-const candidate = $('Supabase - Get Candidate').first().json;
+const candidate = $('Get a row1').first().json;  // candidates table (skills, headline)
+const profile = $('Get a row2').first().json;     // profiles table (full_name)
 const results = [];
 
 for (const job of data.to_apply) {
@@ -228,12 +250,13 @@ for (const job of data.to_apply) {
       salary_min: job.salary_min,
       salary_max: job.salary_max,
       match_score: job.match_score,
-      // Pass candidate info for AI
-      candidate_name: candidate.full_name || '',
+      // Name from PROFILES table
+      candidate_name: profile.full_name || '',
+      // Skills/experience from CANDIDATES table
       candidate_skills: (candidate.skills || []).join(', '),
       candidate_experience: candidate.years_experience || '',
       candidate_headline: candidate.headline || '',
-      // Pass user template if exists
+      // Cover letter template from settings
       cover_letter_template: data.cover_letter_template || '',
       action: 'apply',
     }
@@ -243,11 +266,16 @@ for (const job of data.to_apply) {
 return results;
 ```
 
-### Node 9: AI — Generate Cover Letter
+---
+
+## 🔴 REMAINING NODES TO BUILD
+
+### Node 10: AI Agent — Generate Cover Letter
 
 | Setting | Value |
 |---------|-------|
-| Type | **AI Agent** or **Google Gemini Chat Model** |
+| Type | **AI Agent** or **Basic LLM Chain** |
+| Chat Model | Google Gemini Chat Model |
 | Model | `gemini-2.0-flash` |
 
 **System Message:**
@@ -271,7 +299,7 @@ return results;
 الوظيفة: {{ $json.title }}
 الموقع: {{ $json.location_city }}
 الراتب: {{ $json.salary_min }}-{{ $json.salary_max }} AED
-nسبة التوافق: {{ $json.match_score }}%
+نسبة التوافق: {{ $json.match_score }}%
 
 بيانات المرشح:
 - الاسم: {{ $json.candidate_name }}
@@ -284,9 +312,13 @@ nسبة التوافق: {{ $json.match_score }}%
 اكتب رسالة تغطية مخصصة لهذه الوظيفة.
 ```
 
-> **Important:** The AI output will be in `{{ $json.text }}` — use it in the next node.
+Connect: `Code in JavaScript7` → `AI Agent`
 
-### Node 10: Supabase — Insert Application
+> **Output:** The AI text will be in `{{ $json.text }}` or `{{ $json.output }}`
+
+---
+
+### Node 11: Supabase — Insert Application
 
 | Setting | Value |
 |---------|-------|
@@ -294,19 +326,20 @@ nسبة التوافق: {{ $json.match_score }}%
 | Table | `applications` |
 
 Fields:
-```json
-{
-  "candidate_id": "{{ $('Code - Loop Jobs').item.json.user_id }}",
-  "job_id": "{{ $('Code - Loop Jobs').item.json.job_id }}",
-  "status": "pending",
-  "cover_letter": "{{ $json.text }}",
-  "source": "auto_apply"
-}
-```
 
-> **Note:** `cover_letter` now uses the AI-generated text from the previous node, NOT a static string.
+| Field | Value |
+|-------|-------|
+| `candidate_id` | `{{ $('Code in JavaScript7').item.json.user_id }}` |
+| `job_id` | `{{ $('Code in JavaScript7').item.json.job_id }}` |
+| `status` | `pending` |
+| `cover_letter` | `{{ $json.text }}` |
+| `source` | `auto_apply` |
 
-### Node 11: Supabase — Log Application
+Connect: `AI Agent` → `Insert Application`
+
+---
+
+### Node 12: Supabase — Log Application
 
 | Setting | Value |
 |---------|-------|
@@ -314,40 +347,42 @@ Fields:
 | Table | `auto_apply_log` |
 
 Fields:
-```json
-{
-  "user_id": "{{ $json.user_id }}",
-  "job_id": "{{ $json.job_id }}",
-  "match_score": "{{ $json.match_score }}",
-  "status": "applied"
-}
-```
 
-### Node 11: Supabase — Increment Monthly Counter
+| Field | Value |
+|-------|-------|
+| `user_id` | `{{ $('Code in JavaScript7').item.json.user_id }}` |
+| `job_id` | `{{ $('Code in JavaScript7').item.json.job_id }}` |
+| `match_score` | `{{ $('Code in JavaScript7').item.json.match_score }}` |
+| `status` | `applied` |
 
-Use a **Code** node to build the update, then a Supabase Update node:
+Connect: `Insert Application` → `Log Application`
+
+---
+
+### Node 13: Supabase — Update Settings
 
 | Setting | Value |
 |---------|-------|
 | Operation | Update |
 | Table | `auto_apply_settings` |
-| Filter | `id` = settings_id |
-| Set | `applications_this_month` = current + applied count |
-| Set | `last_run_at` = now |
+| Filter | `id` = `{{ $('Code in JavaScript7').item.json.settings_id }}` |
+
+Fields:
+
+| Field | Value |
+|-------|-------|
+| `last_run_at` | `{{ new Date().toISOString() }}` |
+
+Connect: `Log Application` → `Update Settings`
 
 ---
 
-## Duplicate Prevention
+## Connection Chain
 
-Before inserting into `applications`, the workflow should check:
-1. The user hasn't already applied to this job (manually or auto)
-2. Add this check in Node 5 (jobs query) or Node 6 (Code):
-
-```javascript
-// Add a Supabase node before the Code node to fetch existing application job_ids
-const existingApps = $('Get Existing Applications').all();
-const appliedJobIds = existingApps.map(a => a.json.job_id);
-// Then in the loop: if (appliedJobIds.includes(j.id)) continue;
+```
+Get many rows2 → Split Out1 → Get a row2 (profiles) → Get a row1 (candidates) → Get many rows3 (jobs)
+    → Code in JavaScript6 (score) → If1 → Code in JavaScript7 (loop)
+    → AI Agent (cover letter) → INSERT applications → INSERT auto_apply_log → UPDATE auto_apply_settings
 ```
 
 ---
@@ -365,27 +400,28 @@ const appliedJobIds = existingApps.map(a => a.json.job_id);
 
 ## Testing
 
-1. Build the full workflow
-2. Save auto-apply settings from the dashboard (activate + add roles/skills)
-3. Click **"Execute Workflow"** manually
-4. Check each node's output
-5. Verify: application created in `applications` table + logged in `auto_apply_log`
+1. Build remaining nodes (AI → Insert → Log → Update)
+2. Pin test data on `Code in JavaScript7` output
+3. Execute workflow manually
+4. Check: application created in `applications` table + logged in `auto_apply_log`
+5. Check: cover letter is AI-generated Arabic text (not static string)
 
 ---
 
 ## n8n Setup Summary
 
-| # | Node | Type |
-|---|------|------|
-| 1 | Schedule Trigger | Cron `0 */6 * * *` (every 6h) |
-| 2 | Supabase | SELECT `auto_apply_settings` WHERE active |
-| 3 | Split In Batches | Batch size 1 |
-| 4 | Supabase | SELECT `candidates` for user profile |
-| 5 | Supabase | SELECT `jobs` WHERE active |
-| 6 | Code | Score & filter jobs |
-| 7 | IF | to_apply.length > 0 |
-| 8 | Code | Loop matched jobs + prepare AI prompt |
-| 9 | **AI (Gemini)** | **Generate personalized cover letter** |
-| 10 | Supabase | INSERT `applications` + AI cover letter |
-| 11 | Supabase | INSERT `auto_apply_log` |
-| 12 | Supabase | UPDATE settings (counter + last_run) |
+| # | n8n Node Name | Type |
+|---|---------------|------|
+| 1 | Schedule Trigger | Cron `0 */6 * * *` (add last) |
+| 2 | `Get many rows2` | SELECT `auto_apply_settings` WHERE active ✅ |
+| 3 | `Split Out1` | Split per user ✅ |
+| 4 | `Get a row2` | SELECT `profiles` (full_name) ✅ |
+| 5 | `Get a row1` | SELECT `candidates` (skills, headline) ✅ |
+| 6 | `Get many rows3` | SELECT `jobs` WHERE active ✅ |
+| 7 | `Code in JavaScript6` | Score & filter jobs ✅ |
+| 8 | `If1` | to_apply.length > 0 ✅ |
+| 9 | `Code in JavaScript7` | Loop jobs + prepare AI data ✅ |
+| 10 | **AI Agent** | **Generate cover letter** 🔴 |
+| 11 | **Supabase INSERT** | **INSERT `applications`** 🔴 |
+| 12 | **Supabase INSERT** | **INSERT `auto_apply_log`** 🔴 |
+| 13 | **Supabase UPDATE** | **UPDATE `auto_apply_settings`** 🔴 |
