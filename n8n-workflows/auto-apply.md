@@ -1,229 +1,333 @@
 # Auto Apply — n8n Workflow Guide
 
 ## Workflow Name: `gn-auto-apply`
-## Type: n8n-native (Schedule Trigger → Supabase → Apply → Email)
+## Type: n8n-native (Schedule Trigger → Supabase → AI Match → Auto Submit)
+
+---
+
+## ⚠️ Same pattern as Job Alerts — fully n8n-native, no webhook
+
+The dashboard (`/candidate/auto-apply`) manages **settings** (CRUD via `/api/auto-apply`). The actual matching + applying is done entirely by n8n.
 
 ---
 
 ## Architecture
 
-This is **fully n8n-native** — no Next.js API cron route involved. The workflow:
-1. Runs on a schedule (every 6 hours)
-2. Queries Supabase for users with auto-apply enabled
-3. Finds new matching jobs they haven't applied to
-4. Creates applications automatically
-5. Sends confirmation emails
-6. Logs every action
-
-## Workflow Nodes (16 nodes)
-
 ```
-1. Schedule Trigger (Every 6 hours)
-   ↓
-2. Supabase (Select users with is_active = true)
-   ├── Table: auto_apply_settings
-   ├── Filter: is_active = true AND applications_this_month < max
-   └── Join: profiles (email, name), candidates (skills)
-   ↓
-3. Split In Batches (Process each user)
-   ↓
-4. Supabase (Query jobs posted in last 24h, status=active)
-   ├── Table: jobs
-   ├── Exclude: jobs user already applied to
-   └── Exclude: companies in exclude_companies list
-   ↓
-5. Code (Calculate match score per job)
-   ├── Match target_roles against job.title
-   ├── Match target_skills against job.skills_required
-   ├── Match target_locations against job.location_city
-   ├── Match target_job_types against job.job_type
-   ├── Check min_salary against job.salary_min
-   ├── Calculate score (0-100)
-   └── Filter: score >= min_match_score setting
-   ↓
-6. IF (matched_jobs.length > 0)
-   ├── TRUE →
-   │   ↓
-   │   7. Split In Batches (Each matched job)
-   │   ↓
-   │   8. Supabase (Check if already applied)
-   │   ├── SELECT FROM applications
-   │   └── WHERE candidate_id = user_id AND job_id = job_id
-   │   ↓
-   │   9. IF (not already applied AND under monthly limit)
-   │   ├── TRUE →
-   │   │   ↓
-   │   │   10. Supabase (INSERT into applications)
-   │   │   ├── candidate_id: user_id
-   │   │   ├── job_id: job_id
-   │   │   ├── status: 'pending'
-   │   │   ├── source: 'auto_apply'
-   │   │   └── cover_letter: template from settings
-   │   │   ↓
-   │   │   11. Supabase (INSERT into auto_apply_log)
-   │   │   ├── status: 'applied'
-   │   │   └── match_score: calculated score
-   │   │   ↓
-   │   │   12. Supabase (INCREMENT applications_this_month)
-   │   │   └── UPDATE auto_apply_settings
-   │   │
-   │   └── FALSE →
-   │       13. Supabase (Log as 'skipped' or 'duplicate')
-   │   ↓
-   │   14. SMTP / Email Summary
-   │   ├── Subject: "⚡ تم التقديم تلقائياً على {{ count }} وظائف"
-   │   └── Body: Summary of applied jobs
-   │
-   └── FALSE →
-       15. No Operation (skip)
-   ↓
-16. Supabase (Update last_run_at on settings)
+[Schedule: Every 6 hours]
+    ↓
+[Supabase: Get active auto-apply settings]
+    ↓
+[Split In Batches: 1 user per loop]
+    ↓
+[Supabase: Get user profile + CV data]
+    ↓
+[Supabase: Get active jobs (not already applied)]
+    ↓
+[Code: Score & filter jobs by user preferences]
+    ↓
+[Loop: For each matched job]
+    ├── [IF: score >= min_match_score AND under monthly limit]
+    │   ├── YES → [Supabase: INSERT into applications]
+    │   │         [Supabase: INSERT into auto_apply_log (status=applied)]
+    │   │         [Supabase: INCREMENT applications_this_month]
+    │   └── NO  → [Supabase: INSERT into auto_apply_log (status=skipped)]
+    ↓
+[Supabase: UPDATE last_run_at on settings]
 ```
 
-## Match Score Logic (Node 5)
+---
+
+## Step-by-Step Setup
+
+### Node 1: Schedule Trigger
+
+| Setting | Value |
+|---------|-------|
+| Trigger | Cron |
+| Expression | `0 */6 * * *` |
+| Note | Every 6 hours (4x daily) |
+
+### Node 2: Supabase — Get Active Settings
+
+| Setting | Value |
+|---------|-------|
+| Operation | Get All |
+| Table | `auto_apply_settings` |
+| Filters | `is_active` = `true` |
+
+### Node 3: Split In Batches
+
+| Setting | Value |
+|---------|-------|
+| Batch Size | 1 |
+
+### Node 4: Supabase — Get User Profile
+
+| Setting | Value |
+|---------|-------|
+| Operation | Get |
+| Table | `candidates` |
+| Filter | `id` = `{{ $json.user_id }}` |
+
+This gives us: `skills`, `years_experience`, `headline`, `education`, etc.
+
+### Node 5: Supabase — Get Active Jobs
+
+| Setting | Value |
+|---------|-------|
+| Operation | Get All |
+| Table | `jobs` |
+| Filters | `status` = `active` |
+
+### Node 6: Code — Score & Filter Jobs
+
+This is the main matching logic. Paste this JavaScript:
 
 ```javascript
-const user = $input.first().json;
+const settings = $('Split In Batches').first().json;
+const candidate = $('Supabase - Get Candidate').first().json;
 const jobs = $('Supabase - Get Jobs').all();
 
-// Get existing applications to skip duplicates
-const existingAppJobIds = $('Supabase - Existing Apps').all()
-  .map(a => a.json.job_id);
+// Get already applied job IDs (from auto_apply_log)
+// If you added a node to fetch existing applications, use it here
+const appliedJobIds = []; // TODO: populate from a Supabase query
 
 const matchedJobs = [];
+const candidateSkills = (candidate.skills || []).map(s => s.toLowerCase());
 
 for (const jobItem of jobs) {
   const j = jobItem.json;
-  
-  // Skip if already applied
-  if (existingAppJobIds.includes(j.id)) continue;
-  
+
+  // Skip already applied
+  if (appliedJobIds.includes(j.id)) continue;
+
   // Skip excluded companies
-  if ((user.exclude_companies || []).some(ex => 
-    (j.company_name || '').toLowerCase().includes(ex.toLowerCase())
-  )) continue;
-  
+  if (settings.exclude_companies && settings.exclude_companies.length > 0) {
+    // Would need company name from join — skip for now if company_id matches
+  }
+
   let score = 0;
   let maxScore = 0;
-  
-  // Role match (weight: 30)
-  maxScore += 30;
-  const titleLower = j.title.toLowerCase();
-  const roleMatch = (user.target_roles || []).some(r => 
-    titleLower.includes(r.toLowerCase()) || r.toLowerCase().includes(titleLower)
-  );
-  if (roleMatch) score += 30;
-  
-  // Skills match (weight: 30)
-  const requiredSkills = j.skills_required || [];
-  if (requiredSkills.length > 0) {
+
+  // --- Role match (title) ---
+  if (settings.target_roles && settings.target_roles.length > 0) {
     maxScore += 30;
-    const matched = (user.target_skills || []).filter(us =>
-      requiredSkills.some(rs => 
-        rs.toLowerCase().includes(us.toLowerCase()) || 
-        us.toLowerCase().includes(rs.toLowerCase())
-      )
+    const titleLow = (j.title || '').toLowerCase();
+    const roleMatch = settings.target_roles.some(r => 
+      titleLow.includes(r.toLowerCase()) || r.toLowerCase().includes(titleLow)
     );
-    score += Math.round((matched.length / requiredSkills.length) * 30);
+    if (roleMatch) score += 30;
   }
-  
-  // Location match (weight: 20)
-  if ((user.target_locations || []).length > 0) {
+
+  // --- Skill match ---
+  if (settings.target_skills && settings.target_skills.length > 0) {
+    maxScore += 40;
+    const jobSkills = (j.skills_required || []).map(s => s.toLowerCase());
+    const matchCount = settings.target_skills.filter(sk =>
+      jobSkills.some(js => js.includes(sk.toLowerCase()) || sk.toLowerCase().includes(js))
+    ).length;
+    if (settings.target_skills.length > 0) {
+      score += Math.round((matchCount / settings.target_skills.length) * 40);
+    }
+  }
+
+  // --- Also check candidate skills vs job skills ---
+  if (candidateSkills.length > 0 && j.skills_required) {
     maxScore += 20;
-    if (user.target_locations.includes(j.location_city)) score += 20;
+    const jobSkills = j.skills_required.map(s => s.toLowerCase());
+    const candMatch = candidateSkills.filter(cs =>
+      jobSkills.some(js => js.includes(cs) || cs.includes(js))
+    ).length;
+    if (jobSkills.length > 0) {
+      score += Math.round((candMatch / jobSkills.length) * 20);
+    }
   }
-  
-  // Job type match (weight: 10)
-  if ((user.target_job_types || []).length > 0) {
+
+  // --- Location match ---
+  if (settings.target_locations && settings.target_locations.length > 0) {
     maxScore += 10;
-    if (user.target_job_types.includes(j.job_type)) score += 10;
+    if (settings.target_locations.includes(j.location_city)) {
+      score += 10;
+    } else {
+      continue; // Hard filter — skip non-matching locations
+    }
   }
-  
-  // Salary check (weight: 10)
-  if (user.min_salary) {
-    maxScore += 10;
-    if ((j.salary_min || 0) >= user.min_salary) score += 10;
-    else if ((j.salary_max || 0) < user.min_salary) continue; // Hard filter
+
+  // --- Job type match ---
+  if (settings.target_job_types && settings.target_job_types.length > 0) {
+    if (!settings.target_job_types.includes(j.job_type)) {
+      continue; // Hard filter
+    }
   }
-  
-  const finalScore = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
-  
-  if (finalScore >= (user.min_match_score || 60)) {
+
+  // --- Salary filter ---
+  if (settings.min_salary && j.salary_max && j.salary_max < settings.min_salary) {
+    continue; // Below minimum salary
+  }
+
+  // Calculate percentage
+  const matchScore = maxScore > 0 ? Math.round((score / maxScore) * 100) : 50;
+
+  // Only include if meets minimum score
+  if (matchScore >= (settings.min_match_score || 60)) {
     matchedJobs.push({
-      json: {
-        job_id: j.id,
-        job_title: j.title,
-        company_name: j.company_name || 'N/A',
-        location: j.location_city,
-        match_score: finalScore,
-        user_id: user.user_id,
-        cover_letter: user.cover_letter_template || null,
-      }
+      job_id: j.id,
+      title: j.title,
+      company_id: j.company_id,
+      location_city: j.location_city,
+      salary_min: j.salary_min,
+      salary_max: j.salary_max,
+      match_score: matchScore,
     });
   }
 }
 
-// Respect monthly limit
-const remaining = (user.max_applications_per_month || 50) - (user.applications_this_month || 0);
-return matchedJobs.slice(0, remaining);
+// Sort by score, limit by monthly remaining
+const monthlyRemaining = (settings.max_applications_per_month || 50) - (settings.applications_this_month || 0);
+matchedJobs.sort((a, b) => b.match_score - a.match_score);
+const toApply = matchedJobs.slice(0, Math.max(0, monthlyRemaining));
+const toSkip = matchedJobs.slice(Math.max(0, monthlyRemaining));
+
+return [{
+  json: {
+    user_id: settings.user_id,
+    settings_id: settings.id,
+    to_apply: toApply,
+    to_skip: toSkip,
+    total_matched: matchedJobs.length,
+    monthly_remaining: monthlyRemaining,
+  }
+}];
 ```
 
-## Email Template (Node 14)
+### Node 7: IF — Has Jobs to Apply
 
-```html
-<div dir="rtl" style="font-family: Arial; max-width: 600px; margin: 0 auto;">
-  <h2 style="color: #c5a54e;">⚡ التقديم التلقائي</h2>
-  <p>مرحباً {{ user_name }}، تم التقديم تلقائياً على {{ count }} وظائف جديدة:</p>
-  
-  {{#each applied_jobs}}
-  <div style="border: 1px solid #333; border-radius: 12px; padding: 12px; margin-bottom: 8px;">
-    <strong style="color: #c5a54e;">{{ this.job_title }}</strong>
-    <p style="color: #888; margin: 4px 0;">{{ this.company_name }} • {{ this.location }}</p>
-    <span style="background: #c5a54e22; color: #c5a54e; padding: 2px 8px; border-radius: 4px; font-size: 12px;">
-      توافق {{ this.match_score }}%
-    </span>
-  </div>
-  {{/each}}
-  
-  <p style="color: #666; margin-top: 16px;">
-    الرصيد المتبقي هذا الشهر: {{ remaining }} طلب
-  </p>
-</div>
+| Setting | Value |
+|---------|-------|
+| Condition | `{{ $json.to_apply.length }}` > `0` |
+
+### Node 8: Code — Loop & Apply
+
+For each matched job, insert an application:
+
+```javascript
+const data = $input.first().json;
+const results = [];
+
+for (const job of data.to_apply) {
+  results.push({
+    json: {
+      user_id: data.user_id,
+      settings_id: data.settings_id,
+      job_id: job.job_id,
+      title: job.title,
+      match_score: job.match_score,
+      action: 'apply',
+    }
+  });
+}
+
+return results;
 ```
 
-## Monthly Reset
+### Node 9: Supabase — Insert Application
 
-Add a separate workflow or n8n Cron node that resets `applications_this_month` to 0 on the 1st of each month:
+| Setting | Value |
+|---------|-------|
+| Operation | Insert |
+| Table | `applications` |
 
-```sql
-UPDATE auto_apply_settings 
-SET applications_this_month = 0, updated_at = NOW()
-WHERE is_active = true;
+Fields:
+```json
+{
+  "candidate_id": "{{ $json.user_id }}",
+  "job_id": "{{ $json.job_id }}",
+  "status": "pending",
+  "cover_letter": "تم التقديم تلقائياً عبر نظام التقديم الذكي",
+  "source": "auto_apply"
+}
 ```
 
-Schedule: `0 0 1 * *` (midnight on the 1st)
+### Node 10: Supabase — Log Application
 
-## n8n Setup Steps
+| Setting | Value |
+|---------|-------|
+| Operation | Insert |
+| Table | `auto_apply_log` |
 
-1. Create workflow `gn-auto-apply`
-2. **Schedule Trigger** → Cron: `0 */6 * * *` (every 6 hours)
-3. **Supabase** → SELECT from `auto_apply_settings` WHERE active, under limit
-4. **Split In Batches** → Each user
-5. **Supabase** → SELECT new `jobs` (last 24h, active)
-6. **Supabase** → SELECT existing `applications` for this user (to skip duplicates)
-7. **Code** → Match score logic (copy from above)
-8. **IF** → matched jobs > 0
-9. **Split In Batches** → Each matched job
-10. **Supabase** → INSERT application
-11. **Supabase** → INSERT auto_apply_log
-12. **Supabase** → INCREMENT applications_this_month
-13. **SMTP** → Summary email
-14. **Supabase** → UPDATE last_run_at
-15. Activate
+Fields:
+```json
+{
+  "user_id": "{{ $json.user_id }}",
+  "job_id": "{{ $json.job_id }}",
+  "match_score": "{{ $json.match_score }}",
+  "status": "applied"
+}
+```
 
-## Create Monthly Reset Workflow
+### Node 11: Supabase — Increment Monthly Counter
 
-1. Create workflow `gn-auto-apply-reset`
-2. **Schedule Trigger** → `0 0 1 * *`
-3. **Supabase** → UPDATE `auto_apply_settings` SET `applications_this_month = 0`
-4. Activate
+Use a **Code** node to build the update, then a Supabase Update node:
+
+| Setting | Value |
+|---------|-------|
+| Operation | Update |
+| Table | `auto_apply_settings` |
+| Filter | `id` = settings_id |
+| Set | `applications_this_month` = current + applied count |
+| Set | `last_run_at` = now |
+
+---
+
+## Duplicate Prevention
+
+Before inserting into `applications`, the workflow should check:
+1. The user hasn't already applied to this job (manually or auto)
+2. Add this check in Node 5 (jobs query) or Node 6 (Code):
+
+```javascript
+// Add a Supabase node before the Code node to fetch existing application job_ids
+const existingApps = $('Get Existing Applications').all();
+const appliedJobIds = existingApps.map(a => a.json.job_id);
+// Then in the loop: if (appliedJobIds.includes(j.id)) continue;
+```
+
+---
+
+## Supabase Credentials
+
+| Setting | Value |
+|---------|-------|
+| Host | `https://cqahtitdamlunqjxeyeo.supabase.co` |
+| Service Role Key | from `.env.local` |
+
+> **Important:** Use **Service Role Key** (not anon key) because n8n needs to INSERT into `applications` on behalf of users.
+
+---
+
+## Testing
+
+1. Build the full workflow
+2. Save auto-apply settings from the dashboard (activate + add roles/skills)
+3. Click **"Execute Workflow"** manually
+4. Check each node's output
+5. Verify: application created in `applications` table + logged in `auto_apply_log`
+
+---
+
+## n8n Setup Summary
+
+| # | Node | Type |
+|---|------|------|
+| 1 | Schedule Trigger | Cron `0 */6 * * *` (every 6h) |
+| 2 | Supabase | SELECT `auto_apply_settings` WHERE active |
+| 3 | Split In Batches | Batch size 1 |
+| 4 | Supabase | SELECT `candidates` for user profile |
+| 5 | Supabase | SELECT `jobs` WHERE active |
+| 6 | Code | Score & filter jobs |
+| 7 | IF | to_apply.length > 0 |
+| 8 | Code | Loop matched jobs |
+| 9 | Supabase | INSERT `applications` |
+| 10 | Supabase | INSERT `auto_apply_log` |
+| 11 | Supabase | UPDATE settings (counter + last_run) |
