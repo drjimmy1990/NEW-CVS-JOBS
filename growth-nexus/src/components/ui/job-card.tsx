@@ -65,8 +65,8 @@ export function JobCard({ job, isLoggedIn = false, isSaved = false, isExternal =
     const [isLoading, setIsLoading] = useState(false);
     const [clickLoading, setClickLoading] = useState(false);
 
-    // Use real applicants_count from DB instead of Math.random()
-    const applicantsCount = isExternal ? (job.clicks_count || 0) : (job.applicants_count || 0);
+    // Use views_count for external jobs, applicants_count for internal
+    const applicantsCount = isExternal ? (job.views_count || 0) : (job.applicants_count || 0);
     
     let competitionLevel = 'منخفضة';
     let competitionColor = 'text-green-400 border-green-500/30 bg-green-500/10';
