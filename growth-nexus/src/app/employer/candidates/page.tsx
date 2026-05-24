@@ -10,6 +10,7 @@ import {
     Briefcase, Heart, Eye, Filter, GraduationCap, Globe
 } from 'lucide-react'
 import Link from 'next/link'
+import SmartMatchButton from '@/components/SmartMatchButton'
 
 export default async function CandidateSearchPage({
     searchParams,
@@ -300,6 +301,15 @@ export default async function CandidateSearchPage({
                     <Briefcase className="h-4 w-4" />
                     <span>يتم ترتيب المرشحين حسب تطابقهم مع وظيفة: <strong>{selectedJobTitle}</strong></span>
                 </div>
+            )}
+
+            {/* AI Smart Match Button */}
+            {params.job_id && selectedJobTitle && candidates.length > 0 && (
+                <SmartMatchButton
+                    jobId={params.job_id}
+                    jobTitle={selectedJobTitle}
+                    candidateIds={candidates.map((c: any) => c.id)}
+                />
             )}
 
             {/* Results */}
