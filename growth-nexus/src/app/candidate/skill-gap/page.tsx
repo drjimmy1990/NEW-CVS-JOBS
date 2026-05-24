@@ -120,17 +120,30 @@ export default function SkillGapPage() {
     }
 
     async function searchJobs() {
-        if (!searchQuery.trim()) return
         setSearching(true)
+        const q = searchQuery.trim()
 
-        const { data } = await supabase
-            .from('jobs')
-            .select('id, title, location_city, job_type, skills_required, companies(name, logo_url)')
-            .eq('status', 'active')
-            .ilike('title', `%${searchQuery.trim()}%`)
-            .limit(10)
+        try {
+            let query = supabase
+                .from('jobs')
+                .select('id, title, location_city, job_type, skills_required, companies(name, logo_url)')
+                .eq('status', 'active')
 
-        setSearchResults((data || []) as unknown as SearchJobItem[])
+            if (q) {
+                query = query.or(`title.ilike.%${q}%,description.ilike.%${q}%`)
+            }
+
+            const { data, error: searchError } = await query
+                .order('created_at', { ascending: false })
+                .limit(10)
+
+            if (searchError) {
+                console.error('[skill-gap] search error:', searchError.message)
+            }
+            setSearchResults((data || []) as unknown as SearchJobItem[])
+        } catch (err) {
+            console.error('[skill-gap] search exception:', err)
+        }
         setSearching(false)
     }
 
@@ -280,7 +293,7 @@ export default function SkillGapPage() {
                             </button>
 
                             <button
-                                onClick={() => setInputMode('search')}
+                                onClick={() => { setInputMode('search'); searchJobs() }}
                                 className="p-5 rounded-xl bg-navy border border-gold/10 hover:border-gold/30 transition-all text-start group"
                             >
                                 <Search className="h-8 w-8 text-blue-400 mb-3 group-hover:scale-110 transition-transform" />
