@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
             updated_at: new Date().toISOString(),
         }
 
-        // If parsed_data is available, also update resume_parsed_data and skills
+        // If parsed_data is available, also update resume_parsed_data and skills + new fields
         if (session.parsed_data) {
             const parsed = session.parsed_data as Record<string, unknown>
             updateData.resume_parsed_data = parsed
@@ -66,6 +66,14 @@ export async function POST(req: NextRequest) {
             if (Array.isArray(parsed.skills) && parsed.skills.length > 0) {
                 updateData.skills = parsed.skills
             }
+
+            // Extract new fields from AI parsing
+            if (parsed.experience_years) updateData.years_experience = parsed.experience_years
+            if (parsed.education_level) updateData.education_level = parsed.education_level
+            if (parsed.specialization) updateData.specialization = parsed.specialization
+            if (parsed.last_job_title) updateData.last_job_title = parsed.last_job_title
+            if (parsed.nationality) updateData.nationality = parsed.nationality
+            if (parsed.city) updateData.city = parsed.city
         }
 
         const { error: updateError } = await supabase
