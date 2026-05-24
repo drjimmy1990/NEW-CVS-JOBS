@@ -53,6 +53,9 @@ const platformLabels: Record<string, string> = {
     gulftalen: 'GulfTalent',
     indeed: 'Indeed',
     glassdoor: 'Glassdoor',
+    weworkremotely: 'WeWorkRemotely',
+    remoteok: 'RemoteOK',
+    naukrigulf: 'NaukriGulf',
 };
 
 export function JobCard({ job, isLoggedIn = false, isSaved = false, isExternal = false, sourceUrl, sourcePlatform, accessLevel }: JobCardProps) {

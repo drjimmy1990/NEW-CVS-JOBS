@@ -132,6 +132,16 @@ export default async function JobsPage({ searchParams }: Props) {
         externalJobs = extData || []
     }
 
+    // ==========================================
+    // FETCH DISTINCT SOURCE PLATFORMS for filter
+    // ==========================================
+    const { data: platformRows } = await supabase
+        .from('external_jobs')
+        .select('source_platform')
+        .eq('is_active', true)
+    
+    const sourcePlatforms = [...new Set((platformRows || []).map((r: any) => r.source_platform).filter(Boolean))]
+
     // Merge: internal jobs first (featured), then interleave external
     const allJobs: Array<{ data: any; isExternal: boolean }> = []
     
@@ -282,18 +292,41 @@ export default async function JobsPage({ searchParams }: Props) {
                         {/* Source Filter */}
                         <div className="mb-8">
                             <h3 className="text-lg font-semibold text-cream mb-4">المصدر</h3>
-                            <select
-                                name="source"
-                                defaultValue={params.source || ''}
-                                className="w-full h-11 px-3 bg-navy border border-gold/15 rounded-xl text-cream-dark/60 focus-visible:ring-1 focus-visible:ring-gold outline-none appearance-none"
-                            >
-                                <option value="">جميع المصادر</option>
-                                <option value="platform">وظائف المنصة فقط</option>
-                                <option value="linkedin">LinkedIn</option>
-                                <option value="bayt">Bayt.com</option>
-                                <option value="gulftalen">GulfTalent</option>
-                                <option value="indeed">Indeed</option>
-                            </select>
+                            <div className="flex flex-wrap gap-2">
+                                <a
+                                    href={`/jobs?${new URLSearchParams({ ...(params.q ? { q: params.q } : {}), ...(params.type ? { type: params.type } : {}), ...(params.location ? { location: params.location } : {}), ...(params.date ? { date: params.date } : {}) }).toString()}`}
+                                    className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
+                                        !params.source
+                                            ? 'bg-gold/20 text-gold border-gold/40'
+                                            : 'bg-navy border-gold/15 text-cream-dark/60 hover:border-gold/30 hover:text-cream-dark/80'
+                                    }`}
+                                >
+                                    جميع المصادر
+                                </a>
+                                <a
+                                    href={`/jobs?${new URLSearchParams({ ...(params.q ? { q: params.q } : {}), ...(params.type ? { type: params.type } : {}), ...(params.location ? { location: params.location } : {}), ...(params.date ? { date: params.date } : {}), source: 'platform' }).toString()}`}
+                                    className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
+                                        params.source === 'platform'
+                                            ? 'bg-gold/20 text-gold border-gold/40'
+                                            : 'bg-navy border-gold/15 text-cream-dark/60 hover:border-gold/30 hover:text-cream-dark/80'
+                                    }`}
+                                >
+                                    وظائف المنصة فقط
+                                </a>
+                                {sourcePlatforms.map((platform: string) => (
+                                    <a
+                                        key={platform}
+                                        href={`/jobs?${new URLSearchParams({ ...(params.q ? { q: params.q } : {}), ...(params.type ? { type: params.type } : {}), ...(params.location ? { location: params.location } : {}), ...(params.date ? { date: params.date } : {}), source: platform }).toString()}`}
+                                        className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all capitalize ${
+                                            params.source === platform
+                                                ? 'bg-blue-500/20 text-blue-400 border-blue-500/40'
+                                                : 'bg-navy border-gold/15 text-cream-dark/60 hover:border-blue-500/30 hover:text-cream-dark/80'
+                                        }`}
+                                    >
+                                        {platform}
+                                    </a>
+                                ))}
+                            </div>
                         </div>
 
                         <Button
