@@ -32,6 +32,10 @@ type ApplicantCardProps = {
     date: string
     currentStatus: string
     cvUrl?: string | null
+    headline?: string
+    yearsExperience?: number
+    city?: string
+    nationality?: string
 }
 
 export function ApplicantCard({
@@ -42,6 +46,10 @@ export function ApplicantCard({
     date,
     currentStatus,
     cvUrl,
+    headline,
+    yearsExperience,
+    city,
+    nationality,
 }: ApplicantCardProps) {
     const [showMoveMenu, setShowMoveMenu] = useState(false)
     const [moving, setMoving] = useState(false)
@@ -174,6 +182,15 @@ export function ApplicantCard({
                         </div>
                     </div>
                 </div>
+
+                {/* Extra info line */}
+                {(headline || yearsExperience || city || nationality) && (
+                    <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-cream-dark/35 mb-2">
+                        {yearsExperience ? <span>{yearsExperience} سنة</span> : null}
+                        {nationality && <span>• {nationality}</span>}
+                        {city && <span>• {city}</span>}
+                    </div>
+                )}
 
                 {/* Status badge */}
                 <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${getStatusColor(currentStatus)}`}>
