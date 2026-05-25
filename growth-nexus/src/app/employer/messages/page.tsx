@@ -80,10 +80,22 @@ export default function EmployerMessagesPage() {
                         .select('full_name, avatar_url')
                         .eq('id', otherId)
                         .single()
+
+                    // Fallback: if no full_name, try candidate headline or email
+                    let displayName = profile?.full_name
+                    if (!displayName) {
+                        const { data: candidate } = await supabase
+                            .from('candidates')
+                            .select('headline')
+                            .eq('id', otherId)
+                            .single()
+                        displayName = candidate?.headline || null
+                    }
+
                     return {
                         id: c.id,
                         other_user_id: otherId,
-                        other_user_name: profile?.full_name || 'مرشح',
+                        other_user_name: displayName || 'مرشح',
                         other_user_avatar: profile?.avatar_url,
                         last_message: c.last_message || '',
                         last_message_at: c.last_message_at,
