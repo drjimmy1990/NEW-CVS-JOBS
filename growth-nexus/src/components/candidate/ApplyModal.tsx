@@ -68,7 +68,7 @@ export function ApplyModal({ isOpen, onClose, jobId, jobTitle, companyName }: Ap
         const { data: { user } } = await supabase.auth.getUser()
 
         if (!user) {
-            toast.error('Please login to apply')
+            toast.error('يرجى تسجيل الدخول للتقديم')
             setLoading(false)
             return
         }
@@ -82,7 +82,7 @@ export function ApplyModal({ isOpen, onClose, jobId, jobTitle, companyName }: Ap
             .single()
 
         if (existingApp) {
-            toast.error('You have already applied to this job')
+            toast.error('لقد تقدمت لهذه الوظيفة من قبل')
             setLoading(false)
             onClose()
             return
@@ -102,7 +102,7 @@ export function ApplyModal({ isOpen, onClose, jobId, jobTitle, companyName }: Ap
             .single()
 
         if (error) {
-            toast.error('Failed to apply: ' + error.message)
+            toast.error('فشل التقديم: ' + error.message)
             setLoading(false)
             return
         }
@@ -135,7 +135,7 @@ export function ApplyModal({ isOpen, onClose, jobId, jobTitle, companyName }: Ap
             console.error('Failed to trigger notification:', err)
         }
 
-        toast.success('Application submitted! 🎉')
+        toast.success('تم إرسال طلبك بنجاح! 🎉')
         setLoading(false)
         onClose()
         router.push('/candidate/applications')
@@ -143,40 +143,40 @@ export function ApplyModal({ isOpen, onClose, jobId, jobTitle, companyName }: Ap
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="bg-slate-900 border-slate-800 max-w-lg">
+            <DialogContent dir="rtl" className="bg-navy-light border-gold/15 max-w-lg text-cream">
                 <DialogHeader>
-                    <DialogTitle className="text-white text-xl">
-                        Apply for {jobTitle}
+                    <DialogTitle className="text-cream text-xl text-right">
+                        التقدم لوظيفة {jobTitle}
                     </DialogTitle>
-                    <DialogDescription>
-                        at {companyName}
+                    <DialogDescription className="text-cream-dark/50 text-right">
+                        لدى {companyName}
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-6 py-4">
                     {/* CV Status */}
-                    <div className="p-4 rounded-lg bg-slate-800">
+                    <div className="p-4 rounded-lg bg-navy-lighter/50 border border-gold/10">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className={`p-2 rounded-lg ${candidateData?.cv_url ? 'bg-green-500/20' : 'bg-amber-500/20'}`}>
+                                <div className={`p-2 rounded-lg ${candidateData?.cv_url ? 'bg-success/20' : 'bg-amber-500/20'}`}>
                                     {candidateData?.cv_url ? (
-                                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                                        <CheckCircle2 className="h-5 w-5 text-success" />
                                     ) : (
                                         <AlertCircle className="h-5 w-5 text-amber-500" />
                                     )}
                                 </div>
                                 <div>
-                                    <p className="text-white font-medium">Resume</p>
-                                    <p className="text-sm text-slate-400">
-                                        {candidateData?.cv_url ? 'Your CV will be attached' : 'No CV uploaded'}
+                                    <p className="text-cream font-medium">السيرة الذاتية</p>
+                                    <p className="text-sm text-cream-dark/50">
+                                        {candidateData?.cv_url ? 'سيتم إرفاق سيرتك الذاتية' : 'لم يتم رفع سيرة ذاتية'}
                                     </p>
                                 </div>
                             </div>
                             {!candidateData?.cv_url && (
                                 <Link href="/candidate/cv">
-                                    <Button size="sm" variant="outline" className="border-slate-700">
-                                        <Upload className="h-4 w-4 mr-1" />
-                                        Upload
+                                    <Button size="sm" variant="outline" className="border-gold/20 text-cream hover:bg-navy">
+                                        <Upload className="h-4 w-4 me-1" />
+                                        رفع
                                     </Button>
                                 </Link>
                             )}
@@ -186,10 +186,10 @@ export function ApplyModal({ isOpen, onClose, jobId, jobTitle, companyName }: Ap
                     {/* Skills */}
                     {candidateData?.skills && candidateData.skills.length > 0 && (
                         <div>
-                            <Label className="text-slate-300 mb-2 block">Your Skills</Label>
+                            <Label className="text-cream-dark/70 mb-2 block">مهاراتك</Label>
                             <div className="flex flex-wrap gap-2">
                                 {candidateData.skills.slice(0, 8).map((skill, i) => (
-                                    <Badge key={i} className="bg-cyan-500/20 text-cyan-400">
+                                    <Badge key={i} className="bg-gold/10 text-gold border-gold/30">
                                         {skill}
                                     </Badge>
                                 ))}
@@ -199,16 +199,16 @@ export function ApplyModal({ isOpen, onClose, jobId, jobTitle, companyName }: Ap
 
                     {/* Cover Letter */}
                     <div className="space-y-2">
-                        <Label className="text-slate-300">Cover Letter (Optional)</Label>
+                        <Label className="text-cream-dark/70">خطاب التقديم (اختياري)</Label>
                         <Textarea
                             value={coverLetter}
                             onChange={(e) => setCoverLetter(e.target.value)}
-                            placeholder="Why are you interested in this role? What makes you a great fit?"
+                            placeholder="لماذا أنت مهتم بهذه الوظيفة؟ وما الذي يجعلك مرشحاً مناسباً؟"
                             rows={5}
-                            className="bg-slate-800 border-slate-700 text-white resize-none"
+                            className="bg-navy-lighter border-gold/15 text-cream resize-none text-right"
                         />
-                        <p className="text-xs text-slate-500">
-                            A personalized cover letter can increase your chances
+                        <p className="text-xs text-cream-dark/40">
+                            خطاب تقديم مخصص يزيد من فرص قبولك
                         </p>
                     </div>
                 </div>
@@ -217,24 +217,24 @@ export function ApplyModal({ isOpen, onClose, jobId, jobTitle, companyName }: Ap
                     <Button
                         variant="outline"
                         onClick={onClose}
-                        className="border-slate-700 text-slate-300"
+                        className="border-gold/15 text-cream-dark/70 hover:bg-navy hover:text-cream"
                     >
-                        Cancel
+                        إلغاء
                     </Button>
                     <Button
                         onClick={handleApply}
                         disabled={loading}
-                        className="bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600"
+                        className="bg-gold hover:bg-gold-dark text-navy font-bold"
                     >
                         {loading ? (
                             <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Submitting...
+                                <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                                جارِ الإرسال...
                             </>
                         ) : (
                             <>
-                                <FileText className="mr-2 h-4 w-4" />
-                                Submit Application
+                                <FileText className="me-2 h-4 w-4" />
+                                إرسال الطلب
                             </>
                         )}
                     </Button>

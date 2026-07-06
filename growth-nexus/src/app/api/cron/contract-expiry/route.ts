@@ -4,11 +4,17 @@ import { createClient } from '@/utils/supabase/server'
 // Daily cron: expire stale contracts
 export async function GET(req: Request) {
     try {
-        // Verify cron secret
+        // Verify cron secret — FAIL CLOSED: if the secret is not configured,
+        // refuse to run rather than leaving the endpoint open to anyone.
         const authHeader = req.headers.get('authorization')
         const cronSecret = process.env.CRON_SECRET
 
-        if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+        if (!cronSecret) {
+            console.error('[Cron] CRON_SECRET is not configured — refusing to run.')
+            return NextResponse.json({ error: 'Cron not configured' }, { status: 503 })
+        }
+
+        if (authHeader !== `Bearer ${cronSecret}`) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 

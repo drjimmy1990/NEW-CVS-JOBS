@@ -16,6 +16,23 @@ export async function POST(request: NextRequest) {
 
         const supabase = await createClient()
 
+        // SECURITY: require an authenticated caller who owns this application
+        // (the candidate who just applied). Prevents notification/webhook spoofing.
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+        if (authError || !user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        const { data: application } = await supabase
+            .from('applications')
+            .select('id, candidate_id, job_id')
+            .eq('id', applicationId)
+            .single()
+
+        if (!application || application.candidate_id !== user.id || application.job_id !== jobId) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+        }
+
         // 1. Find the company owner + team members for this job
         const { data: job } = await supabase
             .from('jobs')

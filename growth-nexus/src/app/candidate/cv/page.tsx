@@ -149,19 +149,10 @@ export default function CVPage() {
             const webhookUrl = process.env.NEXT_PUBLIC_N8N_CV_PARSER_WEBHOOK
 
             if (!webhookUrl || webhookUrl.includes('your-n8n-domain') || webhookUrl.includes('example.com')) {
-                toast.info('تحليل الذكاء الاصطناعي سيكون متاحاً عند تكوين webhook')
-
-                setTimeout(() => {
-                    const mockParsed: ParsedData = {
-                        skills: ['JavaScript', 'React', 'Node.js', 'TypeScript', 'SQL'],
-                        experience_years: 3,
-                        education: ['بكالوريوس في علوم الحاسوب'],
-                        summary: 'مطور برمجيات ذو خبرة مع تركيز على تقنيات الويب.'
-                    }
-                    setParsedData(mockParsed)
-                    setParsing(false)
-                    toast.success('تم تحليل السيرة الذاتية! (وضع تجريبي)')
-                }, 2000)
+                // No parser configured: do NOT fabricate parsed data. Inform the user
+                // and leave the extracted-profile section empty until a real parse runs.
+                toast.info('تم رفع السيرة الذاتية. تحليل المهارات بالذكاء الاصطناعي سيتوفر قريباً.')
+                setParsing(false)
                 return
             }
 

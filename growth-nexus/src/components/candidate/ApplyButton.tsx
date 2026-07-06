@@ -52,9 +52,9 @@ export function ApplyButton({ jobId, jobTitle, companyName, className, children 
             <Button
                 onClick={handleClick}
                 disabled={isChecking}
-                className={className || "bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white"}
+                className={className || "bg-gold hover:bg-gold-dark text-navy font-bold shadow-lg shadow-gold/20"}
             >
-                {children || 'Apply Now'}
+                {children || 'تقدّم الآن'}
             </Button>
 
             <ApplyModal

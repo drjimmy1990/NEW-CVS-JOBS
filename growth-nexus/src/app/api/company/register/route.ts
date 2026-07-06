@@ -1,15 +1,21 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createClient as createServerClient } from '@/utils/supabase/server'
 import { calculateRiskScore, requiresManualReview } from '@/lib/verification-engine'
 
 export async function POST(req: Request) {
     try {
         const body = await req.json()
-        const { userId, documents, ...companyData } = body
+        // SECURITY: ignore any userId supplied in the body — derive the owner
+        // strictly from the authenticated session to prevent identity spoofing.
+        const { userId: _ignoredBodyUserId, documents, ...companyData } = body
 
-        if (!userId) {
-            return NextResponse.json({ error: 'Missing userId' }, { status: 400 })
+        const authClient = await createServerClient()
+        const { data: { user }, error: authError } = await authClient.auth.getUser()
+        if (authError || !user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
+        const userId = user.id
 
         // 1. Calculate Risk Score & Verification Status
         const riskData = {
